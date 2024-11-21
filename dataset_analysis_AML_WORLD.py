@@ -53,3 +53,34 @@ plt.show()
 print(df["Is Laundering"].value_counts())
 sns.countplot(data=df, x='Is Laundering')
 plt.show()
+
+#check how many transfers are from different banks
+same_bank_count = (df['From Bank'] == df['To Bank']).sum()  # Count same-bank transactions
+cross_bank_count = (df['From Bank'] != df['To Bank']).sum()  # Count cross-bank transactions
+
+print(f"Number of same-bank transactions: {same_bank_count}")
+print(f"Number of cross-bank transactions: {cross_bank_count}")
+
+# Plot the counts
+plt.figure(figsize=(15, 8))
+counts = pd.Series({'Same Bank': same_bank_count, 'Cross Bank': cross_bank_count})
+counts.plot(kind='bar', color=['green', 'red'], title='Same Bank vs Cross Bank Transactions')
+plt.ylabel('Number of Transactions')
+plt.title("NON ML transfer type")
+plt.show()
+
+#check how many ML transfers are from different banks
+laundering_df = df[df['Is Laundering'] == 1]
+same_bank_count = (laundering_df['From Bank'] == laundering_df['To Bank']).sum()  # Count same-bank transactions
+cross_bank_count = (laundering_df['From Bank'] != laundering_df['To Bank']).sum()  # Count cross-bank transactions
+
+print(f"Number of same-bank transactions: {same_bank_count}")
+print(f"Number of cross-bank transactions: {cross_bank_count}")
+
+# Plot the counts
+plt.figure(figsize=(15, 8))
+counts = pd.Series({'Same Bank': same_bank_count, 'Cross Bank': cross_bank_count})
+counts.plot(kind='bar', color=['green', 'red'], title='Same Bank vs Cross Bank Transactions')
+plt.ylabel('Number of Transactions')
+plt.title("ML transfer type")
+plt.show()
