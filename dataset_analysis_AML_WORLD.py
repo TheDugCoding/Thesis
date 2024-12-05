@@ -375,7 +375,6 @@ def network_modularity(G):
 
 # Network Density
 density = network_density(G)
-print("density" + str(density))
 # Degree Distribution
 degree_dist = degree_distribution(G)
 degree_distribution_histogram(G, 30)
