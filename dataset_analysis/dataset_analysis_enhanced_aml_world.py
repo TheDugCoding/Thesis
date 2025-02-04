@@ -13,7 +13,7 @@ from networkx.algorithms.community import modularity, greedy_modularity_communit
 
 
 
-raw_df = pd.read_csv("C:/Users/lucad/OneDrive/Desktop/thesis/code/Thesis/Data/enchanced_aml_world/SAML-D.csv")
+raw_df = pd.read_csv("/Data/enchanced_aml_world/SAML-D.csv")
 """
 print(raw_df.shape)
 df = raw_df.sample(n=100000, random_state=1)

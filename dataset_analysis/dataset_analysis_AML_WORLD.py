@@ -7,8 +7,8 @@ import networkx as nx
 from networkx.algorithms.community import modularity, greedy_modularity_communities
 
 
-df = pd.read_csv("Data/AML_world/LI-Small_Trans.csv")
-"""
+df = pd.read_csv("../Data/AML_world/LI-Small_Trans.csv")
+
 #features
 print(df.columns)
 print(df.head(5))
@@ -226,7 +226,6 @@ print(f"Number of banks: {unique_banks}")
 unique_accounts = df["Account"].unique()
 # Print the total number of unique banks
 print(f"Number of banks: {unique_accounts}")
-"""
 
 # Create a graph using NetworkX
 G = nx.DiGraph()  # A directed graph is assumed since transactions have a direction (From Bank -> To Bank)
