@@ -1,4 +1,4 @@
-name: aml_world_gnn
+name: thesis
 channels:
   - pytorch
   - pyg
