@@ -29,7 +29,7 @@ def pre_process_aml_world():
                        received_currency=row['Received Currency'],
                        payment_format=row['Payment Format'],
                        is_laundering=row['Is Laundering'])
-            break
+            
 
         G_aml_world = get_structural_info(G_aml_world)
 
@@ -59,7 +59,7 @@ def pre_process_rabobank():
                                 count=row['count'],
                                 year_from=row['year_from'],
                                 year_to=row['year_to'])
-            break
+            
 
         # Compute additional structural information
         G_rabobank = get_structural_info(G_rabobank)
@@ -94,7 +94,7 @@ def pre_process_saml_d():
                               payment_type=row['Payment_type'],
                               is_laundering=row['Is_laundering'],
                               laundering_type=row['Laundering_type'])
-            break
+            
 
         # Compute additional structural information
         G_saml_d = get_structural_info(G_saml_d)
@@ -120,7 +120,7 @@ def pre_process_elliptic():
         # Add edges to the graph from the dataset
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
-            break
+            
 
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
