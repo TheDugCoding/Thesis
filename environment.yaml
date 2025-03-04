@@ -237,4 +237,3 @@ dependencies:
       - torch-scatter==2.1.2
       - torch-sparse==0.6.18
       - torchvision==0.19.1
-prefix: C:\Users\lucad\anaconda3\envs\aml_world_gnn
