@@ -5,7 +5,9 @@ import os
 
 from utils import get_structural_info
 
-processed_data_location = '../../Data/Processed/'
+script_dir = os.path.dirname(os.path.abspath(__file__))
+relative_path  = '../../Data/Processed/'
+processed_data_location = os.path.join(script_dir, relative_path)
 
 '''---AML_world dataset preprocessing---'''
 
