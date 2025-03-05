@@ -6,7 +6,7 @@
 #SBATCH --nodes=1                     # Number of nodes
 #SBATCH --ntasks-per-node=1           # Number of tasks per node
 #SBATCH --time=24:00:00                # Maximum runtime (D-HH:MM:SS)
-#SBATCH --mail-type=END, FAIL               # Send email at job completion
+#SBATCH --mail-type=END,FAIL               # Send email at job completion
 #SBATCH --mail-user=lucadughera@gmail.com    # Email address for notifications
 
 #Load necessary modules (if needed)
