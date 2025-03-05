@@ -9,13 +9,20 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 relative_path  = '../../Data/Processed/'
 processed_data_location = os.path.join(script_dir, relative_path)
 
+#dataset locations
+relative_path_aml_world_raw = '../../Data/Raw/AML_world/Small_LI/formatted_transactions.csv'
+relative_path_rabobank_raw = '../../Data/Raw/rabobank/rabobank_data.csv'
+relative_path_saml_d_raw = '../../Data/Raw/SAML-D/SAML-D.csv'
+relative_path_elliptic_raw = '../../Data/Raw/Elliptic++_Dataset/AddrAddr_edgelist.csv'
+
+
 '''---AML_world dataset preprocessing---'''
 
 def pre_process_aml_world():
     # Check if AMl world has already been preprocessed
     if not os.path.exists(os.path.join(processed_data_location, 'aml_world.graphml')):
         # Load the dataset
-        df_aml_world = pd.read_csv('../../Data/Raw/AML_world/Small_LI/formatted_transactions.csv')
+        df_aml_world = pd.read_csv(os.path.join(script_dir, relative_path_aml_world_raw))
 
         # Initialize a directed graph
         G_aml_world = nx.DiGraph()
@@ -50,7 +57,7 @@ def pre_process_rabobank():
     # Check if the Rabobank graph has already been preprocessed
     if not os.path.exists(os.path.join(processed_data_location, 'rabobank.graphml')):
         # Load the dataset
-        df_rabobank = pd.read_csv('../../Data/Raw/rabobank/rabobank_data.csv', delimiter=';')
+        df_rabobank = pd.read_csv(os.path.join(script_dir, relative_path_rabobank_raw), delimiter=';')
 
         # Initialize a directed graph
         G_rabobank = nx.DiGraph()
@@ -82,7 +89,7 @@ def pre_process_saml_d():
     # Check if the SAML_d graph has already been preprocessed
     if not os.path.exists(os.path.join(processed_data_location, 'saml_d.graphml')):
         # Load the dataset
-        df_saml_d = pd.read_csv('../../Data/Raw/SAML-D/SAML-D.csv')
+        df_saml_d = pd.read_csv(os.path.join(script_dir, relative_path_saml_d_raw))
 
         # Initialize a directed graph
         G_saml_d = nx.DiGraph()
@@ -117,7 +124,7 @@ def pre_process_elliptic():
     # Check if the AddrAddr graph has already been preprocessed
     if not os.path.exists(os.path.join(processed_data_location, 'elliptic_addr_addr.graphml')):
         # Load the dataset
-        df_addr_addr = pd.read_csv('../../Data/Raw/Elliptic++_Dataset/AddrAddr_edgelist.csv')
+        df_addr_addr = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw))
 
         # Initialize a directed graph
         G_addr_addr = nx.DiGraph()
