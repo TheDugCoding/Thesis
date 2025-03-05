@@ -2,7 +2,6 @@
 #SBATCH --job-name=luca_dughera_job      # Job name
 #SBATCH --output=output.txt           # Standard output file
 #SBATCH --error=error.txt             # Standard error file
-#SBATCH --partition=partition_name    # Partition or queue name
 #SBATCH --nodes=1                     # Number of nodes
 #SBATCH --ntasks-per-node=1           # Number of tasks per node
 #SBATCH --time=24:00:00                # Maximum runtime (D-HH:MM:SS)
