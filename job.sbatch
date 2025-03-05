@@ -13,7 +13,7 @@
 
 #Your job commands go here
 #For example:
-python src/Data_Preprocessing/subsampling.py
+python src/Data_Preprocessing/test.py
 
 #Optionally, you can include cleanup commands here (e.g., after the job finishes)
 #For example:
