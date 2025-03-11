@@ -14,9 +14,10 @@
 #Your job commands go here
 #For example:
 
+export PROJECT_PATH=/science-nfs-sys/vsm01/users/1738380/Desktop/Thesis
+export PYTHONPATH=$PYTHONPATH:$PROJECT_PATH
 
-
-srun python src/Scripts/Modeling/Pre_Training/Topological_Pre_Training/modeling_graphsage_unsup.py
+srun python $PROJECT_PATH/src/Scripts/Modeling/Pre_Training/Topological_Pre_Training/modeling_graphsage_unsup.py
 
 
 
