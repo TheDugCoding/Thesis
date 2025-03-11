@@ -10,15 +10,6 @@ from torch_geometric.data import Dataset
 from torch_geometric.utils import from_networkx
 from torch_geometric.nn import SAGEConv, DeepGraphInfomax
 from sklearn.manifold import TSNE
-
-# Get the absolute path of the project's root directory
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-
-# Add it to the Python path
-if PROJECT_ROOT not in sys.path:
-    sys.path.append(PROJECT_ROOT)
-
-# Now imports should work
 from src.Scripts.Data_Preparation.preprocess import FinancialGraphDataset
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
