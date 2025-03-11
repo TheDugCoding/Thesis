@@ -8,7 +8,7 @@ from torch_geometric.data import Dataset
 from torch_geometric.utils import from_networkx
 from torch_geometric.nn import SAGEConv, DeepGraphInfomax
 from sklearn.manifold import TSNE
-from Src.Scripts.Data_Preparation.preprocess import FinancialGraphDataset
+from src.Scripts.Data_Preparation.preprocess import FinancialGraphDataset
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 relative_path_processed  = '../../../Data/Processed/'
