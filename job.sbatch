@@ -13,8 +13,9 @@
 
 #Your job commands go here
 #For example:
-srun python src/Scripts/Modeling/Pre_Training/Topological_Pre_Training/modeling_graphsage_unsup.py
 export PYTHONPATH=$PYTHONPATH:/science-nfs-sys/vsm01/users/1738380/Desktop/Thesis/src
+srun python src/Scripts/Modeling/Pre_Training/Topological_Pre_Training/modeling_graphsage_unsup.py
+
 
 
 #Optionally, you can include cleanup commands here (e.g., after the job finishes)
