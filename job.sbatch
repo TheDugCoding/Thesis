@@ -1,9 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=luca_dughera_job      # Job name
-#SBATCH --output=output.txt           # Standard output file
+#SBATCH --job-name=dug_job      # Job name
+#SBATCH --output=pyg-multinode.log        # outputfile
 #SBATCH --error=error.txt             # Standard error file
 #SBATCH --nodes=1                     # Number of nodes
 #SBATCH --ntasks-per-node=1           # Number of tasks per node
+#SBATCH --gpus-per-task=1                 # every process wants one GPU!
+#SBATCH --gpu-bind=none                   # NCCL can't deal with task-binding...
 #SBATCH --time=24:00:00                # Maximum runtime (D-HH:MM:SS)
 #SBATCH --mail-type=END,FAIL               # Send email at job completion
 #SBATCH --mail-user=lucadughera@gmail.com    # Email address for notifications
@@ -13,7 +15,7 @@
 
 #Your job commands go here
 #For example:
-python src/Data_Preprocessing/subsampling.py
+srun python src/Data_Preprocessing/subsampling.py
 
 #Optionally, you can include cleanup commands here (e.g., after the job finishes)
 #For example:
