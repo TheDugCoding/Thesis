@@ -54,7 +54,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load Dataset
 dataset = FinancialGraphDataset(root=processed_data_location)
-graph = dataset[0]
+graphs = [dataset[i] for i in range(len(dataset))]
 
 model = DeepGraphInfomax(
     hidden_channels=64,
@@ -66,7 +66,7 @@ model = DeepGraphInfomax(
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
 # Training function
-def train():
+def train(graph):
     model.train()
     optimizer.zero_grad()
     pos_z, neg_z, summary = model(graph.x.to(device), graph.edge_index.to(device))
@@ -75,31 +75,43 @@ def train():
     optimizer.step()
     return loss.item()
 
-# Train for 100 epochs
-graph = graph.to(device)
-for epoch in range(100):
-    loss = train()
-    if epoch % 10 == 0:
-        print(f"Epoch {epoch}, Loss: {loss:.4f}")
 
-# ------------------------------ EXTRACT NODE EMBEDDINGS ------------------------------
+'''--- Training Function ---'''
 
-model.eval()
-with torch.no_grad():
-    embeddings = model.encoder.encode(graph.x.to(device), graph.edge_index.to(device))
 
-print("Node embeddings shape:", embeddings.shape)
+def train(graph):
+    model.train()
+    optimizer.zero_grad()
 
-# ------------------------------ VISUALIZE EMBEDDINGS WITH TSNE ------------------------------
+    # Ensure we only use node features, ignoring edge labels (if any exist)
+    pos_z, neg_z, summary = model(graph.x.to(device),
+                                  graph.edge_index.to(device))  # edge_index is only for message passing
+
+    loss = model.loss(pos_z, neg_z, summary)
+    loss.backward()
+    optimizer.step()
+
+    return loss.item(), pos_z
+
+
+# Train on all graphs
+for epoch in range(50):  # Adjust epochs as needed
+    total_loss = 0
+    for graph in graphs:
+        loss, embeddings = train(graph)
+        total_loss += loss
+
+    print(f"Epoch {epoch + 1}, Loss: {total_loss:.4f}")
+
+'''--- t-SNE Visualization ---'''
+
 
 def visualize_tsne(embeddings):
     num_samples = embeddings.shape[0]
-
-    # Ensure perplexity is valid
-    perplexity = min(30, num_samples - 1)  # Ensure it's less than n_samples
+    perplexity = min(30, num_samples - 1)  # Avoid TSNE error
 
     tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
-    embeddings_2d = tsne.fit_transform(embeddings.cpu().numpy())
+    embeddings_2d = tsne.fit_transform(embeddings.cpu().detach().numpy())
 
     plt.figure(figsize=(8, 6))
     plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], alpha=0.7, c="blue")
