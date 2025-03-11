@@ -103,6 +103,13 @@ for epoch in range(50):  # Adjust epochs as needed
 
     print(f"Epoch {epoch + 1}, Loss: {total_loss:.4f}")
 
+torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss,
+    }, "modeling_graphsage_unsup_trained.pth")
+
 '''--- t-SNE Visualization ---'''
 
 

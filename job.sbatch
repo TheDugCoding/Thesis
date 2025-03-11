@@ -15,7 +15,7 @@
 
 #Your job commands go here
 #For example:
-srun python src/Data_Preprocessing/subsampling.py
+srun python src/Scripts/Modeling/Pre_Training/Topological_Pre_Training/modeling_graphsage_unsup.py
 
 #Optionally, you can include cleanup commands here (e.g., after the job finishes)
 #For example:
