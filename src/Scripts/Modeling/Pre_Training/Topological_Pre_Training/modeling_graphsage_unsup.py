@@ -1,0 +1,112 @@
+import os
+import torch
+import torch.nn.functional as F
+import networkx as nx
+import matplotlib.pyplot as plt
+import pandas as pd
+from torch_geometric.data import Dataset
+from torch_geometric.utils import from_networkx
+from torch_geometric.nn import SAGEConv, DeepGraphInfomax
+from sklearn.manifold import TSNE
+from Src.Scripts.Data_Preparation.preprocess import FinancialGraphDataset
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+relative_path_processed  = '../../../Data/Processed/'
+processed_data_location = os.path.join(script_dir, relative_path_processed)
+
+
+
+class GraphSAGE(torch.nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers=2):
+        super(GraphSAGE, self).__init__()
+        self.convs = torch.nn.ModuleList()
+        self.convs.append(SAGEConv(in_channels, hidden_channels))
+        for _ in range(num_layers - 2):
+            self.convs.append(SAGEConv(hidden_channels, hidden_channels))
+        self.convs.append(SAGEConv(hidden_channels, out_channels))
+
+    def forward(self, x, edge_index):
+        for conv in self.convs[:-1]:
+            x = conv(x, edge_index)
+            x = F.relu(x)
+            x = F.dropout(x, p=0.5, training=self.training)
+        return self.convs[-1](x, edge_index)
+
+# ------------------------------ UNSUPERVISED TRAINING WITH DGI ------------------------------
+
+class Encoder(torch.nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels):
+        super(Encoder, self).__init__()
+        self.conv = GraphSAGE(in_channels, hidden_channels, out_channels)
+
+    def forward(self, x, edge_index):
+        return self.conv(x, edge_index)
+
+    def encode(self, x, edge_index):
+        return self.forward(x, edge_index)
+
+# Corruption function for Deep Graph Infomax
+def corruption(x, edge_index):
+    return x[torch.randperm(x.size(0))], edge_index  # Shuffle node features
+
+# Set up device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Load Dataset
+dataset = FinancialGraphDataset(root=processed_data_location)
+graph = dataset[0]
+
+model = DeepGraphInfomax(
+    hidden_channels=64,
+    encoder=Encoder(in_channels=3, hidden_channels=64, out_channels=64),
+    summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
+    corruption=corruption
+).to(device)
+
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+# Training function
+def train():
+    model.train()
+    optimizer.zero_grad()
+    pos_z, neg_z, summary = model(graph.x.to(device), graph.edge_index.to(device))
+    loss = model.loss(pos_z, neg_z, summary)
+    loss.backward()
+    optimizer.step()
+    return loss.item()
+
+# Train for 100 epochs
+graph = graph.to(device)
+for epoch in range(100):
+    loss = train()
+    if epoch % 10 == 0:
+        print(f"Epoch {epoch}, Loss: {loss:.4f}")
+
+# ------------------------------ EXTRACT NODE EMBEDDINGS ------------------------------
+
+model.eval()
+with torch.no_grad():
+    embeddings = model.encoder.encode(graph.x.to(device), graph.edge_index.to(device))
+
+print("Node embeddings shape:", embeddings.shape)
+
+# ------------------------------ VISUALIZE EMBEDDINGS WITH TSNE ------------------------------
+
+def visualize_tsne(embeddings):
+    num_samples = embeddings.shape[0]
+
+    # Ensure perplexity is valid
+    perplexity = min(30, num_samples - 1)  # Ensure it's less than n_samples
+
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+    embeddings_2d = tsne.fit_transform(embeddings.cpu().numpy())
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], alpha=0.7, c="blue")
+    plt.xlabel("TSNE Component 1")
+    plt.ylabel("TSNE Component 2")
+    plt.title("TSNE Visualization of Node Embeddings")
+    plt.show()
+
+
+visualize_tsne(embeddings)

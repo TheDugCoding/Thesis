@@ -1,19 +1,20 @@
 import networkx as nx
 import pandas as pd
+import torch
 import os
-
-
-from utils import get_structural_info
+from torch_geometric.data import Dataset
+from torch_geometric.utils import from_networkx
+from Src.Scripts.Data_Preparation.utils import get_structural_info
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path  = '../../Data/Processed/'
-processed_data_location = os.path.join(script_dir, relative_path)
+relative_path_processed  = '../../../Data/Processed/'
+processed_data_location = os.path.join(script_dir, relative_path_processed)
 
 #dataset locations
-relative_path_aml_world_raw = '../../Data/Raw/AML_world/Small_LI/formatted_transactions.csv'
-relative_path_rabobank_raw = '../../Data/Raw/rabobank/rabobank_data.csv'
-relative_path_saml_d_raw = '../../Data/Raw/SAML-D/SAML-D.csv'
-relative_path_elliptic_raw = '../../Data/Raw/Elliptic++_Dataset/AddrAddr_edgelist.csv'
+relative_path_aml_world_raw = '../../../Data/Raw/AML_world/Small_LI/formatted_transactions.csv'
+relative_path_rabobank_raw = '../../../Data/Raw/rabobank/rabobank_data.csv'
+relative_path_saml_d_raw = '../../../Data/Raw/SAML-D/SAML-D.csv'
+relative_path_elliptic_raw = '../../../Data/Raw/Elliptic++_Dataset/AddrAddr_edgelist.csv'
 
 
 '''---AML_world dataset preprocessing---'''
@@ -38,6 +39,8 @@ def pre_process_aml_world():
                        received_currency=row['Received Currency'],
                        payment_format=row['Payment Format'],
                        is_laundering=row['Is Laundering'])
+
+            break
 
             
 
@@ -70,7 +73,7 @@ def pre_process_rabobank():
                                 year_from=row['year_from'],
                                 year_to=row['year_to'])
 
-            
+            break
 
         # Compute additional structural information
         G_rabobank = get_structural_info(G_rabobank)
@@ -106,7 +109,7 @@ def pre_process_saml_d():
                               is_laundering=row['Is_laundering'],
                               laundering_type=row['Laundering_type'])
 
-            
+            break
 
         # Compute additional structural information
         G_saml_d = get_structural_info(G_saml_d)
@@ -133,7 +136,7 @@ def pre_process_elliptic():
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
 
-            
+            break
 
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
@@ -145,3 +148,71 @@ def pre_process_elliptic():
         G_addr_addr = nx.read_graphml(os.path.join(processed_data_location, 'elliptic_addr_addr.graphml'))
 
     return G_addr_addr
+
+# Function to convert a NetworkX graph to PyG Data
+def convert_to_pyg(G):
+    G = get_structural_info(G)
+    data = from_networkx(G, group_node_attrs=["degree", "degree_centrality", "pagerank"])
+    return data
+
+# Function to preprocess a dataset
+def preprocess_dataset(preprocess_func):
+    G = preprocess_func()
+    return convert_to_pyg(G)
+
+# Custom PyG dataset class
+class FinancialGraphDataset(Dataset):
+    def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
+        super().__init__(root, transform, pre_transform, pre_filter)
+
+    @property
+    def raw_file_names(self):
+        return []  # No raw files, since graphs are pre-processed elsewhere.
+
+    @property
+    def processed_file_names(self):
+        return [
+            'financial_dataset_0.pt',
+            'financial_dataset_1.pt',
+            'financial_dataset_2.pt',
+            'financial_dataset_3.pt'
+        ]
+
+    def process(self):
+        """Processes raw data into PyG Data objects and saves them as .pt files."""
+        # Generate the graph data from pre-processing functions
+        data_list = [
+            from_networkx(pre_process_aml_world(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+            from_networkx(pre_process_rabobank(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+            from_networkx(pre_process_saml_d(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+            from_networkx(pre_process_elliptic(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+        ]
+
+        # Save each graph as a separate .pt file
+        for idx, data in enumerate(data_list):
+            torch.save(data, os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
+
+    def len(self):
+        return len(self.processed_file_names)
+
+    def get(self, idx):
+        """Loads and returns the graph at the given index."""
+        return torch.load(os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
+
+
+# Usage
+
+dataset = FinancialGraphDataset(root = processed_data_location)
+print("Dataset saved at:", os.path.join(relative_path_processed, 'processed/financial_graphs.pt'))
+print(dataset[0])  # Print first graph
+print(dataset[1])  # Print first graph
+
+dataset = FinancialGraphDataset(root="data/financial_graphs")
+print(len(dataset))  # Should print 4 (since we have 4 processed graphs)
+
+graph_0 = dataset[0]  # Load the first graph
+print(graph_0)  # Print PyG Data object
+
+print('done')
+print('hi')
+print('done')
