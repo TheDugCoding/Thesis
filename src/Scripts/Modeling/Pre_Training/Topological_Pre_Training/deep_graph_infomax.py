@@ -1,10 +1,8 @@
 import os as os
 
 import torch
-from click.core import batch
 from tqdm import tqdm
 
-from torch_geometric.datasets import Reddit
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import DeepGraphInfomax, SAGEConv, GraphSAGE
 from torch_geometric.data import Batch
