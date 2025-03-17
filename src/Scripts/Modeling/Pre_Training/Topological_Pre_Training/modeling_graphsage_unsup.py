@@ -6,8 +6,8 @@ import torch.nn.functional as F
 import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
-from torch_geometric.data import Dataset
-from torch_geometric.utils import from_networkx
+import seaborn as sns
+from scipy.stats import spearmanr, pearsonr
 from torch_geometric.nn import SAGEConv, DeepGraphInfomax
 from sklearn.manifold import TSNE
 from src.Scripts.Data_Preparation.preprocess import FinancialGraphDataset
@@ -47,7 +47,7 @@ class Encoder(torch.nn.Module):
     def encode(self, x, edge_index):
         return self.forward(x, edge_index)
 
-# Corruption function for Deep Graph Infomax
+# corruption function for Deep Graph Infomax
 def corruption(x, edge_index):
     return x[torch.randperm(x.size(0))], edge_index  # Shuffle node features
 
@@ -66,16 +66,6 @@ model = DeepGraphInfomax(
 ).to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-
-# Training function
-def train(graph):
-    model.train()
-    optimizer.zero_grad()
-    pos_z, neg_z, summary = model(graph.x.to(device), graph.edge_index.to(device))
-    loss = model.loss(pos_z, neg_z, summary)
-    loss.backward()
-    optimizer.step()
-    return loss.item()
 
 
 '''--- Training Function ---'''
@@ -127,7 +117,47 @@ def visualize_tsne(embeddings):
     plt.xlabel("TSNE Component 1")
     plt.ylabel("TSNE Component 2")
     plt.title("TSNE Visualization of Node Embeddings")
-    plt.show()
+    plt.savefig('../../../Data/')
+
+
+def compute_correlation(graphs, embeddings, save_path):
+    """
+    Compute correlation between initial node features (Data.x) and final embeddings.
+
+    :param graph: PyG Data object (contains x: initial node features)
+    :param embeddings: Learned node embeddings from GraphSAGE
+    """
+    idx = 0
+    for graph in graphs:
+        x_features = graph.x.cpu().detach().numpy()  # Initial node features
+        z_embeddings = embeddings.cpu().detach().numpy()  # Final latent representations
+
+        # Compute Pearson and Spearman correlation for each feature
+        correlations = {}
+        for i in range(x_features.shape[1]):  # Iterate over each feature
+            feature_values = x_features[:, i]
+
+            # Compute correlation with each dimension in latent space
+            for j in range(z_embeddings.shape[1]):
+                embedding_values = z_embeddings[:, j]
+
+                pearson_corr, _ = pearsonr(feature_values, embedding_values)
+                spearman_corr, _ = spearmanr(feature_values, embedding_values)
+
+                correlations[f"Feature {i} - Embedding {j}"] = (pearson_corr, spearman_corr)
+
+        # Convert to DataFrame
+        corr_df = pd.DataFrame.from_dict(correlations, orient='index', columns=['Pearson', 'Spearman'])
+        print(corr_df)
+
+        # Plot heatmap
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(corr_df, cmap="coolwarm", annot=True)
+        plt.title("Correlation between Initial Features and Learned Embeddings")
+        img_path = f"{save_path}_{idx}.png"
+        plt.savefig(img_path)
+        idx = idx +1
 
 
 visualize_tsne(embeddings)
+compute_correlation(graphs, embeddings, processed_data_location)

@@ -2,9 +2,10 @@ import networkx as nx
 import pandas as pd
 import torch
 import os
-from torch_geometric.data import Dataset
+from torch_geometric.data import Dataset, Data
 from torch_geometric.utils import from_networkx
 from src.Scripts.Data_Preparation.utils import get_structural_info
+import time
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 relative_path_processed  = '../../../Data/Processed/'
@@ -190,6 +191,7 @@ class FinancialGraphDataset(Dataset):
 
         # Save each graph as a separate .pt file
         for idx, data in enumerate(data_list):
+            data = Data(x=data.x, edge_index=data.edge_index)
             torch.save(data, os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
 
     def len(self):
@@ -201,7 +203,7 @@ class FinancialGraphDataset(Dataset):
 
 
 # Usage
-
+'''
 dataset = FinancialGraphDataset(root = processed_data_location)
 print("Dataset saved at:", os.path.join(relative_path_processed, 'processed/financial_graphs.pt'))
 print(dataset[0])  # Print first graph
@@ -216,3 +218,4 @@ print(graph_0)  # Print PyG Data object
 print('done')
 print('hi')
 print('done')
+'''
