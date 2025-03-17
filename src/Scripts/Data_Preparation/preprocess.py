@@ -199,7 +199,7 @@ class FinancialGraphDataset(Dataset):
 
     def get(self, idx):
         """Loads and returns the graph at the given index."""
-        return torch.load(os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'), weights_only=False)
+        return torch.load(os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
 
 
 # Usage
