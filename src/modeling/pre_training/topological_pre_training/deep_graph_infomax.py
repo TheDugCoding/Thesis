@@ -29,10 +29,6 @@ test_loader = NeighborLoader(data, num_neighbors=[10, 10, 25], batch_size=256,
 '''
 
 
-
-
-
-
 class Encoder(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels):
         super().__init__()
