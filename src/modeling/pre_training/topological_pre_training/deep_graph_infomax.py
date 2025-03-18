@@ -6,7 +6,7 @@ from tqdm import tqdm
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import DeepGraphInfomax, SAGEConv
 from torch_geometric.data import Batch
-from src.data_preparation.preprocess import FinancialGraphDataset
+from src.data_preprocessing.preprocess import FinancialGraphDataset
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 relative_path_processed  = '../../../../data/processed/'

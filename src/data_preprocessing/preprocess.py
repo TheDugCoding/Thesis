@@ -4,7 +4,7 @@ import torch
 import os
 from torch_geometric.data import Dataset, Data
 from torch_geometric.utils import from_networkx
-from src.data_preparation.utils import get_structural_info
+from src.data_preprocessing.utils import get_structural_info
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 relative_path_processed  = '../../data/processed/'

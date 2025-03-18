@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv
 
-from src.data_preparation.preprocess import FinancialGraphDataset
+from src.data_preprocessing.preprocess import FinancialGraphDataset
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 relative_path_processed  = '../../../data/processed/'

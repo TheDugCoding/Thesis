@@ -8,7 +8,7 @@ import seaborn as sns
 from scipy.stats import spearmanr, pearsonr
 from torch_geometric.nn import SAGEConv, DeepGraphInfomax
 from sklearn.manifold import TSNE
-from src.data_preparation.preprocess import FinancialGraphDataset
+from src.data_preprocessing.preprocess import FinancialGraphDataset
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 relative_path_processed  = '../../../data/processed/'
