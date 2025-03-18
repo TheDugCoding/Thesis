@@ -12,10 +12,72 @@ relative_path_processed  = 'processed'
 processed_data_location = get_data_sub_folder(relative_path_processed)
 
 #dataset locations
+relative_path_aml_sim_trans = 'raw/aml_sim_banks/transactions.csv'
+relative_path_aml_sim_nodes = 'raw/aml_sim_banks/accounts.csv'
 relative_path_aml_world_raw = 'raw/aml_world/small_LI/formatted_transactions.csv'
 relative_path_rabobank_raw = 'raw/rabobank/rabobank_data.csv'
 relative_path_saml_d_raw = 'raw/saml-d/SAML-D.csv'
 relative_path_elliptic_raw = 'raw/elliptic++_dataset/AddrAddr_edgelist.csv'
+
+'''---aml_sim dataset preprocessing---'''
+
+
+def pre_process_aml_sim():
+    # Check if AMl world has already been preprocessed
+    if not os.path.exists(os.path.join(processed_data_location, 'aml_sim.graphml')):
+        # Load the dataset
+        df_aml_sim_trans = pd.read_csv(os.path.join(script_dir, relative_path_aml_sim_trans))
+        df_aml_sim_nodes = pd.read_csv(os.path.join(script_dir, relative_path_aml_sim_nodes))
+
+        # Initialize a directed graph
+        G_aml_sim = nx.DiGraph()
+
+        # Convert categorical values from transaction.csv into numerical
+        tx_type_mapping = {'TRANSFER': 1}  # Add more types as needed
+        df_aml_sim_trans['tx_type'] = df_aml_sim_trans['tx_type'].map(tx_type_mapping)
+        df_aml_sim_trans['is_sar'] = df_aml_sim_trans['is_sar'].astype(int)
+        df_aml_sim_trans['tran_timestamp'] = pd.to_datetime(df_aml_sim_trans['tran_timestamp']).astype('int64') / 10**9
+
+        # Add edges to the graph from the dataset
+        for index, row in df_aml_sim_trans.iterrows():
+            G_aml_sim.add_edge(row['orig_acct'], row['bene_acct'],
+                               tran_id=row['tran_id'],
+                               tx_type=row['tx_type'],
+                               base_amt=row['base_amt'],
+                               tran_timestamp=row['tran_timestamp'],
+                               is_sar=row['is_sar'],
+                               alert_id=row['alert_id'])
+
+        # Convert categorical values from account.csv into numerical
+        df_aml_sim_nodes['prior_sar_count'] = df_aml_sim_nodes['prior_sar_count'].astype(int)
+        df_aml_sim_nodes['open_dt'] = pd.to_datetime(df_aml_sim_nodes['open_dt'], errors='coerce').astype(
+            'int64') / 10 ** 9
+        df_aml_sim_nodes['close_dt'] = pd.to_datetime(df_aml_sim_nodes['close_dt'], errors='coerce').astype(
+            'int64') / 10 ** 9
+        bank_mapping = {'bank_a': 1, 'bank_b': 2, 'bank_c': 3}  # Define mapping
+        df_aml_sim_nodes['bank_id'] = df_aml_sim_nodes['bank_id'].map(bank_mapping).fillna(-1).astype(int)
+
+        # Add node features only if they have values
+        for index, row in df_aml_sim_nodes.iterrows():
+            if row['acct_id'] in G_aml_sim.nodes:
+                G_aml_sim.nodes[row['acct_id']].update({
+                    'acct_id': row['acct_id'],
+                    'prior_sar_count': row['prior_sar_count'],
+                    'open_dt': row['open_dt'],
+                    'close_dt': row['close_dt'],
+                    'initial_deposit': row['initial_deposit'],
+                    'bank_id': row['bank_id'],
+                })
+
+        G_aml_sim = get_structural_info(G_aml_sim)
+
+        # Save dataset with additional information
+        nx.write_graphml(G_aml_sim, os.path.join(processed_data_location, 'aml_sim.graphml'))
+        return G_aml_sim
+    else:
+        G_aml_sim = nx.read_graphml(os.path.join(processed_data_location, 'aml_sim.graphml'))
+
+    return G_aml_sim
 
 
 '''---aml_world dataset preprocessing---'''
@@ -201,6 +263,56 @@ class FinancialGraphDataset(Dataset):
         """Loads and returns the graph at the given index."""
         return torch.load(os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
 
+# Custom PyG dataset class
+class AmlSimDataset(Dataset):
+    def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
+        super().__init__(root, transform, pre_transform, pre_filter)
+
+    @property
+    def raw_file_names(self):
+        return []  # No raw files, since graphs are pre-processed elsewhere.
+
+    @property
+    def processed_file_names(self):
+        return ['aml_sim_dataset.pt']
+
+    def process(self):
+        """Processes raw data into PyG data objects and saves them as .pt files."""
+        # Generate the graph data
+        G_aml_sim = pre_process_aml_sim()
+
+        # Extract available node features dynamically
+        first_node = next(iter(G_aml_sim.nodes(data=True)))[1]  # Get the attributes of the first node
+        available_node_attrs = [key for key, value in first_node.items() if pd.notna(value) and value != ""]
+
+        # Convert NetworkX graph to PyG format
+        data = from_networkx(G_aml_sim,
+                             group_node_attrs=['acct_id', 'prior_sar_count', 'open_dt', 'close_dt', 'initial_deposit', 'bank_id'],
+                             group_edge_attrs=['tran_id', 'tx_type', 'base_amt',
+                                               'tran_timestamp', 'is_sar', 'alert_id'])
+
+        '''
+        # Convert features into PyTorch tensors (handling possible None values)
+        if data.x is not None and len(data.x) > 0:
+            data.x = torch.tensor(data.x, dtype=torch.float)  # Node features tensor
+        else:
+            data.x = None  # No node features case
+
+        if data.edge_attr is not None and len(data.edge_attr) > 0:
+            data.edge_attr = torch.tensor(data.edge_attr, dtype=torch.float)  # Edge features tensor
+        else:
+            data.edge_attr = None  # No edge attributes case
+        '''
+        # Create and save the PyG Data object
+        data = Data(x=data.x, edge_index=data.edge_index, edge_attr=data.edge_attr)
+        torch.save(data, os.path.join(self.processed_dir, 'aml_sim_dataset.pt'))
+
+    def len(self):
+        return len(self.processed_file_names)
+
+    def get(self, idx):
+        """Loads and returns the graph at the given index."""
+        return torch.load(os.path.join(self.processed_dir, f'aml_sim_dataset.pt'))
 
 # Usage
 '''
@@ -219,3 +331,5 @@ print('done')
 print('hi')
 print('done')
 '''
+
+dataset = AmlSimDataset(root = processed_data_location)
