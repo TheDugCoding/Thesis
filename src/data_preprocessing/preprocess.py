@@ -291,18 +291,7 @@ class AmlSimDataset(Dataset):
                              group_edge_attrs=['tran_id', 'tx_type', 'base_amt',
                                                'tran_timestamp', 'is_sar', 'alert_id'])
 
-        '''
-        # Convert features into PyTorch tensors (handling possible None values)
-        if data.x is not None and len(data.x) > 0:
-            data.x = torch.tensor(data.x, dtype=torch.float)  # Node features tensor
-        else:
-            data.x = None  # No node features case
 
-        if data.edge_attr is not None and len(data.edge_attr) > 0:
-            data.edge_attr = torch.tensor(data.edge_attr, dtype=torch.float)  # Edge features tensor
-        else:
-            data.edge_attr = None  # No edge attributes case
-        '''
         # Create and save the PyG Data object
         data = Data(x=data.x, edge_index=data.edge_index, edge_attr=data.edge_attr)
         torch.save(data, os.path.join(self.processed_dir, 'aml_sim_dataset.pt'))
@@ -330,6 +319,7 @@ print(graph_0)  # Print PyG data object
 print('done')
 print('hi')
 print('done')
-'''
+
 
 dataset = AmlSimDataset(root = processed_data_location)
+'''
