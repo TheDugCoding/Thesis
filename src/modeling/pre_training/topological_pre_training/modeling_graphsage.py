@@ -1,13 +1,12 @@
 import os
 import torch
 import torch.nn.functional as F
-from torch_geometric.datasets import Planetoid
 from torch_geometric.nn import SAGEConv
 
-from src.Scripts.Data_Preparation.preprocess import FinancialGraphDataset
+from src.data_preparation.preprocess import FinancialGraphDataset
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path_processed  = '../../../Data/Processed/'
+relative_path_processed  = '../../../data/processed/'
 processed_data_location = os.path.join(script_dir, relative_path_processed)
 
 # Load the Cora dataset

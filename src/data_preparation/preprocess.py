@@ -4,21 +4,20 @@ import torch
 import os
 from torch_geometric.data import Dataset, Data
 from torch_geometric.utils import from_networkx
-from src.Scripts.Data_Preparation.utils import get_structural_info
-import time
+from src.data_preparation.utils import get_structural_info
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path_processed  = '../../../Data/Processed/'
+relative_path_processed  = '../../data/processed/'
 processed_data_location = os.path.join(script_dir, relative_path_processed)
 
 #dataset locations
-relative_path_aml_world_raw = '../../../Data/Raw/AML_world/Small_LI/formatted_transactions.csv'
-relative_path_rabobank_raw = '../../../Data/Raw/rabobank/rabobank_data.csv'
-relative_path_saml_d_raw = '../../../Data/Raw/SAML-D/SAML-D.csv'
-relative_path_elliptic_raw = '../../../Data/Raw/Elliptic++_Dataset/AddrAddr_edgelist.csv'
+relative_path_aml_world_raw = '../../data/raw/aml_world/small_LI/formatted_transactions.csv'
+relative_path_rabobank_raw = '../../data/raw/rabobank/rabobank_data.csv'
+relative_path_saml_d_raw = '../../data/raw/saml-d/SAML-D.csv'
+relative_path_elliptic_raw = '../../data/raw/elliptic++_dataset/AddrAddr_edgelist.csv'
 
 
-'''---AML_world dataset preprocessing---'''
+'''---aml_world dataset preprocessing---'''
 
 def pre_process_aml_world():
     # Check if AMl world has already been preprocessed
@@ -150,7 +149,7 @@ def pre_process_elliptic():
 
     return G_addr_addr
 
-# Function to convert a NetworkX graph to PyG Data
+# Function to convert a NetworkX graph to PyG data
 def convert_to_pyg(G):
     G = get_structural_info(G)
     data = from_networkx(G, group_node_attrs=["degree", "degree_centrality", "pagerank"])
@@ -180,7 +179,7 @@ class FinancialGraphDataset(Dataset):
         ]
 
     def process(self):
-        """Processes raw data into PyG Data objects and saves them as .pt files."""
+        """Processes raw data into PyG data objects and saves them as .pt files."""
         # Generate the graph data from pre-processing functions
         data_list = [
             from_networkx(pre_process_aml_world(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
@@ -213,7 +212,7 @@ dataset = FinancialGraphDataset(root="data/financial_graphs")
 print(len(dataset))  # Should print 4 (since we have 4 processed graphs)
 
 graph_0 = dataset[0]  # Load the first graph
-print(graph_0)  # Print PyG Data object
+print(graph_0)  # Print PyG data object
 
 print('done')
 print('hi')

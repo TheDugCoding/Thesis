@@ -1,19 +1,17 @@
 import os
-import sys
 
 import torch
 import torch.nn.functional as F
-import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from scipy.stats import spearmanr, pearsonr
 from torch_geometric.nn import SAGEConv, DeepGraphInfomax
 from sklearn.manifold import TSNE
-from src.Scripts.Data_Preparation.preprocess import FinancialGraphDataset
+from src.data_preparation.preprocess import FinancialGraphDataset
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path_processed  = '../../../Data/Processed/'
+relative_path_processed  = '../../../data/processed/'
 processed_data_location = os.path.join(script_dir, relative_path_processed)
 
 
@@ -117,14 +115,14 @@ def visualize_tsne(embeddings):
     plt.xlabel("TSNE Component 1")
     plt.ylabel("TSNE Component 2")
     plt.title("TSNE Visualization of Node Embeddings")
-    plt.savefig('../../../Data/')
+    plt.savefig('../../../data/')
 
 
 def compute_correlation(graphs, embeddings, save_path):
     """
-    Compute correlation between initial node features (Data.x) and final embeddings.
+    Compute correlation between initial node features (data.x) and final embeddings.
 
-    :param graph: PyG Data object (contains x: initial node features)
+    :param graph: PyG data object (contains x: initial node features)
     :param embeddings: Learned node embeddings from GraphSAGE
     """
     idx = 0

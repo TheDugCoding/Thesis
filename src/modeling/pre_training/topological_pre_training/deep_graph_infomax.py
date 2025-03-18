@@ -4,12 +4,12 @@ import torch
 from tqdm import tqdm
 
 from torch_geometric.loader import NeighborLoader
-from torch_geometric.nn import DeepGraphInfomax, SAGEConv, GraphSAGE
+from torch_geometric.nn import DeepGraphInfomax, SAGEConv
 from torch_geometric.data import Batch
-from src.Scripts.Data_Preparation.preprocess import FinancialGraphDataset
+from src.data_preparation.preprocess import FinancialGraphDataset
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path_processed  = '../../../../../Data/Processed/'
+relative_path_processed  = '../../../../data/processed/'
 processed_data_location = os.path.join(script_dir, relative_path_processed)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
