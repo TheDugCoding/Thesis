@@ -7,10 +7,13 @@ from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import DeepGraphInfomax, SAGEConv
 from torch_geometric.data import Batch
 from src.data_preprocessing.preprocess import FinancialGraphDataset
+from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path_processed  = '../../../../data/processed/'
-processed_data_location = os.path.join(script_dir, relative_path_processed)
+script_dir = get_data_folder()
+relative_path_processed  = 'processed'
+relative_path_trained_model = 'modeling/pre_training/topological_pre_training/trained_models'
+processed_data_path = get_data_sub_folder(relative_path_processed)
+trained_model_path = get_src_sub_folder(relative_path_trained_model)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -92,7 +95,7 @@ def test():
 
 if __name__ == '__main__':
 
-    dataset = FinancialGraphDataset(root=processed_data_location)
+    dataset = FinancialGraphDataset(root=processed_data_path)
     data_list = [dataset[i] for i in range(len(dataset))]
 
     batch = Batch.from_data_list(dataset)
@@ -117,7 +120,7 @@ if __name__ == '__main__':
         loss = train(epoch)
         print(f'Epoch {epoch:02d}, Loss: {loss:.4f}')
 
-    torch.save(model.state_dict(), 'modeling_graphsage_unsup_trained.pth')
+    torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_graphsage_unsup_trained.pth'))
 
 
 

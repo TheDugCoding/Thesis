@@ -5,16 +5,17 @@ import os
 from torch_geometric.data import Dataset, Data
 from torch_geometric.utils import from_networkx
 from src.data_preprocessing.utils import get_structural_info
+from src.utils import get_data_sub_folder, get_data_folder
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path_processed  = '../../data/processed/'
-processed_data_location = os.path.join(script_dir, relative_path_processed)
+script_dir = get_data_folder()
+relative_path_processed  = 'processed'
+processed_data_location = get_data_sub_folder(relative_path_processed)
 
 #dataset locations
-relative_path_aml_world_raw = '../../data/raw/aml_world/small_LI/formatted_transactions.csv'
-relative_path_rabobank_raw = '../../data/raw/rabobank/rabobank_data.csv'
-relative_path_saml_d_raw = '../../data/raw/saml-d/SAML-D.csv'
-relative_path_elliptic_raw = '../../data/raw/elliptic++_dataset/AddrAddr_edgelist.csv'
+relative_path_aml_world_raw = 'raw/aml_world/small_LI/formatted_transactions.csv'
+relative_path_rabobank_raw = 'raw/rabobank/rabobank_data.csv'
+relative_path_saml_d_raw = 'raw/saml-d/SAML-D.csv'
+relative_path_elliptic_raw = 'raw/elliptic++_dataset/AddrAddr_edgelist.csv'
 
 
 '''---aml_world dataset preprocessing---'''
