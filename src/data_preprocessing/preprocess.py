@@ -213,17 +213,6 @@ def pre_process_elliptic():
 
     return G_addr_addr
 
-# Function to convert a NetworkX graph to PyG data
-def convert_to_pyg(G):
-    G = get_structural_info(G)
-    data = from_networkx(G, group_node_attrs=["degree", "degree_centrality", "pagerank"])
-    return data
-
-# Function to preprocess a dataset
-def preprocess_dataset(preprocess_func):
-    G = preprocess_func()
-    return convert_to_pyg(G)
-
 # Custom PyG dataset class
 class FinancialGraphDataset(Dataset):
     def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
