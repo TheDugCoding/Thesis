@@ -6,6 +6,7 @@ from torch_geometric.data import Dataset, Data
 from torch_geometric.utils import from_networkx
 from src.data_preprocessing.utils import get_structural_info
 from src.utils import get_data_sub_folder, get_data_folder
+from torch_geometric.transforms import RandomNodeSplit
 
 script_dir = get_data_folder()
 relative_path_processed  = 'processed'
@@ -278,6 +279,9 @@ class AmlSimDataset(Dataset):
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
+        train_percentage = 0.8
+        test_percentage = 0.2
+
         # Generate the graph data
         G_aml_sim = pre_process_aml_sim()
 
@@ -289,11 +293,19 @@ class AmlSimDataset(Dataset):
         data = from_networkx(G_aml_sim,
                              group_node_attrs=['acct_id', 'prior_sar_count', 'open_dt', 'close_dt', 'initial_deposit', 'bank_id'],
                              group_edge_attrs=['tran_id', 'tx_type', 'base_amt',
-                                               'tran_timestamp', 'is_sar', 'alert_id'])
+                                               'tran_timestamp', 'alert_id'])
 
+        # select all the attributes except 'prior_sar_count', which is the target variable
+        x = data.x[:, [0,2,3,4,5]]
+        y = data.x[:, 1]
 
         # Create and save the PyG Data object
-        data = Data(x=data.x, edge_index=data.edge_index, edge_attr=data.edge_attr)
+        data = Data(x=x, edge_index=data.edge_index, edge_attr=data.edge_attr, y=y)
+        node_transform = RandomNodeSplit(num_test=int(data.x.shape[0]*0.2))
+        node_splits = node_transform(data)
+        data.train_mask = node_splits.train_mask
+        data.test_mask = node_splits.test_mask
+
         torch.save(data, os.path.join(self.processed_dir, 'aml_sim_dataset.pt'))
 
     def len(self):

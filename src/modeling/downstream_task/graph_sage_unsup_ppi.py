@@ -12,7 +12,7 @@ import torch_geometric
 from torch_geometric.data import Batch
 from torch_geometric.datasets import PPI
 from torch_geometric.loader import DataLoader, LinkNeighborLoader
-from torch_geometric.nn import GraphSAGE
+from torch_geometric.nn import GraphSAGE, GAT
 
 path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', 'PPI')
 train_dataset = PPI(path, split='train')
