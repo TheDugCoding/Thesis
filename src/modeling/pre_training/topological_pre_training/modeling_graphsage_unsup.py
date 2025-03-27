@@ -8,7 +8,7 @@ import seaborn as sns
 from scipy.stats import spearmanr, pearsonr
 from torch_geometric.nn import SAGEConv, DeepGraphInfomax
 from sklearn.manifold import TSNE
-from src.data_preprocessing.preprocess import FinancialGraphDataset
+from src.data_preprocessing.preprocess import FinancialGraphDatasetOnlyTopologicalFeatures
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 relative_path_processed  = '../../../data/processed/'
@@ -53,7 +53,7 @@ def corruption(x, edge_index):
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load Dataset
-dataset = FinancialGraphDataset(root=processed_data_location)
+dataset = FinancialGraphDatasetOnlyTopologicalFeatures(root=processed_data_location)
 graphs = [dataset[i] for i in range(len(dataset))]
 
 model = DeepGraphInfomax(

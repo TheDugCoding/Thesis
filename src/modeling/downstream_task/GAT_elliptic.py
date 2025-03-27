@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from torch_geometric.nn import GATConv
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
+from fintorch.datasets import elliptic
+
 
 
 from src.data_preprocessing.preprocess import AmlSimDataset
@@ -42,7 +44,8 @@ class GAT(torch.nn.Module):
 
 
 # Load your dataset
-data = AmlSimDataset(root=processed_data_path).get(0).to(device)
+data = elliptic.TransactionDataset('~/.fintorch_data', force_reload=True)
+
 
 # Define model, optimizer, and loss function
 model = GAT(data.num_features, 64, 1,

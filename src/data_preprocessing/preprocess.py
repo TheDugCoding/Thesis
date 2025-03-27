@@ -7,6 +7,7 @@ from torch_geometric.utils import from_networkx
 from src.data_preprocessing.utils import get_structural_info
 from src.utils import get_data_sub_folder, get_data_folder
 from torch_geometric.transforms import RandomNodeSplit
+import pickle
 
 script_dir = get_data_folder()
 relative_path_processed  = 'processed'
@@ -19,6 +20,7 @@ relative_path_aml_world_raw = 'raw/aml_world/small_LI/formatted_transactions.csv
 relative_path_rabobank_raw = 'raw/rabobank/rabobank_data.csv'
 relative_path_saml_d_raw = 'raw/saml-d/SAML-D.csv'
 relative_path_elliptic_raw = 'raw/elliptic++_dataset/AddrAddr_edgelist.csv'
+relative_path_ethereum_raw = 'raw/ethereum_phishing/MulDiGraph.pkl'
 
 '''---aml_sim dataset preprocessing---'''
 
@@ -213,8 +215,28 @@ def pre_process_elliptic():
 
     return G_addr_addr
 
+'''--- ethereum dataset preprocessing---'''
+
+def pre_process_ethereum():
+    # Check if the AddrAddr graph has already been preprocessed
+    if not os.path.exists(os.path.join(processed_data_location, 'ethereum.graphml')):
+
+        with open(os.path.join(script_dir, relative_path_ethereum_raw), 'rb') as f:
+            G = pickle.load(f)
+
+        # Compute additional structural information
+        G_ethereum = get_structural_info(G)
+
+        # Save dataset with additional information
+        nx.write_graphml(G_ethereum, os.path.join(processed_data_location, 'ethereum.graphml'))
+
+    else:
+        G_ethereum = nx.read_graphml(os.path.join(processed_data_location, 'ethereum.graphml'))
+
+    return G_ethereum
+
 # Custom PyG dataset class
-class FinancialGraphDataset(Dataset):
+class FinancialGraphDatasetOnlyTopologicalFeatures(Dataset):
     def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
         super().__init__(root, transform, pre_transform, pre_filter)
 
@@ -239,6 +261,40 @@ class FinancialGraphDataset(Dataset):
             from_networkx(pre_process_rabobank(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
             from_networkx(pre_process_saml_d(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
             from_networkx(pre_process_elliptic(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+        ]
+
+        # Save each graph as a separate .pt file
+        for idx, data in enumerate(data_list):
+            data = Data(x=data.x, edge_index=data.edge_index)
+            torch.save(data, os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
+
+    def len(self):
+        return len(self.processed_file_names)
+
+    def get(self, idx):
+        """Loads and returns the graph at the given index."""
+        return torch.load(os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
+
+# Custom PyG dataset class
+class EllipticDataset(Dataset):
+    def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
+        super().__init__(root, transform, pre_transform, pre_filter)
+
+    @property
+    def raw_file_names(self):
+        return []  # No raw files, since graphs are pre-processed elsewhere.
+
+    @property
+    def processed_file_names(self):
+        return [
+            'ellipticdataset.pt',
+        ]
+
+    def process(self):
+        """Processes raw data into PyG data objects and saves them as .pt files."""
+        # Generate the graph data from pre-processing functions
+        data_list = [
+            from_networkx(pre_process_elliptic(), group_node_attrs=["degree", "degree_centrality", "pagerank"])
         ]
 
         # Save each graph as a separate .pt file
@@ -304,6 +360,43 @@ class AmlSimDataset(Dataset):
         """Loads and returns the graph at the given index."""
         return torch.load(os.path.join(self.processed_dir, f'aml_sim_dataset.pt'))
 
+# Custom PyG dataset class
+class RealDataTraining(Dataset):
+    def __init__(self, root,  add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
+        self.add_topological_features = add_topological_features
+        super().__init__(root, transform, pre_transform, pre_filter)
+
+    @property
+    def raw_file_names(self):
+        return []  # No raw files, since graphs are pre-processed elsewhere.
+
+    @property
+    def processed_file_names(self):
+        return ['real_data_training_dataset.pt']
+
+    def process(self):
+        """Processes raw data into PyG data objects and saves them as .pt files."""
+
+        if(self.add_topological_features):
+            pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+            pyg_ethereum = from_networkx(pre_process_ethereum(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+        else:
+            pyg_aml_rabobank = from_networkx(pre_process_rabobank(),
+                                             group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+            pyg_ethereum = from_networkx(pre_process_ethereum(),
+                                         group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+
+        data = self.collate([pyg_aml_rabobank, pyg_ethereum])
+
+        torch.save(data, os.path.join(self.processed_dir, 'real_data_training_dataset.pt'))
+
+    def len(self):
+        return len(self.processed_file_names)
+
+    def get(self, idx):
+        """Loads and returns the graph at the given index."""
+        return torch.load(os.path.join(self.processed_dir, f'real_data_training_dataset.pt'))
+
 # Usage
 '''
 dataset = FinancialGraphDataset(root = processed_data_location)
@@ -324,3 +417,5 @@ print('done')
 
 dataset = AmlSimDataset(root = processed_data_location)
 '''
+
+dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)

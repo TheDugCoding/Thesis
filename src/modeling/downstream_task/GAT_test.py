@@ -33,9 +33,10 @@ class GAT(torch.nn.Module):
                              concat=False, dropout=0.6)
 
     def forward(self, x, edge_index):
-        x = F.dropout(x, p=0.6, training=self.training)
-        x = F.elu(self.conv1(x, edge_index))
-        x = F.dropout(x, p=0.6, training=self.training)
+        #x = F.dropout(x, p=0.6, training=self.training)
+        #x = F.elu(self.conv1(x, edge_index))
+        #x = F.dropout(x, p=0.6, training=self.training)
+        x = self.conv1(x, edge_index)
         x = self.conv2(x, edge_index)
         x = torch.sigmoid(x)
         return x
@@ -55,7 +56,7 @@ def train():
     model.train()
     optimizer.zero_grad()
     out = model(data.x, data.edge_index)
-    loss = F.cross_entropy(out.view(-1)[data.train_mask], data.y[data.train_mask].float())
+    loss = F.cross_entropy(out.view(-1), data.y.float())
     loss.backward()
     optimizer.step()
     return loss.item()
@@ -71,10 +72,10 @@ for epoch in range(100):
 # Inference
 model.eval()
 preds = model(data.x, data.edge_index).argmax(dim=1)
-accuracy = (preds[data.test_mask] == data.y[data.test_mask]).sum().item() / data.y[data.test_mask].size(0)
+accuracy = (preds == data.y).sum().item() / data.y.size(0)
 print(f"Final Accuracy: {accuracy:.4f}")
 print('Confusion matrix')
-confusion_matrix = confusion_matrix([label.bool().item() for label in data.y[data.test_mask]], [pred.bool().item() for pred in preds[data.test_mask]])
+confusion_matrix = confusion_matrix([label.bool().item() for label in data.y], [pred.bool().item() for pred in preds])
 print(confusion_matrix)
 ConfusionMatrixDisplay(confusion_matrix).plot()
 plt.show()

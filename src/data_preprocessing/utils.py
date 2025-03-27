@@ -12,7 +12,23 @@ def get_structural_info(G):
     '''
     nx.set_node_attributes(G, dict(nx.degree(G)), 'degree')
     nx.set_node_attributes(G, nx.degree_centrality(G), 'degree_centrality')
-    nx.set_node_attributes(G, nx.pagerank(G, alpha=0.85), 'pagerank')
+
+    # Calculate PageRank scores using networkx
+    pagerank_scores = nx.pagerank(G, alpha=0.85)
+
+    # Find dangling nodes (nodes with no outgoing edges)
+    dangling_nodes = [node for node, out_degree in G.out_degree() if out_degree == 0]
+
+    # Calculate the lower bound for PageRank scores
+    # rlow = (epsilon + (1 - epsilon) * sum(r(d))) / |V|
+    epsilon = 0.15
+    dangling_contrib = sum(pagerank_scores[d] for d in dangling_nodes)
+    rlow = (epsilon + (1 - epsilon) * dangling_contrib) / len(G.nodes)
+
+    # Normalize the PageRank scores
+    normalized_pagerank = {node: score / rlow for node, score in pagerank_scores.items()}
+
+    nx.set_node_attributes(G, normalized_pagerank, 'pagerank_normalized')
 
     return G
 

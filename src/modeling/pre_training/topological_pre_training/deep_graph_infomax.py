@@ -6,7 +6,7 @@ from tqdm import tqdm
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import DeepGraphInfomax, SAGEConv
 from torch_geometric.data import Batch
-from src.data_preprocessing.preprocess import FinancialGraphDataset
+from src.data_preprocessing.preprocess import FinancialGraphDatasetOnlyTopologicalFeatures
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -91,7 +91,7 @@ def test():
 
 if __name__ == '__main__':
 
-    dataset = FinancialGraphDataset(root=processed_data_path)
+    dataset = FinancialGraphDatasetOnlyTopologicalFeatures(root=processed_data_path)
     data_list = [dataset[i] for i in range(len(dataset))]
 
     batch = Batch.from_data_list(dataset)

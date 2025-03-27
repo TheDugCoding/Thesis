@@ -3,14 +3,14 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv
 
-from src.data_preprocessing.preprocess import FinancialGraphDataset
+from src.data_preprocessing.preprocess import FinancialGraphDatasetOnlyTopologicalFeatures
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 relative_path_processed  = '../../../data/processed/'
 processed_data_location = os.path.join(script_dir, relative_path_processed)
 
 # Load the Cora dataset
-dataset = FinancialGraphDataset(root = processed_data_location)
+dataset = FinancialGraphDatasetOnlyTopologicalFeatures(root = processed_data_location)
 data = dataset[0]  # Get the graph object
 
 # Define the GraphSAGE model
