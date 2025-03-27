@@ -16,9 +16,9 @@ relative_path_trained_model = 'modeling/downstream_task/trained_models'
 processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_model_path = get_src_sub_folder(relative_path_trained_model)
 
-dataset = RealDataTraining(root = processed_data_path, add_topological_features=True)
+dataset = RealDataTraining(root = processed_data_path, add_topological_features=False)
 
-loader = NeighborLoader(graph, num_neighbors=[num_neighbors], batch_size=1, input_nodes=[node_idx])
+#loader = NeighborLoader(graph, num_neighbors=[num_neighbors], batch_size=1, input_nodes=[node_idx])
 
 data = dataset[0]
 
