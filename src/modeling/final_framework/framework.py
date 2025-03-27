@@ -18,6 +18,8 @@ trained_model_path = get_src_sub_folder(relative_path_trained_model)
 
 dataset = RealDataTraining(root = processed_data_path, add_topological_features=True)
 
+loader = NeighborLoader(graph, num_neighbors=[num_neighbors], batch_size=1, input_nodes=[node_idx])
+
 data = dataset[0]
 
 train_loader = LinkNeighborLoader(

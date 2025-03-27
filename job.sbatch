@@ -17,7 +17,7 @@
 export PROJECT_PATH=/science-nfs-sys/vsm01/users/1738380/Desktop/Thesis
 export PYTHONPATH=$PYTHONPATH:$PROJECT_PATH
 
-srun python $PROJECT_PATH/src/modeling/pre_training/topological_pre_training/deep_graph_infomax.py
+srun python $PROJECT_PATH/src/data_preprocessing/preprocess.py
 
 
 
