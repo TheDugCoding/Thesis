@@ -378,13 +378,16 @@ class RealDataTraining(Dataset):
         """Processes raw data into PyG data objects and saves them as .pt files."""
 
         if(self.add_topological_features):
-            pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
-            pyg_ethereum = from_networkx(pre_process_ethereum(), group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+            pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
+            "start_id", "total", "count", "year_from", "year_to", "end_id",
+            "degree", "degree_centrality", "pagerank"
+        ]),
+            pyg_ethereum = from_networkx(pre_process_ethereum(), group_node_attrs=["amount", "timestamp","degree", "degree_centrality", "pagerank"]),
         else:
-            pyg_aml_rabobank = from_networkx(pre_process_rabobank(),
-                                             group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+            pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
+                "start_id", "total", "count", "year_from", "year_to", "end_id"]),
             pyg_ethereum = from_networkx(pre_process_ethereum(),
-                                         group_node_attrs=["degree", "degree_centrality", "pagerank"]),
+                                         group_node_attrs=["amount", "timestamp"]),
 
         data = self.collate([pyg_aml_rabobank, pyg_ethereum])
 
