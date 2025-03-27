@@ -1,19 +1,23 @@
-import os.path as osp
 import time
 
 import torch
 import torch.nn.functional as F
-from sklearn.linear_model import LogisticRegression
-
 import torch_geometric
-import torch_geometric.transforms as T
-from torch_geometric.datasets import Planetoid
+from sklearn.linear_model import LogisticRegression
 from torch_geometric.loader import LinkNeighborLoader
-from torch_geometric.nn import GATConv, SAGEConv
+from torch_geometric.nn import SAGEConv
 
-dataset = 'Cora'
-path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', dataset)
-dataset = Planetoid(path, dataset, transform=T.NormalizeFeatures())
+from src.data_preprocessing.preprocess import RealDataTraining
+from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
+
+script_dir = get_data_folder()
+relative_path_processed = 'processed'
+relative_path_trained_model = 'modeling/downstream_task/trained_models'
+processed_data_path = get_data_sub_folder(relative_path_processed)
+trained_model_path = get_src_sub_folder(relative_path_trained_model)
+
+dataset = RealDataTraining(root = processed_data_path, add_topological_features=True)
+
 data = dataset[0]
 
 train_loader = LinkNeighborLoader(
@@ -23,6 +27,7 @@ train_loader = LinkNeighborLoader(
     neg_sampling_ratio=1.0,
     num_neighbors=[10, 10],
 )
+
 if torch.cuda.is_available():
     device = torch.device('cuda')
 elif torch_geometric.is_xpu_available():
