@@ -5,8 +5,8 @@ from tqdm import tqdm
 
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import DeepGraphInfomax, SAGEConv
-from torch_geometric.data import Batch
-from src.data_preprocessing.preprocess import FinancialGraphDatasetOnlyTopologicalFeatures
+import torch.nn.functional as F
+from src.data_preprocessing.preprocess import RealDataTraining
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -30,32 +30,27 @@ test_loader = NeighborLoader(data, num_neighbors=[10, 10, 25], batch_size=256,
 
 
 class Encoder(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels):
+    def __init__(self, hidden_channels, output_channels, unique_layers):
         super().__init__()
-        self.convs = torch.nn.ModuleList([
-            SAGEConv(in_channels, hidden_channels),
-            SAGEConv(hidden_channels, hidden_channels),
-            SAGEConv(hidden_channels, hidden_channels)
-        ])
 
-        self.activations = torch.nn.ModuleList()
-        self.activations.extend([
-            torch.nn.PReLU(hidden_channels),
-            torch.nn.PReLU(hidden_channels),
-            torch.nn.PReLU(hidden_channels)
-        ])
+        # First layer, the first layer is unique for each dataset, this way we
+        # can solve the problem of multi dimensionality
+        for data_conv in range(unique_layers):
+            self.dataset_convs.append(SAGEConv(-1, hidden_channels))
+        # the second layer is in common with all
+        self.conv2 = SAGEConv(hidden_channels, output_channels)
 
-    def forward(self, x, edge_index, batch_size):
-        for conv, act in zip(self.convs, self.activations):
-            x = conv(x, edge_index)
-            x = act(x)
+
+    def forward(self, x, edge_index, batch_size, layer):
+        x = F.relu(self.dataset_convs[layer](x, edge_index))
+        x = self.conv2(x, edge_index)
         return x[:batch_size]
 
 
 def corruption(x, edge_index, batch_size):
     return x[torch.randperm(x.size(0))], edge_index, batch_size
 
-def train(epoch):
+def train(epoch, train_loader):
     model.train()
 
     total_loss = total_examples = 0
@@ -91,21 +86,20 @@ def test():
 
 if __name__ == '__main__':
 
-    dataset = FinancialGraphDatasetOnlyTopologicalFeatures(root=processed_data_path)
-    data_list = [dataset[i] for i in range(len(dataset))]
+    dataset = RealDataTraining(root = processed_data_path, add_topological_features=False)
 
-    batch = Batch.from_data_list(dataset)
+    data_rabo = dataset[0]
+    data_ethereum = dataset[1]
 
     train_loader = NeighborLoader(
-        batch,
-        num_neighbors=[10, 10, 25],  # Sample up to 10 neighbors per layer
-        batch_size=256,  # Number of seed nodes per batch
+        dataset,
+        batch_size=256,
         shuffle=True,
-        num_workers=12
+        num_neighbors=[10, 10],
     )
 
     model = DeepGraphInfomax(
-        hidden_channels=512, encoder=Encoder(dataset.num_features, 512),
+        hidden_channels=512, encoder=Encoder(64, 64, 2),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption).to(device)
 
@@ -113,7 +107,7 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
     for epoch in range(1, 31):
-        loss = train(epoch)
+        loss = train(epoch, train_loader)
         print(f'Epoch {epoch:02d}, Loss: {loss:.4f}')
 
     torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_graphsage_unsup_trained.pth'))

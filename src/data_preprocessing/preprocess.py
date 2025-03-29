@@ -365,6 +365,7 @@ class RealDataTraining(Dataset):
     def __init__(self, root,  add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
         self.add_topological_features = add_topological_features
         super().__init__(root, transform, pre_transform, pre_filter)
+        self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
     def raw_file_names(self):
@@ -381,20 +382,20 @@ class RealDataTraining(Dataset):
             pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
             "start_id", "total", "count", "year_from", "year_to", "end_id",
             "degree", "degree_centrality", "pagerank"
-        ]),
+            ])
             pyg_ethereum = from_networkx(pre_process_ethereum(), group_node_attrs=["amount", "timestamp","degree", "degree_centrality", "pagerank"]),
         else:
             pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
-                "start_id", "total", "count", "year_from", "year_to", "end_id"]),
+                "start_id", "total", "count", "year_from", "year_to", "end_id"])
             pyg_ethereum = from_networkx(pre_process_ethereum(),
-                                         group_node_attrs=["amount", "timestamp"]),
+                                         group_node_attrs=["amount", "timestamp"])
 
-        data = self.collate([pyg_aml_rabobank, pyg_ethereum])
+        data, slices = self.collate([pyg_aml_rabobank, pyg_ethereum])
 
         torch.save(data, os.path.join(self.processed_dir, 'real_data_training_dataset.pt'))
 
     def len(self):
-        return len(self.processed_file_names)
+        return len(self.slices['x']) - 1
 
     def get(self, idx):
         """Loads and returns the graph at the given index."""
