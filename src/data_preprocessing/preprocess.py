@@ -106,7 +106,7 @@ def pre_process_aml_world():
                        payment_format=row['Payment Format'],
                        is_laundering=row['Is Laundering'])
 
-            break
+            
 
             
 
@@ -139,7 +139,7 @@ def pre_process_rabobank():
                                 year_from=row['year_from'],
                                 year_to=row['year_to'])
 
-            break
+        
 
         # Compute additional structural information
         G_rabobank = get_structural_info(G_rabobank)
@@ -175,7 +175,7 @@ def pre_process_saml_d():
                               is_laundering=row['Is_laundering'],
                               laundering_type=row['Laundering_type'])
 
-            break
+            
 
         # Compute additional structural information
         G_saml_d = get_structural_info(G_saml_d)
@@ -202,7 +202,7 @@ def pre_process_elliptic():
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
 
-            break
+            
 
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
@@ -380,13 +380,13 @@ class RealDataTraining(Dataset):
 
         if(self.add_topological_features):
             pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
-            "start_id", "total", "count", "year_from", "year_to", "end_id",
+            "total", "count", "year_from", "year_to",
             "degree", "degree_centrality", "pagerank"
             ])
             pyg_ethereum = from_networkx(pre_process_ethereum(), group_node_attrs=["amount", "timestamp","degree", "degree_centrality", "pagerank"]),
         else:
             pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
-                "start_id", "total", "count", "year_from", "year_to", "end_id"])
+            "total", "count", "year_from", "year_to"])
             pyg_ethereum = from_networkx(pre_process_ethereum(),
                                          group_node_attrs=["amount", "timestamp"])
 
