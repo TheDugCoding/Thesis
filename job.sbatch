@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=dug_job      # Job name
+#SBATCH --job-name=DGI_train      # Job name
 #SBATCH --output=pyg-multinode.log        # outputfile
 #SBATCH --error=error.txt             # Standard error file
 #SBATCH --nodes=1                     # Number of nodes
