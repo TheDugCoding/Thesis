@@ -176,7 +176,7 @@ def train(epoch, train_loader_ethereum, train_loader_rabo):
     for batch_idx, batch in enumerate(tqdm(train_loader_ethereum, desc=f'Epoch {epoch:02d}')):
 
         #ethereum sample
-        if batch_idx % ratio != 0:
+        if batch_idx % ratio == 0:
             batch = batch.to(device)
             layer = 0
         #rabobank sample
