@@ -244,7 +244,7 @@ if __name__ == '__main__':
         data,
         batch_size=16,
         shuffle=True,
-        num_neighbors=[20, 20],
+        num_neighbors=[10, 10]
     )
 
     model = DeepGraphInfomax(
