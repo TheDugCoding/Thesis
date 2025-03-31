@@ -2,7 +2,7 @@ import networkx as nx
 import pandas as pd
 import torch
 import os
-from torch_geometric.data import Dataset, Data
+from torch_geometric.data import Dataset, Data, collate
 from torch_geometric.utils import from_networkx
 from src.data_preprocessing.utils import get_structural_info
 from src.utils import get_data_sub_folder, get_data_folder
@@ -148,6 +148,37 @@ def pre_process_rabobank():
         nx.write_graphml(G_rabobank, os.path.join(processed_data_location, 'rabobank.graphml'))
     else:
         G_rabobank = nx.read_graphml(os.path.join(processed_data_location, 'rabobank.graphml'))
+
+    return G_rabobank
+
+
+def pre_process_rabobank_test():
+    # Check if the Rabobank graph has already been preprocessed
+    if not os.path.exists(os.path.join(processed_data_location, 'rabobank_test.graphml')):
+        # Load the dataset
+        df_rabobank = pd.read_csv(os.path.join(script_dir, relative_path_rabobank_raw), delimiter=';')
+
+        # Initialize a directed graph
+        G_rabobank = nx.DiGraph()
+
+        # Add edges to the graph from the dataset
+        for index, row in df_rabobank.iterrows():
+            G_rabobank.add_edge(row['start_id'], row['end_id'],
+                                total=row['total'],
+                                count=row['count'],
+                                year_from=row['year_from'],
+                                year_to=row['year_to'])
+
+            if index == 20:
+                break
+
+        # Compute additional structural information
+        G_rabobank = get_structural_info(G_rabobank)
+
+        # Save dataset with additional information
+        nx.write_graphml(G_rabobank, os.path.join(processed_data_location, 'rabobank_test.graphml'))
+    else:
+        G_rabobank = nx.read_graphml(os.path.join(processed_data_location, 'rabobank_test.graphml'))
 
     return G_rabobank
 
@@ -383,16 +414,15 @@ class RealDataTraining(Dataset):
             "total", "count", "year_from", "year_to",
             "degree", "degree_centrality", "pagerank"
             ])
-            pyg_ethereum = from_networkx(pre_process_ethereum(), group_node_attrs=["amount", "timestamp","degree", "degree_centrality", "pagerank"]),
+            pyg_ethereum = from_networkx(pre_process_ethereum(), group_node_attrs=["amount", "timestamp","degree", "degree_centrality", "pagerank"])
         else:
             pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
             "total", "count", "year_from", "year_to"])
             pyg_ethereum = from_networkx(pre_process_ethereum(),
                                          group_node_attrs=["amount", "timestamp"])
 
-        data, slices = self.collate([pyg_aml_rabobank, pyg_ethereum])
-
-        torch.save(data, os.path.join(self.processed_dir, 'real_data_training_dataset.pt'))
+        torch.save({'rabobank': pyg_aml_rabobank, 'ethereum': pyg_ethereum},
+                   os.path.join(self.processed_dir, 'real_data_training_dataset.pt'))
 
     def len(self):
         return len(self.slices['x']) - 1
@@ -400,6 +430,44 @@ class RealDataTraining(Dataset):
     def get(self, idx):
         """Loads and returns the graph at the given index."""
         return torch.load(os.path.join(self.processed_dir, f'real_data_training_dataset.pt'))
+
+# Custom PyG dataset class
+class RaboTestDataset(Dataset):
+    def __init__(self, root,  add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
+        self.add_topological_features = add_topological_features
+        super().__init__(root, transform, pre_transform, pre_filter)
+        self.data = torch.load(self.processed_paths[0])
+
+    @property
+    def raw_file_names(self):
+        return []  # No raw files, since graphs are pre-processed elsewhere.
+
+    @property
+    def processed_file_names(self):
+        return ['rabo_test_dataset.pt']
+
+    def process(self):
+        """Processes raw data into PyG data objects and saves them as .pt files."""
+
+        if(self.add_topological_features):
+            pyg_aml_rabobank = from_networkx(pre_process_rabobank_test(), group_node_attrs=[
+            "total", "count", "year_from", "year_to",
+            "degree", "degree_centrality", "pagerank"
+            ])
+        else:
+            pyg_aml_rabobank = from_networkx(pre_process_rabobank_test(), group_node_attrs=[
+            "total", "count", "year_from", "year_to"])
+
+        pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()
+
+        torch.save(pyg_aml_rabobank, self.processed_paths[0])
+
+    def len(self):
+        return len(self.data.x)
+
+    def get(self, idx):
+        """Loads and returns the graph at the given index."""
+        return self.data
 
 # Usage
 '''
