@@ -187,6 +187,7 @@ def train(epoch, train_loader_ethereum, train_loader_rabo):
         else:
             batch = next(iter_rabo).to(device)
             layer = 1
+
         optimizer.zero_grad()
         pos_z, neg_z, summary = model(batch.x, batch.edge_index,
                                       batch.batch_size, layer=layer)
@@ -245,7 +246,7 @@ if __name__ == '__main__':
 
     train_loader_rabo = NeighborLoader(
         data,
-        batch_size=2,
+        batch_size=32,
         shuffle=True,
         num_neighbors=[10, 10],
     )
@@ -258,7 +259,7 @@ if __name__ == '__main__':
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
-    for epoch in range(1, 31):
+    for epoch in range(1, 200):
         loss = train(epoch, train_loader_rabo, train_loader_rabo)
         print(f'Epoch {epoch:02d}, Loss: {loss:.4f}')
 

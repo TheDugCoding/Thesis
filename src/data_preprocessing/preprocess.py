@@ -169,8 +169,6 @@ def pre_process_rabobank_test():
                                 year_from=row['year_from'],
                                 year_to=row['year_to'])
 
-            if index == 20:
-                break
 
         # Compute additional structural information
         G_rabobank = get_structural_info(G_rabobank)
