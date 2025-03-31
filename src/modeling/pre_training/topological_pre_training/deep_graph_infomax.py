@@ -242,9 +242,9 @@ if __name__ == '__main__':
 
     train_loader_rabo = NeighborLoader(
         data,
-        batch_size=256,
+        batch_size=64,
         shuffle=True,
-        num_neighbors=[30, 30],
+        num_neighbors=[20, 20],
     )
 
     model = DeepGraphInfomax(
