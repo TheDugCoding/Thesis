@@ -151,36 +151,6 @@ def pre_process_rabobank():
 
     return G_rabobank
 
-
-def pre_process_rabobank_test():
-    # Check if the Rabobank graph has already been preprocessed
-    if not os.path.exists(os.path.join(processed_data_location, 'rabobank_test.graphml')):
-        # Load the dataset
-        df_rabobank = pd.read_csv(os.path.join(script_dir, relative_path_rabobank_raw), delimiter=';')
-
-        # Initialize a directed graph
-        G_rabobank = nx.DiGraph()
-
-        # Add edges to the graph from the dataset
-        for index, row in df_rabobank.iterrows():
-            G_rabobank.add_edge(row['start_id'], row['end_id'],
-                                total=row['total'],
-                                count=row['count'],
-                                year_from=row['year_from'],
-                                year_to=row['year_to'])
-
-
-        # Compute additional structural information
-        G_rabobank = get_structural_info(G_rabobank)
-
-        # Save dataset with additional information
-        nx.write_graphml(G_rabobank, os.path.join(processed_data_location, 'rabobank_test.graphml'))
-    else:
-        G_rabobank = nx.read_graphml(os.path.join(processed_data_location, 'rabobank_test.graphml'))
-
-    return G_rabobank
-
-
 '''---Enhanced dataset preprocessing---'''
 
 def pre_process_saml_d():
@@ -448,12 +418,12 @@ class RaboTestDataset(Dataset):
         """Processes raw data into PyG data objects and saves them as .pt files."""
 
         if(self.add_topological_features):
-            pyg_aml_rabobank = from_networkx(pre_process_rabobank_test(), group_node_attrs=[
+            pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
             "total", "count", "year_from", "year_to",
             "degree", "degree_centrality", "pagerank"
             ])
         else:
-            pyg_aml_rabobank = from_networkx(pre_process_rabobank_test(), group_node_attrs=[
+            pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
             "total", "count", "year_from", "year_to"])
 
         pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()

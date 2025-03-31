@@ -153,12 +153,11 @@ class Encoder(torch.nn.Module):
         for data_conv in range(unique_layers):
             self.dataset_convs.append(SAGEConv(-1, hidden_channels))
         # the second layer is in common with all
-        self.conv_test = SAGEConv(-1, hidden_channels)
         self.conv2 = SAGEConv(hidden_channels, output_channels)
 
 
     def forward(self, x, edge_index, batch_size, layer):
-        x = F.relu(self.dataset_convs[layer](x, edge_index))
+        x = self.dataset_convs[layer](x, edge_index)
         x = self.conv2(x, edge_index)
         return x[:batch_size]
 
@@ -172,9 +171,6 @@ def train(epoch, train_loader_ethereum, train_loader_rabo):
     #ratio of the samples, ethereum is bigger, we want to keep the samples balanced so every n sample from ethereum we use one from rabo
     ratio = max(1, round(len(train_loader_ethereum) / len(train_loader_rabo)))
     iter_rabo = itertools.cycle(train_loader_rabo)
-    iter_rabo_test = itertools.cycle(train_loader_rabo)
-
-    layer = 0
 
     total_loss = total_examples = 0
     for batch_idx, batch in enumerate(tqdm(train_loader_ethereum, desc=f'Epoch {epoch:02d}')):
@@ -246,9 +242,9 @@ if __name__ == '__main__':
 
     train_loader_rabo = NeighborLoader(
         data,
-        batch_size=128,
+        batch_size=256,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=[30, 30],
     )
 
     model = DeepGraphInfomax(
@@ -259,7 +255,7 @@ if __name__ == '__main__':
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
-    for epoch in range(1, 200):
+    for epoch in range(1, 30):
         loss = train(epoch, train_loader_rabo, train_loader_rabo)
         print(f'Epoch {epoch:02d}, Loss: {loss:.4f}')
 
