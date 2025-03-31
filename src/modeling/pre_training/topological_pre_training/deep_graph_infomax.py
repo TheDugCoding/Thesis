@@ -242,7 +242,7 @@ if __name__ == '__main__':
 
     train_loader_rabo = NeighborLoader(
         data,
-        batch_size=64,
+        batch_size=16,
         shuffle=True,
         num_neighbors=[20, 20],
     )
