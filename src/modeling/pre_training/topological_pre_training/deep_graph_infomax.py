@@ -170,18 +170,22 @@ def train(epoch, train_loader_ethereum, train_loader_rabo):
 
     #ratio of the samples, ethereum is bigger, we want to keep the samples balanced so every n sample from ethereum we use one from rabo
     ratio = max(1, round(len(train_loader_ethereum) / len(train_loader_rabo)))
-    iter_rabo = itertools.cycle(train_loader_rabo)
+    iter_rabo = iter(train_loader_rabo)
 
     total_loss = total_examples = 0
     for batch_idx, batch in enumerate(tqdm(train_loader_ethereum, desc=f'Epoch {epoch:02d}')):
 
         #ethereum sample
-        if batch_idx % ratio == 0:
+        if batch_idx % ratio != 0:
             batch = batch.to(device)
             layer = 0
         #rabobank sample
         else:
-            batch = next(iter_rabo).to(device)
+            try:
+                batch = next(iter_rabo).to(device)  # Try getting the next batch
+            except StopIteration:
+                iter_rabo = iter(train_loader_rabo)  # Reset iterator when exhausted
+                batch = next(iter_rabo).to(device)  # Get next batch
             layer = 1
 
         optimizer.zero_grad()
@@ -242,7 +246,7 @@ if __name__ == '__main__':
 
     train_loader_rabo = NeighborLoader(
         data,
-        batch_size=128,
+        batch_size=256,
         shuffle=True,
         num_neighbors=[20, 20]
     )
