@@ -392,8 +392,12 @@ class RealDataTraining(Dataset):
         pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()
         pyg_ethereum.x = pyg_ethereum.x.float()
 
-        torch.save({'rabobank': pyg_aml_rabobank, 'ethereum': pyg_ethereum},
-                   os.path.join(self.processed_dir, 'real_data_training_dataset.pt'))
+        # Store as a list
+        data_list = [pyg_aml_rabobank, pyg_ethereum]
+        data, slices = self.collate(data_list)  # PyG's method for batching
+
+        # Save as tuple (not dictionary!)
+        torch.save((data, slices), os.path.join(self.processed_dir, 'real_data_training_dataset.pt'))
 
     def len(self):
         return len(self.data)
