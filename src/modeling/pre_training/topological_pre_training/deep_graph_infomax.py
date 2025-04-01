@@ -261,7 +261,7 @@ if __name__ == '__main__':
 
     with open("training_log.txt", "w") as file:
         for epoch in range(1, 30):
-            loss = train(epoch, train_loader_rabo, train_loader_rabo)
+            loss = train(epoch, train_loader_ethereum, train_loader_rabo)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)
