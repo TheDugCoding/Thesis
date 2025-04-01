@@ -389,6 +389,9 @@ class RealDataTraining(Dataset):
             pyg_ethereum = from_networkx(pre_process_ethereum(),
                                          group_node_attrs=["amount", "timestamp"])
 
+        pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()
+        pyg_ethereum.x = pyg_ethereum.x.float()
+
         torch.save({'rabobank': pyg_aml_rabobank, 'ethereum': pyg_ethereum},
                    os.path.join(self.processed_dir, 'real_data_training_dataset.pt'))
 

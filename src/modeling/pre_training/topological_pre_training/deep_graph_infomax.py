@@ -12,7 +12,7 @@ from torch_geometric.nn import SAGEConv
 from torch_geometric.nn.inits import reset, uniform
 from tqdm import tqdm
 
-from src.data_preprocessing.preprocess import RaboTestDataset
+from src.data_preprocessing.preprocess import RaboTestDataset, RealDataTraining
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 EPS = 1e-15
@@ -219,7 +219,7 @@ def test():
 
 if __name__ == '__main__':
 
-    '''
+
     dataset = RealDataTraining(root = processed_data_path, add_topological_features=False)
 
     data_rabo = dataset['rabobank']
@@ -229,17 +229,17 @@ if __name__ == '__main__':
         data_rabo,
         batch_size=256,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=[20, 20],
     )
 
     train_loader_ethereum = NeighborLoader(
         data_ethereum,
         batch_size=256,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=[20, 20],
     )
-    '''
 
+    '''
     dataset = RaboTestDataset(root=processed_data_path, add_topological_features=False)
 
     data = dataset[0]
@@ -250,6 +250,7 @@ if __name__ == '__main__':
         shuffle=True,
         num_neighbors=[20, 20]
     )
+    '''
 
     model = DeepGraphInfomax(
         hidden_channels=64, encoder=Encoder(64, 64, 2),
@@ -259,9 +260,11 @@ if __name__ == '__main__':
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
-    for epoch in range(1, 30):
-        loss = train(epoch, train_loader_rabo, train_loader_rabo)
-        print(f'Epoch {epoch:02d}, Loss: {loss:.4f}')
+    with open("training_log.txt", "w") as file:
+        for epoch in range(1, 30):
+            loss = train(epoch, train_loader_ethereum, train_loader_rabo)
+            log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
+            file.write(log)
 
     torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_graphsage_unsup_trained.pth'))
 
