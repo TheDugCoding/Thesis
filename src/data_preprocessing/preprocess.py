@@ -396,7 +396,7 @@ class RealDataTraining(Dataset):
                    os.path.join(self.processed_dir, 'real_data_training_dataset.pt'))
 
     def len(self):
-        return len(self.slices['x']) - 1
+        return len(self.data['ethereum']), len(self.data['rabobank'])
 
     def get(self, idx):
         """Loads and returns the graph at the given index."""

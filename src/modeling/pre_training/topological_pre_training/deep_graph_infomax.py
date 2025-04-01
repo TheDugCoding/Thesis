@@ -221,10 +221,10 @@ if __name__ == '__main__':
 
 
     dataset = RealDataTraining(root = processed_data_path, add_topological_features=False)
-
+    
     data_rabo = dataset['rabobank']
     data_ethereum = dataset['ethereum']
-
+    
     train_loader_rabo = NeighborLoader(
         data_rabo,
         batch_size=256,
@@ -238,7 +238,6 @@ if __name__ == '__main__':
         shuffle=True,
         num_neighbors=[20, 20],
     )
-
     '''
     dataset = RaboTestDataset(root=processed_data_path, add_topological_features=False)
 
@@ -262,8 +261,9 @@ if __name__ == '__main__':
 
     with open("training_log.txt", "w") as file:
         for epoch in range(1, 30):
-            loss = train(epoch, train_loader_ethereum, train_loader_rabo)
+            loss = train(epoch, train_loader_rabo, train_loader_rabo)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
+            print(log)
             file.write(log)
 
     torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_graphsage_unsup_trained.pth'))
