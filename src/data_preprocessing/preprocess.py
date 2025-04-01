@@ -364,7 +364,7 @@ class RealDataTraining(Dataset):
     def __init__(self, root,  add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
         self.add_topological_features = add_topological_features
         super().__init__(root, transform, pre_transform, pre_filter)
-        self.data, self.slices = torch.load(self.processed_paths[0])
+
 
     @property
     def raw_file_names(self):
@@ -372,7 +372,7 @@ class RealDataTraining(Dataset):
 
     @property
     def processed_file_names(self):
-        return ['real_data_training_dataset.pt']
+        return ['real_data_training_dataset_0.pt', 'real_data_training_dataset_1.pt']
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
@@ -392,18 +392,18 @@ class RealDataTraining(Dataset):
         pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()
         pyg_ethereum.x = pyg_ethereum.x.float()
 
-        # Store as a list
-        data_list = [pyg_aml_rabobank, pyg_ethereum]
 
         # Save as tuple (not dictionary!)
-        torch.save(data_list, os.path.join(self.processed_dir, 'real_data_training_dataset.pt'))
+        torch.save(pyg_aml_rabobank, os.path.join(self.processed_dir, 'real_data_training_dataset_0.pt'))
+        torch.save(pyg_ethereum, os.path.join(self.processed_dir, 'real_data_training_dataset_1.pt'))
 
     def len(self):
-        return len(self.data)
+        return len(self.processed_file_names)
 
     def get(self, idx):
         """Loads and returns the graph at the given index."""
-        return torch.load(os.path.join(self.processed_dir, f'real_data_training_dataset.pt'))
+        data = torch.load(os.path.join(self.processed_dir, f'real_data_training_dataset_{idx}.pt'))
+        return data
 
 # Custom PyG dataset class
 class RaboTestDataset(Dataset):
