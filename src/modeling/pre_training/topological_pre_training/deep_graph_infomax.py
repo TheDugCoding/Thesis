@@ -230,14 +230,14 @@ if __name__ == '__main__':
         data_rabo,
         batch_size=256,
         shuffle=True,
-        num_neighbors=[20, 20],
+        num_neighbors=[10, 10, 25],
     )
 
     train_loader_ethereum = NeighborLoader(
         data_ethereum,
         batch_size=256,
         shuffle=True,
-        num_neighbors=[20, 20],
+        num_neighbors=[10, 10, 25],
     )
     '''
     dataset = RaboTestDataset(root=processed_data_path, add_topological_features=False)
@@ -257,7 +257,7 @@ if __name__ == '__main__':
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption).to(device)
 
-    model = model.to(device)
+    #model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
     with open("training_log.txt", "w") as file:
