@@ -2,10 +2,18 @@ import os.path as osp
 
 import torch
 from tqdm import tqdm
+import os as os
 
 from torch_geometric.datasets import Reddit
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import DeepGraphInfomax, SAGEConv
+from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
+
+script_dir = get_data_folder()
+relative_path_processed  = 'processed'
+relative_path_trained_model = 'modeling/pre_training/topological_pre_training/trained_models'
+processed_data_path = get_data_sub_folder(relative_path_processed)
+trained_model_path = get_src_sub_folder(relative_path_trained_model)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', 'Reddit')
@@ -84,10 +92,17 @@ def test():
                      z[data.test_mask], data.y[data.test_mask], max_iter=10000)
     return acc
 
-
-for epoch in range(1, 31):
-    loss = train(epoch)
-    print(f'Epoch {epoch:02d}, Loss: {loss:.4f}')
+with open("training_log.txt", "w") as file:
+    for epoch in range(1, 31):
+        loss = train(epoch)
+        log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
+        print(log)
+        file.write(log)
 
 test_acc = test()
-print(f'Test Accuracy: {test_acc:.4f}')
+with open("test?accuracy.txt", "w") as file:
+    log = f'Test Accuracy: {test_acc:.4f}'
+    print(log)
+    file.write(log)
+
+torch.save(model.state_dict(), os.path.join(trained_model_path, 'original_dgi.pth'))
