@@ -6,13 +6,13 @@ from typing import Callable, Tuple
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-from torch.nn import Module, Parameter
+from torch.nn import Module, Parameter, PReLU
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn.inits import reset, uniform
 from tqdm import tqdm
 
-from src.data_preprocessing.preprocess import RaboTestDataset, RealDataTraining
+from src.data_preprocessing.preprocess import AmlTestDataset, RealDataTraining
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 EPS = 1e-15
@@ -153,12 +153,17 @@ class Encoder(torch.nn.Module):
         for data_conv in range(unique_layers):
             self.dataset_convs.append(SAGEConv(-1, hidden_channels))
         # the second layer is in common with all
-        self.conv2 = SAGEConv(hidden_channels, output_channels)
+        self.conv2 = SAGEConv(hidden_channels, hidden_channels)
+        self.conv3 = SAGEConv(hidden_channels, output_channels)
+
+
 
 
     def forward(self, x, edge_index, batch_size, layer):
-        x = self.dataset_convs[layer](x, edge_index)
-        x = self.conv2(x, edge_index)
+        act = torch.nn.PReLU().to(device)
+        x = act(self.dataset_convs[layer](x, edge_index))
+        x = act(self.conv2(x, edge_index))
+        x = act(self.conv3(x, edge_index))
         return x[:batch_size]
 
 
@@ -219,9 +224,7 @@ def test():
 
 if __name__ == '__main__':
 
-
     dataset = RealDataTraining(root = processed_data_path, add_topological_features=False)
-    dataset_test = RaboTestDataset(root=processed_data_path, add_topological_features=False)
 
     data_rabo = dataset[0]
     data_ethereum = dataset[1]
@@ -240,15 +243,15 @@ if __name__ == '__main__':
         num_neighbors=[10, 10, 25],
     )
     '''
-    dataset = RaboTestDataset(root=processed_data_path, add_topological_features=False)
+    dataset = AmlTestDataset(root=processed_data_path, add_topological_features=False)
 
     data = dataset[0]
 
-    train_loader_rabo = NeighborLoader(
+    train_loader_aml = NeighborLoader(
         data,
         batch_size=256,
         shuffle=True,
-        num_neighbors=[20, 20]
+        num_neighbors=[10, 10, 25]
     )
     '''
 

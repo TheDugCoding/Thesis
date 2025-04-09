@@ -406,7 +406,7 @@ class RealDataTraining(Dataset):
         return data
 
 # Custom PyG dataset class
-class RaboTestDataset(Dataset):
+class AmlTestDataset(Dataset):
     def __init__(self, root,  add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
         self.add_topological_features = add_topological_features
         super().__init__(root, transform, pre_transform, pre_filter)
@@ -418,19 +418,20 @@ class RaboTestDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        return ['rabo_test_dataset.pt']
+        return ['aml_test_dataset.pt']
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
 
+
         if(self.add_topological_features):
-            pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
-            "total", "count", "year_from", "year_to",
+            pyg_aml_rabobank = from_networkx(pre_process_aml_world(), group_node_attrs=[
+            "payment_format", "received_currency", "amount_received", "sent_currency", "amount_sent", "timestamp",
             "degree", "degree_centrality", "pagerank"
             ])
         else:
-            pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
-            "total", "count", "year_from", "year_to"])
+            pyg_aml_rabobank = from_networkx(pre_process_aml_world(), group_node_attrs=[
+            "payment_format", "received_currency", "amount_received", "sent_currency", "amount_sent", "timestamp"])
 
         pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()
 
