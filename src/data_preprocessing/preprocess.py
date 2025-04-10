@@ -437,7 +437,7 @@ class AmlTestDataset(Dataset):
             pyg_aml_rabobank = from_networkx(pre_process_aml_world(), group_node_attrs=[
                 "payment_format", "received_currency", "amount_received", "sent_currency", "amount_sent", "timestamp",
                 "pagerank_normalized", "eigenvector_centrality_norm",
-                "clustering_coef", "deepwalk_embedding"
+                "clustering_coef"
             ])
         else:
             pyg_aml_rabobank = from_networkx(pre_process_aml_world(), group_node_attrs=[
