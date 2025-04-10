@@ -62,7 +62,7 @@ def inductive_node_2_vec(G):
 
     for i, node in enumerate(G.nodes()):
         # Ensure node ID is mapped correctly
-        G.nodes[node]['deepwalk_embedding'] = embeddings[i].numpy()
+        G.nodes[node]['deepwalk_embedding'] = embeddings[i].numpy().tolist()
 
     return G
 
