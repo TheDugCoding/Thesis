@@ -2,7 +2,7 @@ import networkx as nx
 import numpy as np
 import torch
 import torch.optim as optim
-import torch_geometric
+import json
 from torch_geometric.nn import Node2Vec
 from torch_geometric.utils import from_networkx
 
@@ -62,7 +62,7 @@ def inductive_node_2_vec(G):
 
     for i, node in enumerate(G.nodes()):
         # Ensure node ID is mapped correctly
-        G.nodes[node]['deepwalk_embedding'] = embeddings[i].numpy().tolist()
+        G.nodes[node]['deepwalk_embedding'] = json.dumps(embeddings[i].numpy().tolist())
 
     return G
 
