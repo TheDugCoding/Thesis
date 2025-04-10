@@ -223,7 +223,7 @@ def test():
 '''
 
 if __name__ == '__main__':
-
+    '''
     dataset = RealDataTraining(root = processed_data_path, add_topological_features=False)
 
     data_rabo = dataset[0]
@@ -243,7 +243,7 @@ if __name__ == '__main__':
         num_neighbors=[10, 10, 25],
     )
     '''
-    dataset = AmlTestDataset(root=processed_data_path, add_topological_features=False)
+    dataset = AmlTestDataset(root=processed_data_path, add_topological_features=True)
 
     data = dataset[0]
 
@@ -253,7 +253,7 @@ if __name__ == '__main__':
         shuffle=True,
         num_neighbors=[10, 10, 25]
     )
-    '''
+
 
     model = DeepGraphInfomax(
         hidden_channels=64, encoder=Encoder(64, 64, 2),
@@ -265,7 +265,7 @@ if __name__ == '__main__':
 
     with open("training_log.txt", "w") as file:
         for epoch in range(1, 30):
-            loss = train(epoch, train_loader_ethereum, train_loader_rabo)
+            loss = train(epoch, train_loader_aml, train_loader_aml)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)

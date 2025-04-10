@@ -1,19 +1,21 @@
+import os
+import pickle
+
 import networkx as nx
 import pandas as pd
 import torch
-import os
-from torch_geometric.data import Dataset, Data, collate
+from torch_geometric.data import Dataset, Data
+from torch_geometric.transforms import RandomNodeSplit
 from torch_geometric.utils import from_networkx
+
 from src.data_preprocessing.utils import get_structural_info
 from src.utils import get_data_sub_folder, get_data_folder
-from torch_geometric.transforms import RandomNodeSplit
-import pickle
 
 script_dir = get_data_folder()
-relative_path_processed  = 'processed'
+relative_path_processed = 'processed'
 processed_data_location = get_data_sub_folder(relative_path_processed)
 
-#dataset locations
+# dataset locations
 relative_path_aml_sim_trans = 'raw/aml_sim_banks/transactions.csv'
 relative_path_aml_sim_nodes = 'raw/aml_sim_banks/accounts.csv'
 relative_path_aml_world_raw = 'raw/aml_world/small_LI/formatted_transactions.csv'
@@ -39,7 +41,8 @@ def pre_process_aml_sim():
         tx_type_mapping = {'TRANSFER': 1}  # Add more types as needed
         df_aml_sim_trans['tx_type'] = df_aml_sim_trans['tx_type'].map(tx_type_mapping)
         df_aml_sim_trans['is_sar'] = df_aml_sim_trans['is_sar'].astype(int)
-        df_aml_sim_trans['tran_timestamp'] = pd.to_datetime(df_aml_sim_trans['tran_timestamp']).astype('int64') / 10**9
+        df_aml_sim_trans['tran_timestamp'] = pd.to_datetime(df_aml_sim_trans['tran_timestamp']).astype(
+            'int64') / 10 ** 9
 
         # Add edges to the graph from the dataset
         for index, row in df_aml_sim_trans.iterrows():
@@ -85,6 +88,7 @@ def pre_process_aml_sim():
 
 '''---aml_world dataset preprocessing---'''
 
+
 def pre_process_aml_world():
     # Check if AMl world has already been preprocessed
     if not os.path.exists(os.path.join(processed_data_location, 'aml_world.graphml')):
@@ -95,20 +99,16 @@ def pre_process_aml_world():
         G_aml_world = nx.DiGraph()
 
         # Add edges to the graph from the dataset
-        for index, row in df_aml_world.iterrows():
+        for index, row in df_aml_world.head(100).iterrows():
             G_aml_world.add_edge(row['from_id'], row['to_id'],
-                       edge_id=row['EdgeID'],
-                       timestamp=row['Timestamp'],
-                       amount_sent=row['Amount Sent'],
-                       sent_currency=row['Sent Currency'],
-                       amount_received=row['Amount Received'],
-                       received_currency=row['Received Currency'],
-                       payment_format=row['Payment Format'],
-                       is_laundering=row['Is Laundering'])
-
-            
-
-            
+                                 edge_id=row['EdgeID'],
+                                 timestamp=row['Timestamp'],
+                                 amount_sent=row['Amount Sent'],
+                                 sent_currency=row['Sent Currency'],
+                                 amount_received=row['Amount Received'],
+                                 received_currency=row['Received Currency'],
+                                 payment_format=row['Payment Format'],
+                                 is_laundering=row['Is Laundering'])
 
         G_aml_world = get_structural_info(G_aml_world)
 
@@ -120,7 +120,9 @@ def pre_process_aml_world():
 
     return G_aml_world
 
+
 '''---Rabobank dataset preprocessing---'''
+
 
 def pre_process_rabobank():
     # Check if the Rabobank graph has already been preprocessed
@@ -139,8 +141,6 @@ def pre_process_rabobank():
                                 year_from=row['year_from'],
                                 year_to=row['year_to'])
 
-        
-
         # Compute additional structural information
         G_rabobank = get_structural_info(G_rabobank)
 
@@ -151,7 +151,9 @@ def pre_process_rabobank():
 
     return G_rabobank
 
+
 '''---Enhanced dataset preprocessing---'''
+
 
 def pre_process_saml_d():
     # Check if the SAML_d graph has already been preprocessed
@@ -174,8 +176,6 @@ def pre_process_saml_d():
                               is_laundering=row['Is_laundering'],
                               laundering_type=row['Laundering_type'])
 
-            
-
         # Compute additional structural information
         G_saml_d = get_structural_info(G_saml_d)
 
@@ -186,7 +186,9 @@ def pre_process_saml_d():
 
     return G_saml_d
 
+
 '''---Elliptic++ dataset preprocessing---'''
+
 
 def pre_process_elliptic():
     # Check if the AddrAddr graph has already been preprocessed
@@ -201,8 +203,6 @@ def pre_process_elliptic():
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
 
-            
-
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
 
@@ -214,7 +214,9 @@ def pre_process_elliptic():
 
     return G_addr_addr
 
+
 '''--- ethereum dataset preprocessing---'''
+
 
 def pre_process_ethereum():
     # Check if the AddrAddr graph has already been preprocessed
@@ -233,6 +235,7 @@ def pre_process_ethereum():
         G_ethereum = nx.read_graphml(os.path.join(processed_data_location, 'ethereum.graphml'))
 
     return G_ethereum
+
 
 # Custom PyG dataset class
 class FinancialGraphDatasetOnlyTopologicalFeatures(Dataset):
@@ -274,6 +277,7 @@ class FinancialGraphDatasetOnlyTopologicalFeatures(Dataset):
         """Loads and returns the graph at the given index."""
         return torch.load(os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
 
+
 # Custom PyG dataset class
 class EllipticDataset(Dataset):
     def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
@@ -308,6 +312,7 @@ class EllipticDataset(Dataset):
         """Loads and returns the graph at the given index."""
         return torch.load(os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
 
+
 # Custom PyG dataset class
 class AmlSimDataset(Dataset):
     def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
@@ -335,17 +340,18 @@ class AmlSimDataset(Dataset):
 
         # Convert NetworkX graph to PyG format
         data = from_networkx(G_aml_sim,
-                             group_node_attrs=['acct_id', 'prior_sar_count', 'open_dt', 'close_dt', 'initial_deposit', 'bank_id'],
+                             group_node_attrs=['acct_id', 'prior_sar_count', 'open_dt', 'close_dt', 'initial_deposit',
+                                               'bank_id'],
                              group_edge_attrs=['tran_id', 'tx_type', 'base_amt',
                                                'tran_timestamp', 'alert_id'])
 
         # select all the attributes except 'prior_sar_count', which is the target variable
-        x = data.x[:, [0,2,3,4,5]]
+        x = data.x[:, [0, 2, 3, 4, 5]]
         y = data.x[:, 1]
 
         # Create and save the PyG Data object
         data = Data(x=x, edge_index=data.edge_index, edge_attr=data.edge_attr, y=y)
-        node_transform = RandomNodeSplit(num_test=int(data.x.shape[0]*0.2))
+        node_transform = RandomNodeSplit(num_test=int(data.x.shape[0] * 0.2))
         node_splits = node_transform(data)
         data.train_mask = node_splits.train_mask
         data.test_mask = node_splits.test_mask
@@ -359,12 +365,12 @@ class AmlSimDataset(Dataset):
         """Loads and returns the graph at the given index."""
         return torch.load(os.path.join(self.processed_dir, f'aml_sim_dataset.pt'))
 
+
 # Custom PyG dataset class
 class RealDataTraining(Dataset):
-    def __init__(self, root,  add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
+    def __init__(self, root, add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
         self.add_topological_features = add_topological_features
         super().__init__(root, transform, pre_transform, pre_filter)
-
 
     @property
     def raw_file_names(self):
@@ -377,21 +383,24 @@ class RealDataTraining(Dataset):
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
 
-        if(self.add_topological_features):
+        if (self.add_topological_features):
             pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
-            "total", "count", "year_from", "year_to",
-            "degree", "degree_centrality", "pagerank"
+                "total", "count", "year_from", "year_to",
+                "degree", "degree_centrality", "pagerank_normalized",
+                "eigenvector_centrality_norm", "clustering_coef", "deepwalk_embedding"
             ])
-            pyg_ethereum = from_networkx(pre_process_ethereum(), group_node_attrs=["amount", "timestamp","degree", "degree_centrality", "pagerank"])
+            pyg_ethereum = from_networkx(pre_process_ethereum(),
+                                         group_node_attrs=["amount", "timestamp", "degree", "degree_centrality",
+                                                           "pagerank_normalized", "eigenvector_centrality_norm",
+                                                           "clustering_coef", "deepwalk_embedding"])
         else:
             pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
-            "total", "count", "year_from", "year_to"])
+                "total", "count", "year_from", "year_to"])
             pyg_ethereum = from_networkx(pre_process_ethereum(),
                                          group_node_attrs=["amount", "timestamp"])
 
         pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()
         pyg_ethereum.x = pyg_ethereum.x.float()
-
 
         # Save as tuple (not dictionary!)
         torch.save(pyg_aml_rabobank, os.path.join(self.processed_dir, 'real_data_training_dataset_0.pt'))
@@ -405,9 +414,10 @@ class RealDataTraining(Dataset):
         data = torch.load(os.path.join(self.processed_dir, f'real_data_training_dataset_{idx}.pt'))
         return data
 
+
 # Custom PyG dataset class
 class AmlTestDataset(Dataset):
-    def __init__(self, root,  add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
+    def __init__(self, root, add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
         self.add_topological_features = add_topological_features
         super().__init__(root, transform, pre_transform, pre_filter)
         self.data = torch.load(self.processed_paths[0])
@@ -423,15 +433,15 @@ class AmlTestDataset(Dataset):
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
 
-
-        if(self.add_topological_features):
+        if (self.add_topological_features):
             pyg_aml_rabobank = from_networkx(pre_process_aml_world(), group_node_attrs=[
-            "payment_format", "received_currency", "amount_received", "sent_currency", "amount_sent", "timestamp",
-            "degree", "degree_centrality", "pagerank"
+                "payment_format", "received_currency", "amount_received", "sent_currency", "amount_sent", "timestamp",
+                "pagerank_normalized", "eigenvector_centrality_norm",
+                "clustering_coef", "deepwalk_embedding"
             ])
         else:
             pyg_aml_rabobank = from_networkx(pre_process_aml_world(), group_node_attrs=[
-            "payment_format", "received_currency", "amount_received", "sent_currency", "amount_sent", "timestamp"])
+                "payment_format", "received_currency", "amount_received", "sent_currency", "amount_sent", "timestamp"])
 
         pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()
 
@@ -443,6 +453,7 @@ class AmlTestDataset(Dataset):
     def get(self, idx):
         """Loads and returns the graph at the given index."""
         return self.data
+
 
 # Usage
 '''
@@ -465,5 +476,5 @@ print('done')
 dataset = AmlSimDataset(root = processed_data_location)
 '''
 
-#dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
-#pre_process_ethereum()
+# dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
+# pre_process_ethereum()
