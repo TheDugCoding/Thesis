@@ -60,9 +60,8 @@ def inductive_node_2_vec(G):
 
     embeddings = get_embeddings()
 
-    for i, node in enumerate(G.nodes()):
-        embedding_tensor = torch.tensor(embeddings[i].numpy())  # Convert the embedding to a tensor
-        G.nodes[node]['deepwalk_embedding'] = embedding_tensor
+    for i, node in enumerate(G.nodes):
+        G.nodes[node]['deepwalk_embedding'] = embeddings[i].numpy()
 
     return G
 
