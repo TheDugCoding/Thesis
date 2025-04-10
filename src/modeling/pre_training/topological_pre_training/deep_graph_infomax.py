@@ -243,7 +243,7 @@ if __name__ == '__main__':
         num_neighbors=[10, 10, 25],
     )
     '''
-    dataset = AmlTestDataset(root=processed_data_path, add_topological_features=True)
+    dataset = AmlTestDataset(root=processed_data_path, add_topological_features=False)
 
     data = dataset[0]
 
