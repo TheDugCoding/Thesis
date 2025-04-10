@@ -104,10 +104,7 @@ def get_structural_info(G):
     nx.set_node_attributes(G, clustering, 'clustering_coef')
 
     # inductive deep walk
-    #return inductive_node_2_vec(G)
-
-    return G
-
+    return inductive_node_2_vec(G)
 
 def select_nodes(preprocessed_dataset: nx.DiGraph, percentage_of_node_to_sample_per_dataset=100,
                  select_random_nodes=True):

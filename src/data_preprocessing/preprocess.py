@@ -435,13 +435,14 @@ class AmlTestDataset(Dataset):
 
         if (self.add_topological_features):
             pyg_aml_rabobank = from_networkx(pre_process_aml_world(), group_node_attrs=[
-                "payment_format", "received_currency", "amount_received", "sent_currency", "amount_sent", "timestamp",
-                "pagerank_normalized", "eigenvector_centrality_norm",
-                "clustering_coef", "deepwalk_embedding"
-            ])
+                "degree", "degree_centrality", "pagerank_normalized", "eigenvector_centrality_norm", "clustering_coef", "deepwalk_embedding"
+            ],
+            group_edge_attrs = ["timestamp","amount_sent","sent_currency","amount_received",
+                "received_currency","payment_format","is_laundering"]
+            )
         else:
-            pyg_aml_rabobank = from_networkx(pre_process_aml_world(), group_node_attrs=[
-                "payment_format", "received_currency", "amount_received", "sent_currency", "amount_sent", "timestamp"])
+            pyg_aml_rabobank = from_networkx(pre_process_aml_world(), group_edge_attrs = ["timestamp","amount_sent","sent_currency","amount_received",
+                "received_currency","payment_format","is_laundering"])
 
         pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()
 
