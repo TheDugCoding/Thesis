@@ -180,27 +180,27 @@ def train(epoch, train_loader_ethereum, train_loader_rabo):
     total_loss = total_examples = 0
     for batch_idx, batch in enumerate(tqdm(train_loader_ethereum, desc=f'Epoch {epoch:02d}')):
 
+        batches = []
+
         #ethereum sample
-        if batch_idx % ratio != 0:
-            batch = batch.to(device)
-            layer = 0
+        batches.append(batch.to(device))
         #rabobank sample
-        else:
+        if batch_idx % ratio == 0:
             try:
-                batch = next(iter_rabo).to(device)  # Try getting the next batch
+                batches.append(next(iter_rabo).to(device))  # Try getting the next batch
             except StopIteration:
                 iter_rabo = iter(train_loader_rabo)  # Reset iterator when exhausted
-                batch = next(iter_rabo).to(device)  # Get next batch
-            layer = 1
+                batches.append(next(iter_rabo).to(device))  # Get next batch
 
-        optimizer.zero_grad()
-        pos_z, neg_z, summary = model(batch.x, batch.edge_index,
-                                      batch.batch_size, layer=layer)
-        loss = model.loss(pos_z, neg_z, summary)
-        loss.backward()
-        optimizer.step()
-        total_loss += float(loss) * pos_z.size(0)
-        total_examples += pos_z.size(0)
+        for idx, batch_loop in enumerate(batches):
+            optimizer.zero_grad()
+            pos_z, neg_z, summary = model(batch_loop.x, batch_loop.edge_index,
+                                          batch_loop.batch_size, layer=idx)
+            loss = model.loss(pos_z, neg_z, summary)
+            loss.backward()
+            optimizer.step()
+            total_loss += float(loss) * pos_z.size(0)
+            total_examples += pos_z.size(0)
 
 
     return total_loss / total_examples
