@@ -100,8 +100,8 @@ def get_structural_info(G):
     nx.set_node_attributes(G, ec_norm, 'eigenvector_centrality_norm')
 
     # Clustering Coefficient
-    clustering = nx.clustering(G)
-    nx.set_node_attributes(G, clustering, 'clustering_coef')
+    #clustering = nx.clustering(G)
+    #nx.set_node_attributes(G, clustering, 'clustering_coef')
 
     # inductive deep walk
     return inductive_node_2_vec(G)
