@@ -73,6 +73,10 @@ def get_structural_info(G):
     :param G: A Graph in networkX
     :return: A graph G, containing additional structural information
     '''
+
+    if isinstance(G, (nx.MultiGraph, nx.MultiDiGraph)):
+        G = nx.DiGraph(G) if G.is_directed() else nx.Graph(G)
+
     nx.set_node_attributes(G, dict(nx.degree(G)), 'degree')
     nx.set_node_attributes(G, nx.degree_centrality(G), 'degree_centrality')
 
@@ -94,11 +98,7 @@ def get_structural_info(G):
     nx.set_node_attributes(G, normalized_pagerank, 'pagerank_normalized')
 
     # Normalized Eigenvector Centrality
-    if isinstance(G, (nx.MultiGraph, nx.MultiDiGraph)):
-        G_temp = nx.DiGraph(G)
-        eigenvector = nx.eigenvector_centrality(G_temp, max_iter=1000)
-    else:
-        eigenvector = nx.eigenvector_centrality(G, max_iter=1000)
+    eigenvector = nx.eigenvector_centrality(G, max_iter=1000)
     max_ec = max(eigenvector.values())
     ec_norm = {node: val / max_ec for node, val in eigenvector.items()}
     nx.set_node_attributes(G, ec_norm, 'eigenvector_centrality_norm')
