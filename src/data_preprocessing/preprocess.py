@@ -206,6 +206,13 @@ def pre_process_elliptic():
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
 
+            # Add node attributes from df_wallet_features
+            df_wallet_features = df_wallet_features.set_index('address')  # Set index for faster lookup
+            for node in G_addr_addr.nodes():
+                if node in df_wallet_features.index:
+                    attr_dict = df_wallet_features.loc[node].to_dict()
+                    nx.set_node_attributes(G_addr_addr, {node: attr_dict})
+
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
 
