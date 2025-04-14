@@ -21,7 +21,8 @@ relative_path_aml_sim_nodes = 'raw/aml_sim_banks/accounts.csv'
 relative_path_aml_world_raw = 'raw/aml_world/small_LI/formatted_transactions.csv'
 relative_path_rabobank_raw = 'raw/rabobank/rabobank_data.csv'
 relative_path_saml_d_raw = 'raw/saml-d/SAML-D.csv'
-relative_path_elliptic_raw = 'raw/elliptic++_dataset/AddrAddr_edgelist.csv'
+relative_path_elliptic_raw_edges = 'raw/elliptic++_dataset/AddrAddr_edgelist.csv'
+relative_path_elliptic_raw_node_features = 'raw/elliptic++_dataset/wallets_features_classes_combined.csv'
 relative_path_ethereum_raw = 'raw/ethereum_phishing/MulDiGraph.pkl'
 
 '''---aml_sim dataset preprocessing---'''
@@ -195,7 +196,8 @@ def pre_process_elliptic():
     # Check if the AddrAddr graph has already been preprocessed
     if not os.path.exists(os.path.join(processed_data_location, 'elliptic_addr_addr.graphml')):
         # Load the dataset
-        df_addr_addr = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw))
+        df_addr_addr = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_edges))
+        df_wallet_features = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_node_features))
 
         # Initialize a directed graph
         G_addr_addr = nx.DiGraph()
