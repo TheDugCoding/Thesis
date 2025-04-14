@@ -388,13 +388,13 @@ class RealDataTraining(Dataset):
             pyg_aml_rabobank = from_networkx(pre_process_rabobank(),
                                              group_node_attrs=[
                                                  "degree", "degree_centrality", "pagerank_normalized",
-                                                 "eigenvector_centrality_norm", "clustering_coef", "deepwalk_embedding"
+                                                 "eigenvector_centrality_norm", "clustering_coef"
                                              ],
                                              group_edge_attrs=["total", "count", "year_from", "year_to"])
             pyg_ethereum = from_networkx(pre_process_ethereum(),
                                          group_node_attrs=[
                                              "degree", "degree_centrality", "pagerank_normalized",
-                                             "eigenvector_centrality_norm", "clustering_coef", "deepwalk_embedding"
+                                             "eigenvector_centrality_norm", "clustering_coef"
                                          ],
                                          group_edge_attrs=["amount", "timestamp"])
         else:
@@ -443,12 +443,12 @@ class AmlTestDataset(Dataset):
                 "degree", "degree_centrality", "pagerank_normalized", "eigenvector_centrality_norm", "clustering_coef"
             ],
             group_edge_attrs = ["timestamp","amount_sent","sent_currency","amount_received",
-                "received_currency","payment_format","is_laundering"]
+                "received_currency","payment_format"]
             )
         else:
             pyg_aml_rabobank = from_networkx(pre_process_aml_world(), group_node_attrs=[
                 "degree"], group_edge_attrs = ["timestamp","amount_sent","sent_currency","amount_received",
-                "received_currency","payment_format","is_laundering"])
+                "received_currency","payment_format"])
 
         pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()
 
