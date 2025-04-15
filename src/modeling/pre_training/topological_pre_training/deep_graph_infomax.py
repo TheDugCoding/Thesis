@@ -224,7 +224,7 @@ def test():
 
 if __name__ == '__main__':
 
-    dataset = RealDataTraining(root = processed_data_path, add_topological_features=True)
+    dataset = RealDataTraining(root = processed_data_path, add_topological_features=False)
 
     data_rabo = dataset[0]
     data_ethereum = dataset[1]
