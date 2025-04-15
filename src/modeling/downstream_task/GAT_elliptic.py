@@ -46,17 +46,17 @@ data = EllipticDataset(root = processed_data_path, add_topological_features = Tr
 
 
 # Define model, optimizer, and loss function
-model = GAT(data.num_features, 64, 1,
+model = GAT(data.num_features, 64, 3,
             8).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
-
+criterion = torch.nn.CrossEntropyLoss()
 
 # Training loop
 def train():
     model.train()
     optimizer.zero_grad()
     out = model(data.x, data.edge_index)
-    loss = F.cross_entropy(out.view(-1)[data.train_mask], data.y[data.train_mask].float())
+    loss = criterion(out[data.train_mask], data.y[data.train_mask])
     loss.backward()
     optimizer.step()
     return loss.item()
@@ -78,5 +78,12 @@ print('Confusion matrix')
 confusion_matrix = confusion_matrix([label.bool().item() for label in data.y[data.test_mask]], [pred.bool().item() for pred in preds[data.test_mask]])
 print(confusion_matrix)
 ConfusionMatrixDisplay(confusion_matrix).plot()
-plt.show()
+# Display and save confusion matrix plot
+disp = ConfusionMatrixDisplay(confusion_matrix)
+disp.plot()
+plt.title('Confusion Matrix')
+plt.savefig('confusion_matrix_plot.png')  # Save the plot as a PNG file
+
+
+#plt.show()
 

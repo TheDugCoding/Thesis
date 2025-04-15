@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 epochs = []
 losses = []
 
-with open('C://Users//lucad//OneDrive//Desktop//training results//training model//code_v2//training_log_with_topological_feature.txt', 'r') as f:
+with open('C://Users//lucad//OneDrive//Desktop//training results//training model//code_v2//training_log_without_topological_feature.txt', 'r') as f:
     for line in f:
         if "Epoch" in line:
             parts = line.strip().split(',')
@@ -16,12 +16,12 @@ with open('C://Users//lucad//OneDrive//Desktop//training results//training model
 # Plotting
 plt.figure(figsize=(10, 5))
 plt.plot(epochs, losses, marker='o', linestyle='-', color='royalblue')
-plt.title('Training Loss Over Epochs, with topological features')
+plt.title('Training Loss Over Epochs, without topological features')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.grid(True)
 plt.tight_layout()
 
-plt.savefig("C://Users//lucad//OneDrive//Desktop//training results//training model//code_v2//training_log_with_topological_feature.png")
+plt.savefig("C://Users//lucad//OneDrive//Desktop//training results//training model//code_v2//training_log_without_topological_feature.png")
 
 plt.show()

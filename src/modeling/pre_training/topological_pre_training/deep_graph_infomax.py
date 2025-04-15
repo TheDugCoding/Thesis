@@ -10,7 +10,7 @@ from torch_geometric.nn import SAGEConv
 from torch_geometric.nn.inits import reset, uniform
 from tqdm import tqdm
 
-from src.data_preprocessing.preprocess import RealDataTraining
+from src.data_preprocessing.preprocess import RealDataTraining, AmlTestDataset
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 EPS = 1e-15
@@ -221,7 +221,7 @@ def test():
 '''
 
 if __name__ == '__main__':
-
+    '''
     dataset = RealDataTraining(root = processed_data_path, add_topological_features = False)
 
     data_rabo = dataset[0]
@@ -251,7 +251,7 @@ if __name__ == '__main__':
         shuffle=True,
         num_neighbors=[10, 10, 25]
     )
-    '''
+
 
     model = DeepGraphInfomax(
         hidden_channels=64, encoder=Encoder(64, 64, 2),
@@ -263,7 +263,7 @@ if __name__ == '__main__':
 
     with open("training_log.txt", "w") as file:
         for epoch in range(1, 30):
-            loss = train(epoch, train_loader_ethereum, train_loader_rabo)
+            loss = train(epoch, train_loader_aml, train_loader_aml)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)

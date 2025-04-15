@@ -202,12 +202,14 @@ def pre_process_elliptic():
         # Initialize a directed graph
         G_addr_addr = nx.DiGraph()
 
+        # Add node attributes from df_wallet_features
+        df_wallet_features = df_wallet_features.set_index('address')
+
         # Add edges to the graph from the dataset
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
 
-            # Add node attributes from df_wallet_features
-            df_wallet_features = df_wallet_features.set_index('address')  # Set index for faster lookup
+              # Set index for faster lookup
             for node in G_addr_addr.nodes():
                 if node in df_wallet_features.index:
                     attr_dict = df_wallet_features.loc[node].to_dict()
@@ -300,90 +302,85 @@ class EllipticDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        return [
-            'ellipticdataset.pt',
-        ]
+        return ['ellipticdataset.pt']
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
         # Generate the graph data from pre-processing functions
 
-        def process(self):
-            """Processes raw data into PyG data objects and saves them as .pt files."""
+        if (self.add_topological_features):
+            pyg_elliptic = from_networkx(pre_process_elliptic(), group_node_attrs=[
+                # Structural features (if computed)
+                "degree", "degree_centrality", "pagerank_normalized", "eigenvector_centrality_norm",
+                "clustering_coef",
 
-            if (self.add_topological_features):
-                pyg_elliptic = from_networkx(pre_process_elliptic(), group_node_attrs=[
-                    # Structural features (if computed)
-                    "degree", "degree_centrality", "pagerank_normalized", "eigenvector_centrality_norm",
-                    "clustering_coef",
+                # Core features from your list
+                "Time step", "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
+                "last_block_appeared_in", "lifetime_in_blocks", "total_txs", "first_sent_block",
+                "first_received_block",
+                "num_timesteps_appeared_in", "btc_transacted_total", "btc_transacted_min", "btc_transacted_max",
+                "btc_transacted_mean", "btc_transacted_median", "btc_sent_total", "btc_sent_min", "btc_sent_max",
+                "btc_sent_mean", "btc_sent_median", "btc_received_total", "btc_received_min", "btc_received_max",
+                "btc_received_mean", "btc_received_median", "fees_total", "fees_min", "fees_max", "fees_mean",
+                "fees_median",
+                "fees_as_share_total", "fees_as_share_min", "fees_as_share_max", "fees_as_share_mean",
+                "fees_as_share_median",
+                "blocks_btwn_txs_total", "blocks_btwn_txs_min", "blocks_btwn_txs_max", "blocks_btwn_txs_mean",
+                "blocks_btwn_txs_median", "blocks_btwn_input_txs_total", "blocks_btwn_input_txs_min",
+                "blocks_btwn_input_txs_max", "blocks_btwn_input_txs_mean", "blocks_btwn_input_txs_median",
+                "blocks_btwn_output_txs_total", "blocks_btwn_output_txs_min", "blocks_btwn_output_txs_max",
+                "blocks_btwn_output_txs_mean", "blocks_btwn_output_txs_median", "num_addr_transacted_multiple",
+                "transacted_w_address_total", "transacted_w_address_min", "transacted_w_address_max",
+                "transacted_w_address_mean", "transacted_w_address_median"
+            ])
 
-                    # Core features from your list
-                    "Time step", "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
-                    "last_block_appeared_in", "lifetime_in_blocks", "total_txs", "first_sent_block",
-                    "first_received_block",
-                    "num_timesteps_appeared_in", "btc_transacted_total", "btc_transacted_min", "btc_transacted_max",
-                    "btc_transacted_mean", "btc_transacted_median", "btc_sent_total", "btc_sent_min", "btc_sent_max",
-                    "btc_sent_mean", "btc_sent_median", "btc_received_total", "btc_received_min", "btc_received_max",
-                    "btc_received_mean", "btc_received_median", "fees_total", "fees_min", "fees_max", "fees_mean",
-                    "fees_median",
-                    "fees_as_share_total", "fees_as_share_min", "fees_as_share_max", "fees_as_share_mean",
-                    "fees_as_share_median",
-                    "blocks_btwn_txs_total", "blocks_btwn_txs_min", "blocks_btwn_txs_max", "blocks_btwn_txs_mean",
-                    "blocks_btwn_txs_median", "blocks_btwn_input_txs_total", "blocks_btwn_input_txs_min",
-                    "blocks_btwn_input_txs_max", "blocks_btwn_input_txs_mean", "blocks_btwn_input_txs_median",
-                    "blocks_btwn_output_txs_total", "blocks_btwn_output_txs_min", "blocks_btwn_output_txs_max",
-                    "blocks_btwn_output_txs_mean", "blocks_btwn_output_txs_median", "num_addr_transacted_multiple",
-                    "transacted_w_address_total", "transacted_w_address_min", "transacted_w_address_max",
-                    "transacted_w_address_mean", "transacted_w_address_median"
-                ])
+            x = pyg_elliptic.x[:, [
+                                      0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                                      23,
+                                      24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+                                      43, 44,
+                                      45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61
+                                  ]]
+            y = pyg_elliptic.x[:, 6]
 
-                x = pyg_elliptic.x[:, [
-                                          0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-                                          23,
-                                          24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
-                                          43, 44,
-                                          45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61
-                                      ]]
-                y = pyg_elliptic.x[:, 6]
+        else:
+            pyg_elliptic = from_networkx(pre_process_aml_world(), group_node_attrs=[
+                "Time step", "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
+                "last_block_appeared_in", "lifetime_in_blocks", "total_txs", "first_sent_block",
+                "first_received_block",
+                "num_timesteps_appeared_in", "btc_transacted_total", "btc_transacted_min", "btc_transacted_max",
+                "btc_transacted_mean", "btc_transacted_median", "btc_sent_total", "btc_sent_min", "btc_sent_max",
+                "btc_sent_mean", "btc_sent_median", "btc_received_total", "btc_received_min", "btc_received_max",
+                "btc_received_mean", "btc_received_median", "fees_total", "fees_min", "fees_max", "fees_mean",
+                "fees_median",
+                "fees_as_share_total", "fees_as_share_min", "fees_as_share_max", "fees_as_share_mean",
+                "fees_as_share_median",
+                "blocks_btwn_txs_total", "blocks_btwn_txs_min", "blocks_btwn_txs_max", "blocks_btwn_txs_mean",
+                "blocks_btwn_txs_median", "blocks_btwn_input_txs_total", "blocks_btwn_input_txs_min",
+                "blocks_btwn_input_txs_max", "blocks_btwn_input_txs_mean", "blocks_btwn_input_txs_median",
+                "blocks_btwn_output_txs_total", "blocks_btwn_output_txs_min", "blocks_btwn_output_txs_max",
+                "blocks_btwn_output_txs_mean", "blocks_btwn_output_txs_median", "num_addr_transacted_multiple",
+                "transacted_w_address_total", "transacted_w_address_min", "transacted_w_address_max",
+                "transacted_w_address_mean", "transacted_w_address_median"])
 
-            else:
-                pyg_elliptic = from_networkx(pre_process_aml_world(), group_node_attrs=[
-                    "Time step", "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
-                    "last_block_appeared_in", "lifetime_in_blocks", "total_txs", "first_sent_block",
-                    "first_received_block",
-                    "num_timesteps_appeared_in", "btc_transacted_total", "btc_transacted_min", "btc_transacted_max",
-                    "btc_transacted_mean", "btc_transacted_median", "btc_sent_total", "btc_sent_min", "btc_sent_max",
-                    "btc_sent_mean", "btc_sent_median", "btc_received_total", "btc_received_min", "btc_received_max",
-                    "btc_received_mean", "btc_received_median", "fees_total", "fees_min", "fees_max", "fees_mean",
-                    "fees_median",
-                    "fees_as_share_total", "fees_as_share_min", "fees_as_share_max", "fees_as_share_mean",
-                    "fees_as_share_median",
-                    "blocks_btwn_txs_total", "blocks_btwn_txs_min", "blocks_btwn_txs_max", "blocks_btwn_txs_mean",
-                    "blocks_btwn_txs_median", "blocks_btwn_input_txs_total", "blocks_btwn_input_txs_min",
-                    "blocks_btwn_input_txs_max", "blocks_btwn_input_txs_mean", "blocks_btwn_input_txs_median",
-                    "blocks_btwn_output_txs_total", "blocks_btwn_output_txs_min", "blocks_btwn_output_txs_max",
-                    "blocks_btwn_output_txs_mean", "blocks_btwn_output_txs_median", "num_addr_transacted_multiple",
-                    "transacted_w_address_total", "transacted_w_address_min", "transacted_w_address_max",
-                    "transacted_w_address_mean", "transacted_w_address_median"])
+            x = pyg_elliptic.x[:, [
+                                      0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                                      21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+                                      39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56
+                                  ]]
+            y = pyg_elliptic.x[:, 1]
 
-                x = pyg_elliptic.x[:, [
-                                          0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                                          21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
-                                          39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56
-                                      ]]
-                y = pyg_elliptic.x[:, 1]
+        #pyg_elliptic.x = pyg_elliptic.x.float()
 
-            #pyg_elliptic.x = pyg_elliptic.x.float()
-
-            # Create and save the PyG Data object, in future add the edge features if required
-            data = Data(x=x, edge_index=pyg_elliptic.edge_index, y=y)
-            node_transform = RandomNodeSplit(num_test=int(data.x.shape[0] * 0.2))
-            node_splits = node_transform(data)
-            data.train_mask = node_splits.train_mask
-            data.test_mask = node_splits.test_mask
+        # Create and save the PyG Data object, in future add the edge features if required
+        data = Data(x=x, edge_index=pyg_elliptic.edge_index, y=y)
+        node_transform = RandomNodeSplit(num_test=int(data.x.shape[0] * 0.2))
+        node_splits = node_transform(data)
+        data.train_mask = node_splits.train_mask
+        data.test_mask = node_splits.test_mask
 
 
-            torch.save(pyg_elliptic, self.processed_paths[0])
+        torch.save(pyg_elliptic, self.processed_paths[0])
 
     def len(self):
         return len(self.processed_file_names)
