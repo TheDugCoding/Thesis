@@ -1,18 +1,16 @@
 import copy
-import itertools
 import os as os
 from typing import Callable, Tuple
 
 import torch
-import torch.nn.functional as F
 from torch import Tensor
-from torch.nn import Module, Parameter, PReLU
+from torch.nn import Module, Parameter
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn.inits import reset, uniform
 from tqdm import tqdm
 
-from src.data_preprocessing.preprocess import AmlTestDataset, RealDataTraining
+from src.data_preprocessing.preprocess import RealDataTraining
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 EPS = 1e-15
@@ -224,7 +222,7 @@ def test():
 
 if __name__ == '__main__':
 
-    dataset = RealDataTraining(root = processed_data_path, add_topological_features=False)
+    dataset = RealDataTraining(root = processed_data_path, add_topological_features = False)
 
     data_rabo = dataset[0]
     data_ethereum = dataset[1]
@@ -271,7 +269,6 @@ if __name__ == '__main__':
             file.write(log)
 
     torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_graphsage_unsup_trained.pth'))
-
 
 #test_acc = test()
 #print(f'Test Accuracy: {test_acc:.4f}')

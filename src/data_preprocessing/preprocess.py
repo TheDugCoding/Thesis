@@ -290,7 +290,8 @@ class FinancialGraphDatasetOnlyTopologicalFeatures(Dataset):
 
 # Custom PyG dataset class
 class EllipticDataset(Dataset):
-    def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
+    def __init__(self, root, add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
+        self.add_topological_features = add_topological_features
         super().__init__(root, transform, pre_transform, pre_filter)
 
     @property
@@ -306,21 +307,90 @@ class EllipticDataset(Dataset):
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
         # Generate the graph data from pre-processing functions
-        data_list = [
-            from_networkx(pre_process_elliptic(), group_node_attrs=["degree", "degree_centrality", "pagerank"])
-        ]
 
-        # Save each graph as a separate .pt file
-        for idx, data in enumerate(data_list):
-            data = Data(x=data.x, edge_index=data.edge_index)
-            torch.save(data, os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
+        def process(self):
+            """Processes raw data into PyG data objects and saves them as .pt files."""
+
+            if (self.add_topological_features):
+                pyg_elliptic = from_networkx(pre_process_elliptic(), group_node_attrs=[
+                    # Structural features (if computed)
+                    "degree", "degree_centrality", "pagerank_normalized", "eigenvector_centrality_norm",
+                    "clustering_coef",
+
+                    # Core features from your list
+                    "Time step", "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
+                    "last_block_appeared_in", "lifetime_in_blocks", "total_txs", "first_sent_block",
+                    "first_received_block",
+                    "num_timesteps_appeared_in", "btc_transacted_total", "btc_transacted_min", "btc_transacted_max",
+                    "btc_transacted_mean", "btc_transacted_median", "btc_sent_total", "btc_sent_min", "btc_sent_max",
+                    "btc_sent_mean", "btc_sent_median", "btc_received_total", "btc_received_min", "btc_received_max",
+                    "btc_received_mean", "btc_received_median", "fees_total", "fees_min", "fees_max", "fees_mean",
+                    "fees_median",
+                    "fees_as_share_total", "fees_as_share_min", "fees_as_share_max", "fees_as_share_mean",
+                    "fees_as_share_median",
+                    "blocks_btwn_txs_total", "blocks_btwn_txs_min", "blocks_btwn_txs_max", "blocks_btwn_txs_mean",
+                    "blocks_btwn_txs_median", "blocks_btwn_input_txs_total", "blocks_btwn_input_txs_min",
+                    "blocks_btwn_input_txs_max", "blocks_btwn_input_txs_mean", "blocks_btwn_input_txs_median",
+                    "blocks_btwn_output_txs_total", "blocks_btwn_output_txs_min", "blocks_btwn_output_txs_max",
+                    "blocks_btwn_output_txs_mean", "blocks_btwn_output_txs_median", "num_addr_transacted_multiple",
+                    "transacted_w_address_total", "transacted_w_address_min", "transacted_w_address_max",
+                    "transacted_w_address_mean", "transacted_w_address_median"
+                ])
+
+                x = pyg_elliptic.x[:, [
+                                          0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                                          23,
+                                          24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+                                          43, 44,
+                                          45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61
+                                      ]]
+                y = pyg_elliptic.x[:, 6]
+
+            else:
+                pyg_elliptic = from_networkx(pre_process_aml_world(), group_node_attrs=[
+                    "Time step", "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
+                    "last_block_appeared_in", "lifetime_in_blocks", "total_txs", "first_sent_block",
+                    "first_received_block",
+                    "num_timesteps_appeared_in", "btc_transacted_total", "btc_transacted_min", "btc_transacted_max",
+                    "btc_transacted_mean", "btc_transacted_median", "btc_sent_total", "btc_sent_min", "btc_sent_max",
+                    "btc_sent_mean", "btc_sent_median", "btc_received_total", "btc_received_min", "btc_received_max",
+                    "btc_received_mean", "btc_received_median", "fees_total", "fees_min", "fees_max", "fees_mean",
+                    "fees_median",
+                    "fees_as_share_total", "fees_as_share_min", "fees_as_share_max", "fees_as_share_mean",
+                    "fees_as_share_median",
+                    "blocks_btwn_txs_total", "blocks_btwn_txs_min", "blocks_btwn_txs_max", "blocks_btwn_txs_mean",
+                    "blocks_btwn_txs_median", "blocks_btwn_input_txs_total", "blocks_btwn_input_txs_min",
+                    "blocks_btwn_input_txs_max", "blocks_btwn_input_txs_mean", "blocks_btwn_input_txs_median",
+                    "blocks_btwn_output_txs_total", "blocks_btwn_output_txs_min", "blocks_btwn_output_txs_max",
+                    "blocks_btwn_output_txs_mean", "blocks_btwn_output_txs_median", "num_addr_transacted_multiple",
+                    "transacted_w_address_total", "transacted_w_address_min", "transacted_w_address_max",
+                    "transacted_w_address_mean", "transacted_w_address_median"])
+
+                x = pyg_elliptic.x[:, [
+                                          0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                                          21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
+                                          39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56
+                                      ]]
+                y = pyg_elliptic.x[:, 1]
+
+            #pyg_elliptic.x = pyg_elliptic.x.float()
+
+            # Create and save the PyG Data object, in future add the edge features if required
+            data = Data(x=x, edge_index=pyg_elliptic.edge_index, y=y)
+            node_transform = RandomNodeSplit(num_test=int(data.x.shape[0] * 0.2))
+            node_splits = node_transform(data)
+            data.train_mask = node_splits.train_mask
+            data.test_mask = node_splits.test_mask
+
+
+            torch.save(pyg_elliptic, self.processed_paths[0])
 
     def len(self):
         return len(self.processed_file_names)
 
     def get(self, idx):
         """Loads and returns the graph at the given index."""
-        return torch.load(os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
+        return torch.load(os.path.join(self.processed_dir, f'ellipticdataset.pt'))
 
 
 # Custom PyG dataset class
