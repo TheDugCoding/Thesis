@@ -65,7 +65,7 @@ def train():
 torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_gat_trained.pth'))
 
 # Run training
-for epoch in range(100):
+for epoch in range(30):
     loss = train()
     print(f"Epoch {epoch + 1}, Loss: {loss:.4f}")
 
@@ -83,7 +83,6 @@ disp = ConfusionMatrixDisplay(confusion_matrix)
 disp.plot()
 plt.title('Confusion Matrix')
 plt.savefig('confusion_matrix_plot.png')  # Save the plot as a PNG file
-
 
 #plt.show()
 

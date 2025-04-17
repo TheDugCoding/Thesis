@@ -209,11 +209,11 @@ def pre_process_elliptic():
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
 
-              # Set index for faster lookup
-            for node in G_addr_addr.nodes():
-                if node in df_wallet_features.index:
-                    attr_dict = df_wallet_features.loc[node].to_dict()
-                    nx.set_node_attributes(G_addr_addr, {node: attr_dict})
+          # Set index for faster lookup
+        for node in G_addr_addr.nodes():
+            if node in df_wallet_features.index:
+                attr_dict = df_wallet_features.loc[node].to_dict()
+                nx.set_node_attributes(G_addr_addr, {node: attr_dict})
 
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
@@ -310,11 +310,11 @@ class EllipticDataset(Dataset):
 
         if (self.add_topological_features):
             pyg_elliptic = from_networkx(pre_process_elliptic(), group_node_attrs=[
-                # Structural features (if computed)
+                # structural features
                 "degree", "pagerank_normalized", "eigenvector_centrality_norm",
                 "clustering_coef",
 
-                # Core features from your list
+                # core features
                 "Time step", "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
                 "last_block_appeared_in", "lifetime_in_blocks", "total_txs", "first_sent_block",
                 "first_received_block",
@@ -561,3 +561,4 @@ dataset = AmlSimDataset(root = processed_data_location)
 
 # dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
 # pre_process_ethereum()
+#test = pre_process_elliptic()
