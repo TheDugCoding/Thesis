@@ -208,12 +208,21 @@ def pre_process_elliptic():
         # Add edges to the graph from the dataset
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
+            if index== 1:
+                break
 
           # Set index for faster lookup
         for node in G_addr_addr.nodes():
             if node in df_wallet_features.index:
                 attr_dict = df_wallet_features.loc[node].to_dict()
-                nx.set_node_attributes(G_addr_addr, {node: attr_dict})
+                for k, v in attr_dict.items():
+                    if not isinstance(v, type):  # skip values of type `type`
+                        try:
+                            G_addr_addr.nodes[node][k] = v
+                        except Exception as e:
+                            print(f"Failed to set attribute {k} for node {node}: {e}")
+                    else:
+                        print(f'AAAAAAA  {k}')
 
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
@@ -561,4 +570,4 @@ dataset = AmlSimDataset(root = processed_data_location)
 
 # dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
 # pre_process_ethereum()
-#test = pre_process_elliptic()
+test = pre_process_elliptic()

@@ -233,7 +233,7 @@ def test():
 
 if __name__ == '__main__':
 
-    dataset = RealDataTraining(root = processed_data_path, add_topological_features = False)
+    dataset = RealDataTraining(root = processed_data_path, add_topological_features = True)
 
     data_rabo = dataset[0]
     data_ethereum = dataset[1]
@@ -276,14 +276,14 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
-    with open("training_log_only_ethereum_topo_false.txt", "w") as file:
+    with open("training_log_only_ethereum_topo_true.txt", "w") as file:
         for epoch in range(1, 30):
             loss = train(epoch, train_loaders)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)
 
-    torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_only_ethereum_topo_false.pth'))
+    torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_only_ethereum_topo_true.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')
