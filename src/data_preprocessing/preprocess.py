@@ -570,4 +570,4 @@ dataset = AmlSimDataset(root = processed_data_location)
 
 # dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
 # pre_process_ethereum()
-test = pre_process_elliptic()
+#test = pre_process_elliptic()
