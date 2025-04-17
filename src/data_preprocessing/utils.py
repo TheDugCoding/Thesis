@@ -78,7 +78,8 @@ def get_structural_info(G):
         G = nx.DiGraph(G) if G.is_directed() else nx.Graph(G)
 
     nx.set_node_attributes(G, dict(nx.degree(G)), 'degree')
-    nx.set_node_attributes(G, nx.degree_centrality(G), 'degree_centrality')
+    #degree centrality is not transferable
+    #nx.set_node_attributes(G, nx.degree_centrality(G), 'degree_centrality')
 
     # Calculate PageRank scores using networkx
     pagerank_scores = nx.pagerank(G, alpha=0.85)

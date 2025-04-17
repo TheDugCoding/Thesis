@@ -168,27 +168,39 @@ class Encoder(torch.nn.Module):
 def corruption(x, edge_index, batch_size):
     return x[torch.randperm(x.size(0))], edge_index, batch_size
 
-def train(epoch, train_loader_ethereum, train_loader_rabo):
+def train(epoch, train_loaders):
+    '''
+    :param epoch: for how many epochs we should train the model
+    :param train_loaders: the train loaders of the different datasets to use, the biggest trainloader should be in first position
+    :return: loss
+    '''
     model.train()
+    batch_counts = [len(loader) for loader in train_loaders]
+    max_batches = batch_counts[0]  # assuming the list is already sorted from largest to smallest
 
-    #ratio of the samples, ethereum is bigger, we want to keep the samples balanced so every n sample from ethereum we use one from rabo
-    ratio = max(1, round(len(train_loader_ethereum) / len(train_loader_rabo)))
-    iter_rabo = iter(train_loader_rabo)
+    # handle multi-loader case
+    if len(train_loaders) > 1:
+        ratios = [round(max_batches / count) for count in batch_counts[1:]]
+        iter_list = [iter(loader) for loader in train_loaders[1:]]
+    else:
+        ratios = []
+        iter_list = []
 
     total_loss = total_examples = 0
-    for batch_idx, batch in enumerate(tqdm(train_loader_ethereum, desc=f'Epoch {epoch:02d}')):
+    for batch_idx, batch in enumerate(tqdm(train_loaders[0], desc=f'Epoch {epoch:02d}')):
 
         batches = []
 
-        #ethereum sample
+        # we put here the batch of the biggest dataset
         batches.append(batch.to(device))
-        #rabobank sample
-        if batch_idx % ratio == 0:
-            try:
-                batches.append(next(iter_rabo).to(device))  # Try getting the next batch
-            except StopIteration:
-                iter_rabo = iter(train_loader_rabo)  # Reset iterator when exhausted
-                batches.append(next(iter_rabo).to(device))  # Get next batch
+        # and here we add all the other batches
+        for ratio_idx, ratio in enumerate(ratios):
+            if batch_idx % ratio == 0:
+                try:
+                    batches.append(next(iter_list[ratio_idx]).to(device))  # Try getting the next batch
+                except StopIteration:
+                    iter_list[ratio_idx] = iter(train_loaders[ratio_idx+1])  # Reset iterator when exhausted
+                    batches.append(next(iter_list[ratio_idx]).to(device))  # Get next batch
 
         for idx, batch_loop in enumerate(batches):
             optimizer.zero_grad()
@@ -199,7 +211,6 @@ def train(epoch, train_loader_ethereum, train_loader_rabo):
             optimizer.step()
             total_loss += float(loss) * pos_z.size(0)
             total_examples += pos_z.size(0)
-
 
     return total_loss / total_examples
 
@@ -221,12 +232,12 @@ def test():
 '''
 
 if __name__ == '__main__':
-    '''
+
     dataset = RealDataTraining(root = processed_data_path, add_topological_features = False)
 
     data_rabo = dataset[0]
     data_ethereum = dataset[1]
-    
+
     train_loader_rabo = NeighborLoader(
         data_rabo,
         batch_size=256,
@@ -251,24 +262,28 @@ if __name__ == '__main__':
         shuffle=True,
         num_neighbors=[10, 10, 25]
     )
+    '''
 
+    #set the train loader from the biggest to the smallest, otherwise it won't work
+    train_loaders = [train_loader_ethereum]
 
+    #define the model, the unique layers correspond to the number of "flipping layers", meaning that
+    #each dataset has its own layer
     model = DeepGraphInfomax(
-        hidden_channels=64, encoder=Encoder(64, 64, 2),
+        hidden_channels=64, encoder=Encoder(64, 64, len(train_loaders)),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption).to(device)
 
-    #model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
-    with open("training_log.txt", "w") as file:
+    with open("training_log_only_ethereum_topo_false.txt", "w") as file:
         for epoch in range(1, 30):
-            loss = train(epoch, train_loader_aml, train_loader_aml)
+            loss = train(epoch, train_loaders)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)
 
     torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_graphsage_unsup_trained.pth'))
 
-#test_acc = test()
-#print(f'Test Accuracy: {test_acc:.4f}')
+# test_acc = test()
+# print(f'Test Accuracy: {test_acc:.4f}')
