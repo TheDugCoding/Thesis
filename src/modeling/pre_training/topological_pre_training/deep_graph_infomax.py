@@ -283,7 +283,7 @@ if __name__ == '__main__':
             print(log)
             file.write(log)
 
-    torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_graphsage_unsup_trained.pth'))
+    torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_only_ethereum_topo_false.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')
