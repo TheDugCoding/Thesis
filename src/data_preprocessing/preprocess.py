@@ -208,13 +208,20 @@ def pre_process_elliptic():
         # Add edges to the graph from the dataset
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
-            if index== 1:
+            if index== 3:
                 break
 
           # Set index for faster lookup
         for node in G_addr_addr.nodes():
             if node in df_wallet_features.index:
-                attr_dict = df_wallet_features.loc[node].to_dict()
+                attr_dict = df_wallet_features.loc[node]
+                if len(attr_dict) == 57:
+                    attr_dict = attr_dict.to_dict()
+                else:
+                    attr_dict = attr_dict.iloc[-1].to_dict()
+
+                nx.set_node_attributes(G_addr_addr, {node: attr_dict})
+                """
                 for k, v in attr_dict.items():
                     if not isinstance(v, type):  # skip values of type `type`
                         try:
@@ -223,7 +230,7 @@ def pre_process_elliptic():
                             print(f"Failed to set attribute {k} for node {node}: {e}")
                     else:
                         print(f'AAAAAAA  {k}')
-
+                """
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
 
@@ -344,13 +351,13 @@ class EllipticDataset(Dataset):
             ])
 
             x = pyg_elliptic.x[:, [
-                                      0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                                      0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                                       23,
                                       24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
                                       43, 44,
-                                      45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61
+                                      45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60
                                   ]]
-            y = pyg_elliptic.x[:, 6]
+            y = pyg_elliptic.x[:, 5]
 
         else:
             pyg_elliptic = from_networkx(pre_process_aml_world(), group_node_attrs=[
@@ -570,4 +577,4 @@ dataset = AmlSimDataset(root = processed_data_location)
 
 # dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
 # pre_process_ethereum()
-#test = pre_process_elliptic()
+test = pre_process_elliptic()
