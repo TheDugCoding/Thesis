@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=DGI_train_only_rabobank_topo_false      # Job name
+#SBATCH --job-name=DGI_train_only_rabobank_topo_true      # Job name
 #SBATCH --output=pyg-multinode.log        # outputfile
 #SBATCH --error=error.txt             # Standard error file
 #SBATCH --nodes=1                     # Number of nodes
