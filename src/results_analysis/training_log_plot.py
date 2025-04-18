@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 epochs = []
 losses = []
 
-with open('C://Users//lucad//OneDrive//Desktop//thesis//training results//training//pre training//training results - DGI framework//code_v2//training_log_only_rabo_topo_false.txt', 'r') as f:
+with open('C://Users//lucad//OneDrive//Desktop//thesis//training results//training//pre training//training results - DGI framework//code_v2//training_log_only_rabo_topo_true.txt', 'r') as f:
     for line in f:
         if "Epoch" in line:
             parts = line.strip().split(',')
@@ -16,12 +16,12 @@ with open('C://Users//lucad//OneDrive//Desktop//thesis//training results//traini
 # Plotting
 plt.figure(figsize=(10, 5))
 plt.plot(epochs, losses, marker='o', linestyle='-', color='royalblue')
-plt.title('Training Loss Over Epochs, only rabobank without topological features')
+plt.title('Training Loss Over Epochs, only rabobank with topological features')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.grid(True)
 plt.tight_layout()
 
-plt.savefig("C://Users//lucad//OneDrive//Desktop//thesis//training results//training//pre training//training results - DGI framework//code_v2//training_log_only_rabo_topo_false.png")
+plt.savefig("C://Users//lucad//OneDrive//Desktop//thesis//training results//training//pre training//training results - DGI framework//code_v2//training_log_only_rabo_topo_true.png")
 
 plt.show()

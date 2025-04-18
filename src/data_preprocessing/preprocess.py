@@ -390,13 +390,10 @@ class EllipticDataset(Dataset):
 
         # Create and save the PyG Data object, in future add the edge features if required
         data = Data(x=x, edge_index=pyg_elliptic.edge_index, y=y)
-        node_transform = RandomNodeSplit(num_test=int(data.x.shape[0] * 0.2))
-        node_splits = node_transform(data)
-        data.train_mask = node_splits.train_mask
-        data.test_mask = node_splits.test_mask
+        node_transform = RandomNodeSplit(split="random",num_val=0.0,num_test=0.2)
+        data = node_transform(data)
 
-
-        torch.save(pyg_elliptic, self.processed_paths[0])
+        torch.save(data, self.processed_paths[0])
 
     def len(self):
         return len(self.processed_file_names)

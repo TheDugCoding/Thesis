@@ -1,12 +1,12 @@
 import os
 
-import torch
-import torch_geometric
-import torch.nn.functional as F
-from torch_geometric.nn import GATConv
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
-
+import torch
+import torch.nn.functional as F
+import torch_geometric
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from torch_geometric.nn import GATConv
+from torch_geometric.loader import NeighborLoader
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
@@ -23,6 +23,7 @@ elif torch_geometric.is_xpu_available():
     device = torch.device('xpu')
 else:
     device = torch.device('cpu')
+
 
 class GAT(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, heads):
@@ -42,8 +43,14 @@ class GAT(torch.nn.Module):
 
 
 # Load your dataset
-data = EllipticDataset(root = processed_data_path, add_topological_features = True)
+data = EllipticDataset(root=processed_data_path, add_topological_features=True)
 
+train_loader = NeighborLoader(
+    data,
+    num_neighbors=[10, 10],
+    batch_size=32,
+    input_nodes=data.train_mask,
+)
 
 # Define model, optimizer, and loss function
 model = GAT(data.num_features, 64, 3,
@@ -51,22 +58,34 @@ model = GAT(data.num_features, 64, 3,
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
 criterion = torch.nn.CrossEntropyLoss()
 
+
 # Training loop
-def train():
+def train(train_loader):
     model.train()
-    optimizer.zero_grad()
-    out = model(data.x, data.edge_index)
-    loss = criterion(out[data.train_mask], data.y[data.train_mask])
-    loss.backward()
-    optimizer.step()
-    return loss.item()
+    total_loss = 0
+
+    for batch in train_loader:
+        batch = batch.to(device)
+        optimizer.zero_grad()
+
+        # Forward pass
+        out = model(batch.x, batch.edge_index)
+
+        # Only calculate loss for the target (input) nodes, not the neighbors
+        loss = criterion(out[batch.input_id], batch.y[batch.input_id])
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item()
+
+    return total_loss / len(train_loader)
 
 
 torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_gat_trained.pth'))
 
 # Run training
 for epoch in range(30):
-    loss = train()
+    loss = train(train_loader)
     print(f"Epoch {epoch + 1}, Loss: {loss:.4f}")
 
 # Inference
@@ -75,7 +94,8 @@ preds = model(data.x, data.edge_index).argmax(dim=1)
 accuracy = (preds[data.test_mask] == data.y[data.test_mask]).sum().item() / data.y[data.test_mask].size(0)
 print(f"Final Accuracy: {accuracy:.4f}")
 print('Confusion matrix')
-confusion_matrix = confusion_matrix([label.bool().item() for label in data.y[data.test_mask]], [pred.bool().item() for pred in preds[data.test_mask]])
+confusion_matrix = confusion_matrix([label.bool().item() for label in data.y[data.test_mask]],
+                                    [pred.bool().item() for pred in preds[data.test_mask]])
 print(confusion_matrix)
 ConfusionMatrixDisplay(confusion_matrix).plot()
 # Display and save confusion matrix plot
@@ -84,5 +104,4 @@ disp.plot()
 plt.title('Confusion Matrix')
 plt.savefig('confusion_matrix_plot.png')  # Save the plot as a PNG file
 
-#plt.show()
-
+# plt.show()
