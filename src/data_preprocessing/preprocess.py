@@ -210,8 +210,6 @@ def pre_process_elliptic():
         # Add edges to the graph from the dataset
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
-            if index == 10000:
-                break
 
         for node in G_addr_addr.nodes():
             if node in df_wallet_features.index:
