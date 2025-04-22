@@ -179,6 +179,13 @@ class DGIPlusGNN(torch.nn.Module):
         self.dgi = dgi
         self.classifier = classifier
 
+    def forward(self, x, edge_index):
+        x = self.dgi(x, edge_index)
+
+
+        return x
+
+
 
 #loader = NeighborLoader(graph, num_neighbors=[num_neighbors], batch_size=1, input_nodes=[node_idx])
 

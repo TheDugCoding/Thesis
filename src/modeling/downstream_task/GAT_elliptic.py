@@ -93,7 +93,7 @@ with open("training_log_gat_elliptic.txt", "w") as file:
         file.write(log)
 
 torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_gat_trained.pth'))
-
+"""
 # Inference
 model.eval()
 with torch.no_grad():
@@ -116,3 +116,4 @@ plt.title('Confusion Matrix')
 plt.savefig('confusion_matrix_plot.png')  # Save the plot as a PNG file
 
 # plt.show()
+"""
