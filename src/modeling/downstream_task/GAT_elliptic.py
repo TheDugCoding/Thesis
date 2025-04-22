@@ -38,18 +38,19 @@ class GAT(torch.nn.Module):
         x = F.elu(self.conv1(x, edge_index))
         x = F.dropout(x, p=0.6, training=self.training)
         x = self.conv2(x, edge_index)
-        x = torch.sigmoid(x)
         return x
 
 
 # Load your dataset
 data = EllipticDataset(root=processed_data_path, add_topological_features=True)
 
+data = data[0]
+
 train_loader = NeighborLoader(
     data,
     num_neighbors=[10, 10],
-    batch_size=32,
-    input_nodes=data.train_mask,
+    batch_size=64,
+    input_nodes=data.train_mask
 )
 
 # Define model, optimizer, and loss function
@@ -72,7 +73,7 @@ def train(train_loader):
         out = model(batch.x, batch.edge_index)
 
         # Only calculate loss for the target (input) nodes, not the neighbors
-        loss = criterion(out[batch.input_id], batch.y[batch.input_id])
+        loss = criterion(out[:batch.batch_size], batch.y[:batch.batch_size])
         loss.backward()
         optimizer.step()
 
@@ -81,21 +82,28 @@ def train(train_loader):
     return total_loss / len(train_loader)
 
 
-torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_gat_trained.pth'))
+
 
 # Run training
-for epoch in range(30):
-    loss = train(train_loader)
-    print(f"Epoch {epoch + 1}, Loss: {loss:.4f}")
+with open("training_log_gat_elliptic.txt", "w") as file:
+    for epoch in range(30):
+        loss = train(train_loader)
+        log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
+        print(log)
+        file.write(log)
+
+torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_gat_trained.pth'))
 
 # Inference
 model.eval()
-preds = model(data.x, data.edge_index).argmax(dim=1)
-accuracy = (preds[data.test_mask] == data.y[data.test_mask]).sum().item() / data.y[data.test_mask].size(0)
+with torch.no_grad():
+    data = data.to(device)
+    preds = model(data.x, data.edge_index).argmax(dim=1)
+    accuracy = (preds[data.test_mask] == data.y[data.test_mask]).sum().item() / data.y[data.test_mask].size(0)
 print(f"Final Accuracy: {accuracy:.4f}")
 print('Confusion matrix')
-confusion_matrix = confusion_matrix([label.bool().item() for label in data.y[data.test_mask]],
-                                    [pred.bool().item() for pred in preds[data.test_mask]])
+conf_matrix = confusion_matrix(data.y[data.test_mask].cpu(), preds[data.test_mask].cpu())
+
 print(confusion_matrix)
 ConfusionMatrixDisplay(confusion_matrix).plot()
 # Display and save confusion matrix plot

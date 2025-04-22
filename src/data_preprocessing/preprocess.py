@@ -208,8 +208,6 @@ def pre_process_elliptic():
         # Add edges to the graph from the dataset
         for index, row in df_addr_addr.iterrows():
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
-            if index== 3:
-                break
 
           # Set index for faster lookup
         for node in G_addr_addr.nodes():
@@ -357,7 +355,7 @@ class EllipticDataset(Dataset):
                                       43, 44,
                                       45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60
                                   ]]
-            y = pyg_elliptic.x[:, 5]
+            y = (pyg_elliptic.x[:, 5] - 1).long()
 
         else:
             pyg_elliptic = from_networkx(pre_process_aml_world(), group_node_attrs=[
@@ -384,7 +382,7 @@ class EllipticDataset(Dataset):
                                       21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
                                       39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56
                                   ]]
-            y = pyg_elliptic.x[:, 1]
+            y = (pyg_elliptic.x[:, 1] - 1).long()
 
         #pyg_elliptic.x = pyg_elliptic.x.float()
 
