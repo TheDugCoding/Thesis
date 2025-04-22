@@ -102,10 +102,13 @@ with torch.no_grad():
     accuracy = (preds[data.test_mask] == data.y[data.test_mask]).sum().item() / data.y[data.test_mask].size(0)
 print(f"Final Accuracy: {accuracy:.4f}")
 print('Confusion matrix')
-conf_matrix = confusion_matrix(data.y[data.test_mask].cpu(), preds[data.test_mask].cpu())
+true_labels = data.y[data.test_mask].cpu().numpy()
+predicted_labels = preds[data.test_mask].cpu().numpy()
 
-print(confusion_matrix)
-ConfusionMatrixDisplay(confusion_matrix).plot()
+cm = confusion_matrix(true_labels, predicted_labels)
+
+print(cm)
+ConfusionMatrixDisplay(cm).plot()
 # Display and save confusion matrix plot
 disp = ConfusionMatrixDisplay(confusion_matrix)
 disp.plot()
