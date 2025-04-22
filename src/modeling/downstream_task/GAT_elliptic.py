@@ -49,7 +49,7 @@ data = data[0]
 train_loader = NeighborLoader(
     data,
     num_neighbors=[10, 10],
-    batch_size=8,
+    batch_size=32,
     input_nodes=data.train_mask
 )
 
@@ -93,13 +93,22 @@ with open("training_log_gat_elliptic.txt", "w") as file:
         file.write(log)
 
 torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_gat_trained.pth'))
-"""
+
 # Inference
 model.eval()
+preds = []
+true = []
+
 with torch.no_grad():
-    data = data.to(device)
-    preds = model(data.x, data.edge_index).argmax(dim=1)
-    accuracy = (preds[data.test_mask] == data.y[data.test_mask]).sum().item() / data.y[data.test_mask].size(0)
+    for batch in test_loader:
+        batch = batch.to(device)
+        out = model(batch.x, batch.edge_index)
+        preds.append(out[:batch.batch_size].argmax(dim=1).cpu())
+        true.append(batch.y[:batch.batch_size].cpu())
+
+preds = torch.cat(preds)
+true_labels = torch.cat(true)
+accuracy = (preds[data.test_mask] == data.y[data.test_mask]).sum().item() / data.y[data.test_mask].size(0)
 print(f"Final Accuracy: {accuracy:.4f}")
 print('Confusion matrix')
 true_labels = data.y[data.test_mask].cpu().numpy()
@@ -110,10 +119,9 @@ cm = confusion_matrix(true_labels, predicted_labels)
 print(cm)
 ConfusionMatrixDisplay(cm).plot()
 # Display and save confusion matrix plot
-disp = ConfusionMatrixDisplay(confusion_matrix)
+disp = ConfusionMatrixDisplay(cm)
 disp.plot()
 plt.title('Confusion Matrix')
 plt.savefig('confusion_matrix_plot.png')  # Save the plot as a PNG file
 
 # plt.show()
-"""
