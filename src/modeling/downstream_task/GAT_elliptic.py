@@ -53,6 +53,13 @@ train_loader = NeighborLoader(
     input_nodes=data.train_mask
 )
 
+test_loader = NeighborLoader(
+    data,
+    num_neighbors=[10, 10],
+    batch_size=32,  # Adjust depending on memory
+    input_nodes=data.test_mask
+)
+
 # Define model, optimizer, and loss function
 model = GAT(data.num_features, 64, 3,
             8).to(device)
