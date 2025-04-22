@@ -49,7 +49,7 @@ data = data[0]
 train_loader = NeighborLoader(
     data,
     num_neighbors=[10, 10],
-    batch_size=16,
+    batch_size=8,
     input_nodes=data.train_mask
 )
 
