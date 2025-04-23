@@ -386,7 +386,7 @@ class EllipticDataset(Dataset):
             y = (pyg_elliptic.x[:, 5] - 1).long()
 
         else:
-            pyg_elliptic = from_networkx(pre_process_aml_world(), group_node_attrs=[
+            pyg_elliptic = from_networkx(pre_process_elliptic(), group_node_attrs=[
                 "Time step", "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
                 "last_block_appeared_in", "lifetime_in_blocks", "total_txs", "first_sent_block",
                 "first_received_block",
@@ -428,6 +428,59 @@ class EllipticDataset(Dataset):
         """Loads and returns the graph at the given index."""
         return torch.load(os.path.join(self.processed_dir, f'ellipticdataset.pt'))
 
+
+# Custom PyG dataset class
+class EllipticDatasetWithoutFeatures(Dataset):
+    def __init__(self, root, add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
+        self.add_topological_features = add_topological_features
+        super().__init__(root, transform, pre_transform, pre_filter)
+
+    @property
+    def raw_file_names(self):
+        return []  # No raw files, since graphs are pre-processed elsewhere.
+
+    @property
+    def processed_file_names(self):
+        return ['ellipticdatasetwithoutfeatures.pt']
+
+    def process(self):
+        """Processes raw data into PyG data objects and saves them as .pt files."""
+        # Generate the graph data from pre-processing functions
+
+        if (self.add_topological_features):
+            pyg_elliptic = from_networkx(pre_process_elliptic(), group_node_attrs=[
+                # structural features
+                "degree", "pagerank_normalized", "eigenvector_centrality_norm",
+                "clustering_coef", "class"
+            ])
+
+            x = pyg_elliptic.x[:, [
+                                      0, 1, 2, 3
+                                  ]]
+            y = (pyg_elliptic.x[:, 4] - 1).long()
+
+        else:
+            pyg_elliptic = from_networkx(pre_process_elliptic(), group_node_attrs=[
+                "degree", "class"])
+
+            x = pyg_elliptic.x[:, [0]]
+            y = (pyg_elliptic.x[:, 1] - 1).long()
+
+        #pyg_elliptic.x = pyg_elliptic.x.float()
+
+        # Create and save the PyG Data object, in future add the edge features if required
+        data = Data(x=x, edge_index=pyg_elliptic.edge_index, y=y)
+        node_transform = RandomNodeSplit(split="train_rest",num_val=0.0,num_test=0.2)
+        data = node_transform(data)
+
+        torch.save(data, self.processed_paths[0])
+
+    def len(self):
+        return len(self.processed_file_names)
+
+    def get(self, idx):
+        """Loads and returns the graph at the given index."""
+        return torch.load(os.path.join(self.processed_dir, f'ellipticdatasetwithoutfeatures.pt'))
 
 # Custom PyG dataset class
 class AmlSimDataset(Dataset):
