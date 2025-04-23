@@ -10,7 +10,8 @@ from torch_geometric.nn import SAGEConv
 from torch_geometric.nn.inits import reset, uniform
 from tqdm import tqdm
 
-from src.data_preprocessing.preprocess import RealDataTraining, AmlTestDataset, EllipticDataset
+from src.data_preprocessing.preprocess import RealDataTraining, AmlTestDataset, EllipticDataset, \
+    EllipticDatasetWithoutFeatures
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 EPS = 1e-15
@@ -265,7 +266,7 @@ if __name__ == '__main__':
     )
     """
 
-    data = EllipticDataset(root=processed_data_path, add_topological_features=True)
+    data = EllipticDatasetWithoutFeatures(root=processed_data_path, add_topological_features=True)
 
     data = data[0]
 
