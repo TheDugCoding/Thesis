@@ -12,7 +12,6 @@ from tqdm import tqdm
 
 from src.data_preprocessing.preprocess import RealDataTraining, AmlTestDataset, EllipticDataset, \
     EllipticDatasetWithoutFeatures
-from src.modeling.final_framework.framework import train_loader
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 EPS = 1e-15
