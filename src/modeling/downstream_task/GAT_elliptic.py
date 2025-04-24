@@ -94,7 +94,7 @@ def train(train_loader):
 
 
 # Run training
-with open("training_log_gat_elliptic.txt", "w") as file:
+with open("training_log_gat_synthetic.txt", "w") as file:
     for epoch in range(30):
         loss = train(train_loader)
         log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
@@ -120,6 +120,10 @@ true_labels = torch.cat(true)
 accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
 print(f"Final Accuracy: {accuracy:.4f}")
 print('Confusion matrix')
+
+with open("final_accuracy_gat_trained.txt", "w") as f:
+    f.write(f"Final Accuracy: {accuracy:.4f}\n")
+
 true_labels = true_labels.numpy()
 predicted_labels = preds.numpy()
 
