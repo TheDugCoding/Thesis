@@ -43,8 +43,7 @@ class GAT(torch.nn.Module):
 
 
 # Load your dataset
-#data = EllipticDataset(root=processed_data_path, add_topological_features=True)
-data = AmlSimDataset(root=processed_data_path)
+data = EllipticDataset(root=processed_data_path, add_topological_features=True)
 
 data = data[0]
 
