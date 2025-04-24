@@ -7,7 +7,7 @@ from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score
 
-from src.data_preprocessing.preprocess import EllipticDataset, RealDataTraining
+from src.data_preprocessing.preprocess import EllipticDataset, RealDataTraining, EllipticDatasetWithoutFeatures
 from src.modeling.downstream_task.GAT_elliptic import GAT
 from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomax, Encoder
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
@@ -33,8 +33,9 @@ class DGIPlusGNN(torch.nn.Module):
         self.dgi = dgi
         self.classifier = classifier
 
-    def forward(self, x, edge_index):
-        x = self.dgi(x, edge_index)
+    def forward(self, x, topological_feature, edge_index):
+        topological_latent_representation = self.dgi(topological_feature, edge_index)
+        x = torch.cat([x, topological_latent_representation], dim=1)
         x = self.classifier(x,edge_index)
 
         return x
@@ -48,7 +49,8 @@ else:
     device = torch.device('cpu')
 
 # Load your dataset
-data = EllipticDataset(root=processed_data_path, add_topological_features=False)
+data = EllipticDataset(root=processed_data_path, add_topological_features=True)
+topological_data = EllipticDatasetWithoutFeatures(root=processed_data_path, add_topological_features=True)
 
 data = data[0]
 
@@ -62,13 +64,13 @@ train_loader = NeighborLoader(
 test_loader = NeighborLoader(
     data,
     num_neighbors=[10, 10],
-    batch_size=32,  # Adjust depending on memory
+    batch_size=32,
     input_nodes=data.test_mask
 )
 
 # define the framework, first DGI and then the GNN used in the downstream task
 dgi_model = DeepGraphInfomax(
-    hidden_channels=64, encoder=Encoder(64, 64, 2),
+    hidden_channels=64, encoder=Encoder(64, 64, 1),
     summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
     corruption=corruption).to(device)
 # load the pretrained parameters
@@ -92,11 +94,13 @@ def train(train_loader):
     total_loss = 0
 
     for batch in tqdm(train_loader):
+        #take only the topological feature from the dataset
+        batch_topological_feature = topological_data.x[batch.n_id].to(device)
         batch = batch.to(device)
         optimizer.zero_grad()
 
         # Forward pass
-        out = model(batch.x, batch.edge_index)
+        out = model(batch.x, batch_topological_feature, batch.edge_index)
 
         # Only calculate loss for the target (input) nodes, not the neighbors
         loss = criterion(out[:batch.batch_size], batch.y[:batch.batch_size])
