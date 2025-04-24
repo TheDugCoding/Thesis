@@ -7,8 +7,9 @@ import torch_geometric
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from torch_geometric.nn import GATConv
 from torch_geometric.loader import NeighborLoader
+from tqdm import tqdm
 
-from src.data_preprocessing.preprocess import EllipticDataset
+from src.data_preprocessing.preprocess import EllipticDataset, AmlSimDataset
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -42,7 +43,8 @@ class GAT(torch.nn.Module):
 
 
 # Load your dataset
-data = EllipticDataset(root=processed_data_path, add_topological_features=True)
+#data = EllipticDataset(root=processed_data_path, add_topological_features=True)
+data = AmlSimDataset(root=processed_data_path)
 
 data = data[0]
 
@@ -72,7 +74,7 @@ def train(train_loader):
     model.train()
     total_loss = 0
 
-    for batch in train_loader:
+    for batch in tqdm(train_loader):
         batch = batch.to(device)
         optimizer.zero_grad()
 

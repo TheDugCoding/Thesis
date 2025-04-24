@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=DGI_Training_only_elliptic_without_features_topo_false      # Job name
+#SBATCH --job-name=GAT_TRAINING_Synthetic      # Job name
 #SBATCH --output=pyg-multinode.log        # outputfile
 #SBATCH --error=error.txt             # Standard error file
 #SBATCH --nodes=1                     # Number of nodes

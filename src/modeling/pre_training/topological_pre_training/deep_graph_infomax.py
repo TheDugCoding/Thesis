@@ -266,7 +266,7 @@ if __name__ == '__main__':
     )
     """
 
-    data = EllipticDatasetWithoutFeatures(root=processed_data_path, add_topological_features=False)
+    data = EllipticDatasetWithoutFeatures(root=processed_data_path, add_topological_features=True)
 
     data = data[0]
 
@@ -274,7 +274,6 @@ if __name__ == '__main__':
         data,
         num_neighbors=[10, 10, 25],
         batch_size=32,
-        input_nodes=data.train_mask
     )
 
     #set the train loader from the biggest to the smallest, otherwise it won't work

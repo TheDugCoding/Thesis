@@ -7,6 +7,8 @@ import torch
 from torch_geometric.data import Dataset, Data
 from torch_geometric.transforms import RandomNodeSplit
 from torch_geometric.utils import from_networkx
+from tqdm import tqdm
+
 
 from src.data_preprocessing.utils import get_structural_info
 from src.utils import get_data_sub_folder, get_data_folder
@@ -197,6 +199,7 @@ def pre_process_elliptic():
     if not os.path.exists(os.path.join(processed_data_location, 'elliptic_addr_addr.graphml')):
         # Load the dataset
         df_addr_addr = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_edges))
+        df_addr_addr = df_addr_addr.drop_duplicates()
         df_wallet_features = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_node_features))
 
         DUMMY_FEATURES = {f'feature_{i}': 0 for i in range(57)}
@@ -208,10 +211,10 @@ def pre_process_elliptic():
         df_wallet_features = df_wallet_features.set_index('address')
 
         # Add edges to the graph from the dataset
-        for index, row in df_addr_addr.iterrows():
+        for index, row in tqdm(df_addr_addr.iterrows(), total=df_addr_addr.shape[0]):
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
 
-        for node in G_addr_addr.nodes():
+        for node in tqdm(G_addr_addr.nodes(), total=G_addr_addr.number_of_nodes()):
             if node in df_wallet_features.index:
                 # Get all rows for the node
                 node_data = df_wallet_features.loc[node]
@@ -257,6 +260,7 @@ def pre_process_elliptic():
                         print(f'AAAAAAA  {k}')
                 
         """
+        print("setting node attributes")
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
 
@@ -357,7 +361,7 @@ class EllipticDataset(Dataset):
                 "clustering_coef",
 
                 # core features
-                "Time step", "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
+                "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
                 "last_block_appeared_in", "lifetime_in_blocks", "total_txs", "first_sent_block",
                 "first_received_block",
                 "num_timesteps_appeared_in", "btc_transacted_total", "btc_transacted_min", "btc_transacted_max",
@@ -377,17 +381,17 @@ class EllipticDataset(Dataset):
             ])
 
             x = pyg_elliptic.x[:, [
-                                      0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                                      0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                                       23,
                                       24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
                                       43, 44,
-                                      45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60
+                                      45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59
                                   ]]
-            y = (pyg_elliptic.x[:, 5] - 1).long()
+            y = (pyg_elliptic.x[:, 4] - 1).long()
 
         else:
             pyg_elliptic = from_networkx(pre_process_elliptic(), group_node_attrs=[
-                "Time step", "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
+                "class", "num_txs_as_sender", "num_txs_as receiver", "first_block_appeared_in",
                 "last_block_appeared_in", "lifetime_in_blocks", "total_txs", "first_sent_block",
                 "first_received_block",
                 "num_timesteps_appeared_in", "btc_transacted_total", "btc_transacted_min", "btc_transacted_max",
@@ -406,11 +410,11 @@ class EllipticDataset(Dataset):
                 "transacted_w_address_mean", "transacted_w_address_median"])
 
             x = pyg_elliptic.x[:, [
-                                      0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                                      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
                                       21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
-                                      39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56
+                                      39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55
                                   ]]
-            y = (pyg_elliptic.x[:, 1] - 1).long()
+            y = (pyg_elliptic.x[:, 0] - 1).long()
 
         #pyg_elliptic.x = pyg_elliptic.x.float()
 
@@ -497,15 +501,13 @@ class AmlSimDataset(Dataset):
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
-        train_percentage = 0.8
-        test_percentage = 0.2
 
         # Generate the graph data
         G_aml_sim = pre_process_aml_sim()
 
         # Extract available node features dynamically
         first_node = next(iter(G_aml_sim.nodes(data=True)))[1]  # Get the attributes of the first node
-        available_node_attrs = [key for key, value in first_node.items() if pd.notna(value) and value != ""]
+
 
         # Convert NetworkX graph to PyG format
         data = from_networkx(G_aml_sim,
@@ -519,11 +521,9 @@ class AmlSimDataset(Dataset):
         y = data.x[:, 1]
 
         # Create and save the PyG Data object
-        data = Data(x=x, edge_index=data.edge_index, edge_attr=data.edge_attr, y=y)
-        node_transform = RandomNodeSplit(num_test=int(data.x.shape[0] * 0.2))
-        node_splits = node_transform(data)
-        data.train_mask = node_splits.train_mask
-        data.test_mask = node_splits.test_mask
+        data = Data(x=x, edge_index=data.edge_index, y=y)
+        node_transform = RandomNodeSplit(split="train_rest", num_val=0.0, num_test=0.2)
+        data = node_transform(data)
 
         torch.save(data, os.path.join(self.processed_dir, 'aml_sim_dataset.pt'))
 
