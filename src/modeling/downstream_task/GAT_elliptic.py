@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 import torch_geometric
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score
 from torch_geometric.nn import GATConv
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
@@ -120,10 +120,12 @@ true_labels = torch.cat(true)
 accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
 print(f"Final Accuracy: {accuracy:.4f}")
 print('Confusion matrix')
+recall = recall_score(true_labels, preds, average='macro')
 f1 = f1_score(true_labels, preds, average='macro')
 
 with open("final_accuracy_gat_trained.txt", "w") as f:
     f.write(f"Final Accuracy: {accuracy:.4f}\n")
+    f.write(f"Recall (macro): {recall:.4f}\n")
     f.write(f"F1 Score (macro): {f1:.4f}\n")
 
 true_labels = true_labels.numpy()
