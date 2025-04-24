@@ -86,9 +86,9 @@ def train(train_loader):
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item()
+        total_loss += loss.item() * batch.size(0)
 
-    return total_loss / len(train_loader)
+    return total_loss / len(train_loader.dataset)
 
 
 
