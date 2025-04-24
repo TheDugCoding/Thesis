@@ -518,7 +518,7 @@ class AmlSimDataset(Dataset):
 
         # select all the attributes except 'prior_sar_count', which is the target variable
         x = data.x[:, [0, 2, 3, 4, 5]]
-        y = data.x[:, 1]
+        y = data.x[:, 1].long()
 
         # Create and save the PyG Data object
         data = Data(x=x, edge_index=data.edge_index, y=y)
