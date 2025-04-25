@@ -380,8 +380,11 @@ class EllipticDataset(Dataset):
                 "transacted_w_address_mean", "transacted_w_address_median"
             ])
 
+            topological_features = pyg_elliptic.x[:, [
+                                      0, 1, 2, 3 ]]
+
             x = pyg_elliptic.x[:, [
-                                      0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                                    5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                                       23,
                                       24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
                                       43, 44,
@@ -409,6 +412,8 @@ class EllipticDataset(Dataset):
                 "transacted_w_address_total", "transacted_w_address_min", "transacted_w_address_max",
                 "transacted_w_address_mean", "transacted_w_address_median"])
 
+            topological_features = []
+
             x = pyg_elliptic.x[:, [
                                       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
                                       21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
@@ -419,7 +424,7 @@ class EllipticDataset(Dataset):
         #pyg_elliptic.x = pyg_elliptic.x.float()
 
         # Create and save the PyG Data object, in future add the edge features if required
-        data = Data(x=x, edge_index=pyg_elliptic.edge_index, y=y)
+        data = Data(x=x, edge_index=pyg_elliptic.edge_index, topological_features = topological_features, y=y)
         node_transform = RandomNodeSplit(split="train_rest",num_val=0.0,num_test=0.2)
         data = node_transform(data)
 
@@ -653,4 +658,4 @@ dataset = AmlSimDataset(root = processed_data_location)
 
 # dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
 # pre_process_ethereum()
-#test = pre_process_elliptic()
+pre_process_elliptic()

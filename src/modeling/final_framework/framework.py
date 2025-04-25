@@ -18,8 +18,7 @@ relative_path_trained_model = 'modeling/final_framework/trained_models'
 relative_path_trained_dgi = 'modeling/pre_training/topological_pre_training/trained_models'
 processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_model_path = get_src_sub_folder(relative_path_trained_model)
-
-dataset = RealDataTraining(root=processed_data_path, add_topological_features=False)
+trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
 
 EPS = 1e-15
 
@@ -33,10 +32,13 @@ class DGIPlusGNN(torch.nn.Module):
         self.dgi = dgi
         self.classifier = classifier
 
-    def forward(self, x, topological_feature, edge_index):
-        topological_latent_representation = self.dgi(topological_feature, edge_index)
+    def forward(self, batch):
+        # it refers to the DGI model and the special "flipping layer"
+        x = batch.x
+        topological_latent_representation = self.dgi(batch.topological_features, batch.edge_index,
+                                          batch.batch_size, layer=1)
         x = torch.cat([x, topological_latent_representation], dim=1)
-        x = self.classifier(x,edge_index)
+        x = self.classifier(x,batch.edge_index)
 
         return x
 
@@ -50,7 +52,6 @@ else:
 
 # Load your dataset
 data = EllipticDataset(root=processed_data_path, add_topological_features=True)
-topological_data = EllipticDatasetWithoutFeatures(root=processed_data_path, add_topological_features=True)
 
 data = data[0]
 
@@ -70,16 +71,19 @@ test_loader = NeighborLoader(
 
 # define the framework, first DGI and then the GNN used in the downstream task
 dgi_model = DeepGraphInfomax(
-    hidden_channels=64, encoder=Encoder(64, 64, 1),
+    hidden_channels=64, encoder=Encoder(64, 64, 2),
     summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
     corruption=corruption).to(device)
 # load the pretrained parameters
-dgi_model.load_state_dict(torch.load(os.path.join(relative_path_trained_dgi, 'final_framework_trained.pth')))
+dgi_model.load_state_dict(torch.load(os.path.join(trained_dgi_model_path, 'modeling_graphsage_unsup_trained.pth')))
+#reset first layer
+first_layer = dgi_model.encoder.dataset_convs[0]
+first_layer.reset_parameters()
 # freeze layers 2 and 3, let layer 1 learn
-dgi_model.conv2.weight.requires_grad = False
-dgi_model.conv2.bias.requires_grad = False
-dgi_model.conv3.weight.requires_grad = False
-dgi_model.conv3.bias.requires_grad = False
+for param in dgi_model.encoder.conv2.parameters():
+    param.requires_grad = False
+for param in dgi_model.encoder.conv3.parameters():
+    param.requires_grad = False
 
 #define the downstream GNN
 gnn_model = GAT(data.num_features, 64, 3,
@@ -95,12 +99,11 @@ def train(train_loader):
 
     for batch in tqdm(train_loader):
         #take only the topological feature from the dataset
-        batch_topological_feature = topological_data.x[batch.n_id].to(device)
         batch = batch.to(device)
         optimizer.zero_grad()
 
         # Forward pass
-        out = model(batch.x, batch_topological_feature, batch.edge_index)
+        out = model(batch)
 
         # Only calculate loss for the target (input) nodes, not the neighbors
         loss = criterion(out[:batch.batch_size], batch.y[:batch.batch_size])
@@ -110,6 +113,14 @@ def train(train_loader):
         total_loss += loss.item() * batch.size(0)
 
     return total_loss / len(train_loader.dataset)
+
+#Run training
+with open("training_framework.txt", "w") as file:
+    for epoch in range(30):
+        loss = train(train_loader)
+        log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
+        print(log)
+        file.write(log)
 
 torch.save(model.state_dict(), os.path.join(trained_model_path, 'final_framework_trained.pth'))
 
@@ -124,6 +135,8 @@ with torch.no_grad():
         out = model(batch.x, batch.edge_index)
         preds.append(out[:batch.batch_size].argmax(dim=1).cpu())
         true.append(batch.y[:batch.batch_size].cpu())
+
+
 
 preds = torch.cat(preds)
 true_labels = torch.cat(true)
