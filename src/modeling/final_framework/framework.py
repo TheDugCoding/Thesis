@@ -51,7 +51,7 @@ else:
     device = torch.device('cpu')
 
 # Load your dataset
-data = EllipticDataset(root=processed_data_path, add_topological_features=True)
+data = EllipticDataset(root=processed_data_path)
 
 data = data[0]
 
