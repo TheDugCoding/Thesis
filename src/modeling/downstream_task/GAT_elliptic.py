@@ -46,7 +46,7 @@ class GAT(torch.nn.Module):
 # Load your dataset
 data = EllipticDataset(root=processed_data_path)
 
-data_train = data[1]
+data_train = data[0]
 
 train_loader = NeighborLoader(
     data_train,
