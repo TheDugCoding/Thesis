@@ -35,6 +35,7 @@ class GAT(torch.nn.Module):
                              concat=False, dropout=0.6)
 
     def forward(self, x, edge_index):
+        #Dropout helps prevent overfitting by randomly nullifying outputs from neurons during the training process. This encourages the network to learn redundant representations for everything and hence, increases the model's ability to generalize.
         x = F.dropout(x, p=0.6, training=self.training)
         x = F.elu(self.conv1(x, edge_index))
         x = F.dropout(x, p=0.6, training=self.training)
@@ -45,20 +46,21 @@ class GAT(torch.nn.Module):
 # Load your dataset
 data = EllipticDataset(root=processed_data_path)
 
-data = data[0]
+data_train = data[1]
+data_test = data[0]
 
 train_loader = NeighborLoader(
-    data,
+    data_train,
     num_neighbors=[10, 10],
     batch_size=32,
-    input_nodes=data.train_mask
+    input_nodes=data_train.train_mask
 )
 
 test_loader = NeighborLoader(
-    data,
+    data_test,
     num_neighbors=[10, 10],
     batch_size=32,  # Adjust depending on memory
-    input_nodes=data.test_mask
+    #input_nodes=data_test.test_mask
 )
 
 # Define model, optimizer, and loss function
@@ -94,7 +96,7 @@ def train(train_loader):
 
 #Run training
 with open("training_log_gat_synthetic.txt", "w") as file:
-    for epoch in range(30):
+    for epoch in range(100):
         loss = train(train_loader)
         log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
         print(log)
