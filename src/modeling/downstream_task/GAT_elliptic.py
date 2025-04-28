@@ -47,7 +47,6 @@ class GAT(torch.nn.Module):
 data = EllipticDataset(root=processed_data_path)
 
 data_train = data[1]
-data_test = data[0]
 
 train_loader = NeighborLoader(
     data_train,
@@ -57,7 +56,7 @@ train_loader = NeighborLoader(
 )
 
 test_loader = NeighborLoader(
-    data_test,
+    data_train,
     num_neighbors=[10, 10],
     batch_size=32,  # Adjust depending on memory
     #input_nodes=data_test.test_mask
@@ -71,7 +70,7 @@ criterion = torch.nn.CrossEntropyLoss()
 
 
 # Training loop
-def train_with_batches(train_loader):
+def train(train_loader):
     model.train()
     total_loss = 0
 
@@ -91,24 +90,11 @@ def train_with_batches(train_loader):
 
     return total_loss / len(train_loader.dataset)
 
-def train_without_batches(data):
-    data_train = data.to(device)
-    optimizer.zero_grad()
-
-    # Forward pass
-    out = model(data_train.x, data_train.edge_index)
-
-    loss = criterion(out[data_train.train_mask], data_train.y[data_train])
-    loss.backward()
-    optimizer.step()
-
-    return loss.item()
-
 
 #Run training
 with open("training_log_gat_synthetic.txt", "w") as file:
     for epoch in range(100):
-        loss = train_without_batches(data_train)
+        loss = train(train_loader)
         log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
         print(log)
         file.write(log)
