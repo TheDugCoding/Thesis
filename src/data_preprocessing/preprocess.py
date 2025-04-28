@@ -230,13 +230,13 @@ def pre_process_elliptic():
 
                 # Convert complex types to string and remove unsupported ones
                 clean_attr_dict = {}
-                """
+
                 for k, v in attr_dict.items():
-                    if isinstance(v, (dict, list, tuple, type)):
-                        print(f"Skipping unsupported attr {k} (type={type(v)}) for node {node}")
-                        continue
+                    #if isinstance(v, (dict, list, tuple, type)):
+                        #print(f"Skipping unsupported attr {k} (type={type(v)}) for node {node}")
+                        #continue
                     clean_attr_dict[k] = v
-                """
+
                 nx.set_node_attributes(G_addr_addr, {node: clean_attr_dict})
 
         """
