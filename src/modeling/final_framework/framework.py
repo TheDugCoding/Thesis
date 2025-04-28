@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch_geometric
 from torch_geometric.loader import NeighborLoader
+from torch_geometric.nn import SAGEConv
 from tqdm import tqdm
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score
 
@@ -36,8 +37,9 @@ class DGIPlusGNN(torch.nn.Module):
         # it refers to the DGI model and the special "flipping layer"
         x = batch.x
         topological_latent_representation = self.dgi(batch.topological_features, batch.edge_index,
-                                          batch.batch_size, layer=1)
-        x = torch.cat([x, topological_latent_representation], dim=1)
+                                          batch.batch_size, framework=True, layer=0)
+        #the DGI encoder returns three values pos_z, neg_z and summary, the latent representation of the graph is pops_z
+        x = torch.cat([x, topological_latent_representation[0]], dim=1)
         x = self.classifier(x,batch.edge_index)
 
         return x
@@ -76,21 +78,22 @@ dgi_model = DeepGraphInfomax(
     corruption=corruption).to(device)
 # load the pretrained parameters
 dgi_model.load_state_dict(torch.load(os.path.join(trained_dgi_model_path, 'modeling_graphsage_unsup_trained.pth')))
-#reset first layer
-first_layer = dgi_model.encoder.dataset_convs[0]
-first_layer.reset_parameters()
+#reset first layer, be sure that the hidden channels are the same in DGI
+dgi_model.encoder.dataset_convs[0] = SAGEConv(4, 64)
 # freeze layers 2 and 3, let layer 1 learn
 for param in dgi_model.encoder.conv2.parameters():
     param.requires_grad = False
 for param in dgi_model.encoder.conv3.parameters():
     param.requires_grad = False
 
-#define the downstream GNN
-gnn_model = GAT(data.num_features, 64, 3,
+#define the downstream GNN, it is the same as GAT elliptic++. However the input is different according to the framework architecture
+gnn_model = GAT(data.num_features + 64, 64, 3,
             8).to(device)
-model = DGIPlusGNN(dgi_model, gnn_model)
+model = DGIPlusGNN(dgi_model, gnn_model).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 criterion = torch.nn.CrossEntropyLoss()
+
+
 
 # Training loop
 def train(train_loader):
@@ -114,15 +117,18 @@ def train(train_loader):
 
     return total_loss / len(train_loader.dataset)
 
-#Run training
-with open("training_framework.txt", "w") as file:
-    for epoch in range(30):
-        loss = train(train_loader)
-        log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
-        print(log)
-        file.write(log)
+if not os.path.exists(os.path.join(trained_model_path, 'final_framework_trained.pth')):
+    #Run training
+    with open("training_framework.txt", "w") as file:
+        for epoch in range(30):
+            loss = train(train_loader)
+            log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
+            print(log)
+            file.write(log)
 
-torch.save(model.state_dict(), os.path.join(trained_model_path, 'final_framework_trained.pth'))
+    torch.save(model.state_dict(), os.path.join(trained_model_path, 'final_framework_trained.pth'))
+else:
+    model.load_state_dict(torch.load(os.path.join(trained_model_path, 'final_framework_trained.pth'), map_location=device))
 
 # Inference
 model.eval()
@@ -130,9 +136,9 @@ preds = []
 true = []
 
 with torch.no_grad():
-    for batch in test_loader:
+    for batch in tqdm(test_loader):
         batch = batch.to(device)
-        out = model(batch.x, batch.edge_index)
+        out = model(batch)
         preds.append(out[:batch.batch_size].argmax(dim=1).cpu())
         true.append(batch.y[:batch.batch_size].cpu())
 

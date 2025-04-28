@@ -41,9 +41,9 @@ class GAT(torch.nn.Module):
         x = self.conv2(x, edge_index)
         return x
 
-"""
+
 # Load your dataset
-data = EllipticDataset(root=processed_data_path, add_topological_features=False)
+data = EllipticDataset(root=processed_data_path)
 
 data = data[0]
 
@@ -92,7 +92,7 @@ def train(train_loader):
 
 
 
-Run training
+#Run training
 with open("training_log_gat_synthetic.txt", "w") as file:
     for epoch in range(30):
         loss = train(train_loader)
@@ -141,4 +141,4 @@ plt.title('Confusion Matrix')
 plt.savefig('confusion_matrix_plot.png')  # Save the plot as a PNG file
 
 plt.show()
-"""
+

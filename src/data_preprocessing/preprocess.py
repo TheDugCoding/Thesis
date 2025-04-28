@@ -202,7 +202,7 @@ def pre_process_elliptic():
         df_addr_addr = df_addr_addr.drop_duplicates()
         df_wallet_features = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_node_features))
 
-        DUMMY_FEATURES = {f'feature_{i}': 0 for i in range(57)}
+        #DUMMY_FEATURES = {f'feature_{i}': 0 for i in range(57)}
 
         # Initialize a directed graph
         G_addr_addr = nx.DiGraph()
@@ -226,16 +226,17 @@ def pre_process_elliptic():
                     attr_dict = node_data.to_dict()
                 else:
                     print(f"Unexpected format for node {node}: {type(node_data)}")
-                    attr_dict = DUMMY_FEATURES.copy()
+                    #attr_dict = DUMMY_FEATURES.copy()
 
                 # Convert complex types to string and remove unsupported ones
                 clean_attr_dict = {}
+                """
                 for k, v in attr_dict.items():
                     if isinstance(v, (dict, list, tuple, type)):
                         print(f"Skipping unsupported attr {k} (type={type(v)}) for node {node}")
                         continue
                     clean_attr_dict[k] = v
-
+                """
                 nx.set_node_attributes(G_addr_addr, {node: clean_attr_dict})
 
         """
@@ -336,7 +337,7 @@ class FinancialGraphDatasetOnlyTopologicalFeatures(Dataset):
         return torch.load(os.path.join(self.processed_dir, f'financial_dataset_{idx}.pt'))
 
 
-# Custom PyG dataset class
+# Custom PyG dataset class, here there is the elliptic dataset
 class EllipticDataset(Dataset):
     def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
         super().__init__(root, transform, pre_transform, pre_filter)
@@ -347,7 +348,7 @@ class EllipticDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        return ['ellipticdataset.pt']
+        return ['ellipticdataset_0.pt', 'ellipticdataset_1.pt']
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
@@ -379,9 +380,11 @@ class EllipticDataset(Dataset):
             "transacted_w_address_mean", "transacted_w_address_median"
         ])
 
+        # add a new variable for the topological features
         topological_features = pyg_elliptic.x[:, [
                                   0, 1, 2, 3 ]]
 
+        # store the remaining
         x = pyg_elliptic.x[:, [
                                 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                                   23,
@@ -395,17 +398,21 @@ class EllipticDataset(Dataset):
 
         # Create and save the PyG Data object, in future add the edge features if required
         data = Data(x=x, edge_index=pyg_elliptic.edge_index, topological_features = topological_features, y=y)
-        node_transform = RandomNodeSplit(split="train_rest",num_val=0.0,num_test=0.2)
+        node_transform = RandomNodeSplit(split="train_rest",num_val=0.1,num_test=0.2)
         data = node_transform(data)
+        # the Elliptic dataset is very unbalanced so we create a balanced version
+        data_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
 
         torch.save(data, self.processed_paths[0])
+        torch.save(data_balanced, self.processed_paths[1])
 
     def len(self):
         return len(self.processed_file_names)
 
     def get(self, idx):
         """Loads and returns the graph at the given index."""
-        return torch.load(os.path.join(self.processed_dir, f'ellipticdataset.pt'))
+        data = torch.load(os.path.join(self.processed_dir, f'ellipticdataset_{idx}.pt'))
+        return data
 
 
 # Custom PyG dataset class

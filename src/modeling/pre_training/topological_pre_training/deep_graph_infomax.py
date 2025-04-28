@@ -72,11 +72,11 @@ class DeepGraphInfomax(torch.nn.Module):
         reset(self.summary)
         uniform(self.hidden_channels, self.weight)
 
-    def forward(self, *args, layer, **kwargs) -> Tuple[Tensor, Tensor, Tensor]:
+    def forward(self, *args, layer, framework, **kwargs) -> Tuple[Tensor, Tensor, Tensor]:
         """Returns the latent space for the input arguments, their
         corruptions and their summary representation.
         """
-        pos_z = self.encoder(*args, layer=layer, **kwargs)
+        pos_z = self.encoder(*args, layer=layer, framework=framework, **kwargs)
 
         cor = self.corruption(*args, **kwargs)
         cor = cor if isinstance(cor, tuple) else (cor, )
@@ -85,7 +85,7 @@ class DeepGraphInfomax(torch.nn.Module):
         for key, value in zip(kwargs.keys(), cor[len(args):]):
             cor_kwargs[key] = value
 
-        neg_z = self.encoder(*cor_args, layer=layer, **cor_kwargs)
+        neg_z = self.encoder(*cor_args, layer=layer, framework=framework, **cor_kwargs)
 
         summary = self.summary(pos_z, *args, **kwargs)
 
@@ -157,13 +157,16 @@ class Encoder(torch.nn.Module):
 
 
 
-
-    def forward(self, x, edge_index, batch_size, layer):
+    # framework =  if it is used for training is true, otherwise if it is used inside the framework use true
+    def forward(self, x, edge_index, batch_size, framework, layer):
         act = torch.nn.PReLU().to(device)
         x = act(self.dataset_convs[layer](x, edge_index))
         x = act(self.conv2(x, edge_index))
         x = act(self.conv3(x, edge_index))
-        return x[:batch_size]
+        if framework:
+            return x
+        else:
+            return x[:batch_size]
 
 
 def corruption(x, edge_index, batch_size):
@@ -206,7 +209,7 @@ def train(epoch, train_loaders):
         for idx, batch_loop in enumerate(batches):
             optimizer.zero_grad()
             pos_z, neg_z, summary = model(batch_loop.x, batch_loop.edge_index,
-                                          batch_loop.batch_size, layer=idx)
+                                          batch_loop.batch_size, framework = False, layer=idx)
             loss = model.loss(pos_z, neg_z, summary)
             loss.backward()
             optimizer.step()
