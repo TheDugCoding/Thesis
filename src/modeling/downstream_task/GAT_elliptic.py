@@ -49,8 +49,6 @@ data = EllipticDataset(root=processed_data_path)
 data_train = data[1]
 data_test = data[0]
 
-train_nodes = data[1].subgraph(data[1].train_mask)
-
 train_loader = NeighborLoader(
     data_train,
     num_neighbors=[10, 10],
@@ -93,14 +91,14 @@ def train_with_batches(train_loader):
 
     return total_loss / len(train_loader.dataset)
 
-def train_without_batches(data_train):
-    data_train = data_train.to(device)
+def train_without_batches(data):
+    data_train = data.to(device)
     optimizer.zero_grad()
 
     # Forward pass
     out = model(data_train.x, data_train.edge_index)
 
-    loss = criterion(out, data_train.y)
+    loss = criterion(out[data_train.train_mask], data_train.y[data_train])
     loss.backward()
     optimizer.step()
 
@@ -110,7 +108,7 @@ def train_without_batches(data_train):
 #Run training
 with open("training_log_gat_synthetic.txt", "w") as file:
     for epoch in range(100):
-        loss = train_without_batches(train_nodes)
+        loss = train_without_batches(data_train)
         log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
         print(log)
         file.write(log)
