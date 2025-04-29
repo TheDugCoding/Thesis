@@ -4,7 +4,6 @@ import pickle
 import networkx as nx
 import pandas as pd
 import torch
-from sympy.abc import a
 from torch_geometric.data import Dataset, Data
 from torch_geometric.transforms import RandomNodeSplit
 from torch_geometric.utils import from_networkx
