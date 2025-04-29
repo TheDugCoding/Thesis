@@ -35,9 +35,9 @@ class GAT(torch.nn.Module):
 
     def forward(self, x, edge_index):
         #Dropout helps prevent overfitting by randomly nullifying outputs from neurons during the training process. This encourages the network to learn redundant representations for everything and hence, increases the model's ability to generalize.
-        #x = F.dropout(x, p=0.6, training=self.training)
+        x = F.dropout(x, p=0.3, training=self.training)
         x = F.elu(self.conv1(x, edge_index))
-        #x = F.dropout(x, p=0.6, training=self.training)
+        x = F.dropout(x, p=0.3, training=self.training)
         x = self.conv2(x, edge_index)
         return x
 
@@ -47,7 +47,7 @@ class GAT(torch.nn.Module):
 
 data = EllipticDataset(root=processed_data_path)
 
-data = data[2]
+data = data[0]
 
 train_loader = NeighborLoader(
     data,
@@ -64,10 +64,15 @@ test_loader = NeighborLoader(
 )
 
 # Define model, optimizer, and loss function
-model = GAT(data.num_features, 64, 2,
+model = GAT(data.num_features, 64, 3,
             8).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
-criterion = torch.nn.CrossEntropyLoss()
+class_counts_int = torch.bincount(data.y).int().tolist()
+w0 = class_counts_int[0]
+w1= class_counts_int[1]
+w2= class_counts_int[2]
+weights = torch.tensor([w0, w1, w2], dtype=torch.float32).to(device)
+criterion = torch.nn.CrossEntropyLoss(weight=weights)
 
 
 
@@ -75,6 +80,7 @@ criterion = torch.nn.CrossEntropyLoss()
 def train(train_loader):
     model.train()
     total_loss = 0
+    total_examples = 0
 
     for batch in tqdm(train_loader):
         batch = batch.to(device)
@@ -88,16 +94,17 @@ def train(train_loader):
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item() * batch.size(0)
+        total_loss += loss.item() * batch.batch_size
+        total_examples += batch.batch_size
 
-    return total_loss / len(train_loader.dataset)
+    return  total_loss / total_examples
 
 
 #Run training
 with open("training_log_gat_synthetic.txt", "w") as file:
     for epoch in range(100):
         loss = train(train_loader)
-        log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
+        log = f"Epoch {epoch+1:02d}, Loss: {loss:.6f}\n"
         print(log)
         file.write(log)
 

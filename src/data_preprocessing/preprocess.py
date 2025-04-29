@@ -384,7 +384,7 @@ class EllipticDataset(Dataset):
         mask_2class = y < 2  # class 0 and 1 only
         x_2class = x[mask_2class]
         topo_2class = topological_features[mask_2class]
-        y_2class = y[mask_2class]
+        y_2class = y[mask_2class].long()
         edge_index_2class, _ = subgraph(mask_2class, pyg_elliptic.edge_index, relabel_nodes=True)
 
         # Create new Data object with filtered nodes
