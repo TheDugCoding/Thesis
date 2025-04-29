@@ -67,7 +67,7 @@ test_loader = NeighborLoader(
 model = GAT(data.num_features, 64, 2,
             8).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
-criterion = torch.nn.BCEWithLogitsLoss()
+criterion = torch.nn.CrossEntropyLoss()
 
 
 
