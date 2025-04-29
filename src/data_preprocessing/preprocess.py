@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 from torch_geometric.data import Dataset, Data
 from torch_geometric.transforms import RandomNodeSplit
-from torch_geometric.utils import from_networkx
+from torch_geometric.utils import from_networkx, subgraph
 from tqdm import tqdm
 
 
@@ -385,7 +385,7 @@ class EllipticDataset(Dataset):
         x_2class = x[mask_2class]
         topo_2class = topological_features[mask_2class]
         y_2class = y[mask_2class]
-        edge_index_2class = pyg_elliptic.edge_index
+        edge_index_2class, _ = subgraph(mask_2class, pyg_elliptic.edge_index, relabel_nodes=True)
 
         # Create new Data object with filtered nodes
         data_2class = Data(x=x_2class, edge_index=edge_index_2class,
@@ -627,7 +627,7 @@ dataset = AmlSimDataset(root = processed_data_location)
 # dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
 # pre_process_ethereum()
 #pre_process_elliptic()
-#relative_path_processed = 'processed'
-#processed_data_path = get_data_sub_folder(relative_path_processed)
-#data = EllipticDataset(root=processed_data_path)
+relative_path_processed = 'processed'
+processed_data_path = get_data_sub_folder(relative_path_processed)
+data = EllipticDataset(root=processed_data_path)
 #pre_process_ethereum()
