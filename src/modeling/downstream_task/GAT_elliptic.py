@@ -30,7 +30,6 @@ class GAT(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels, heads):
         super().__init__()
         self.conv1 = GATConv(in_channels, hidden_channels, heads)
-        # On the Pubmed dataset, use `heads` output heads in `conv2`.
         self.conv2 = GATConv(hidden_channels * heads, out_channels, heads=1,
                              concat=False)
 
@@ -44,7 +43,9 @@ class GAT(torch.nn.Module):
 
 
 # Load your dataset
-data = EllipticDataset(root=processed_data_path)
+#data = EllipticDataset(root=processed_data_path)
+
+data = AmlSimDataset(root=processed_data_path)
 
 data_train = data[0]
 
