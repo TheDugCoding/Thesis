@@ -64,10 +64,11 @@ test_loader = NeighborLoader(
 )
 
 # Define model, optimizer, and loss function
-model = GAT(data.num_features, 64, 3,
+model = GAT(data.num_features, 64, 2,
             8).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
-criterion = torch.nn.CrossEntropyLoss()
+criterion = torch.nn.BCEWithLogitsLoss()
+
 
 
 # Training loop
