@@ -602,4 +602,5 @@ dataset = AmlSimDataset(root = processed_data_location)
 #pre_process_elliptic()
 relative_path_processed = 'processed'
 processed_data_path = get_data_sub_folder(relative_path_processed)
-data = EllipticDataset(root=processed_data_path)
+pre_process_elliptic()
+#data = EllipticDataset(root=processed_data_path)
