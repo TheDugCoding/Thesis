@@ -4,6 +4,7 @@ import pickle
 import networkx as nx
 import pandas as pd
 import torch
+from sympy.abc import a
 from torch_geometric.data import Dataset, Data
 from torch_geometric.transforms import RandomNodeSplit
 from torch_geometric.utils import from_networkx
@@ -203,8 +204,6 @@ def pre_process_elliptic():
         df_wallet_features = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_node_features))
         df_wallet_features.drop_duplicates(subset='address', keep='last')
 
-        #DUMMY_FEATURES = {f'feature_{i}': 0 for i in range(57)}
-
         # Initialize a directed graph
         G_addr_addr = nx.DiGraph()
 
@@ -215,13 +214,31 @@ def pre_process_elliptic():
         for index, row in tqdm(df_addr_addr.iterrows(), total=df_addr_addr.shape[0]):
             G_addr_addr.add_edge(row['input_address'], row['output_address'])
 
+        a = 0
+        b = 0
+        c = 0
+
         for node in tqdm(G_addr_addr.nodes(), total=G_addr_addr.number_of_nodes()):
             if node in df_wallet_features.index:
                 # Get all rows for the node
-                node_data = df_wallet_features.loc[node].to_dict()
+                node_data = df_wallet_features.loc[node]
 
-                nx.set_node_attributes(G_addr_addr, {node: node_data})
+                if isinstance(node_data, pd.DataFrame):
+                    a = a + 1
+                    attr_dict = node_data.iloc[-1].to_dict()
+                elif isinstance(node_data, pd.Series):
+                    attr_dict = node_data.to_dict()
+                    b = b + 1
+                else:
+                    c = c + 1
+                    print(f"Unexpected format for node {node}: {type(node_data)}")
 
+
+
+                nx.set_node_attributes(G_addr_addr, {node: attr_dict})
+
+        with open("delete.txt", "w") as f:
+            print(a, b, c, file=f)
         print("setting node attributes")
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
@@ -364,7 +381,16 @@ class EllipticDataset(Dataset):
         # the Elliptic dataset is very unbalanced so we create a balanced version
         data_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
         #creating a third version, this version only contain illicit '0' and licit '1' labels
-        unknown_mask = data.y == 2
+        # Filter to keep only class 0 and class 1 (exclude class 2)
+        mask_2class = y < 2  # class 0 and 1 only
+        x_2class = x[mask_2class]
+        topo_2class = topological_features[mask_2class]
+        y_2class = y[mask_2class]
+        edge_index_2class = pyg_elliptic.edge_index  # Optional: You can also filter edges if needed
+
+        # Create new Data object with filtered nodes
+        data_2class = Data(x=x_2class, edge_index=edge_index_2class,
+                           topological_features=topo_2class, y=y_2class)
 
 
         torch.save(data, self.processed_paths[0])
