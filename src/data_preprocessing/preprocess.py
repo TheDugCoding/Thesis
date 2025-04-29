@@ -201,6 +201,7 @@ def pre_process_elliptic():
         df_addr_addr = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_edges))
         df_addr_addr = df_addr_addr.drop_duplicates()
         df_wallet_features = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_node_features))
+        df_wallet_features.drop_duplicates(subset='address', keep='last')
 
         #DUMMY_FEATURES = {f'feature_{i}': 0 for i in range(57)}
 
@@ -217,50 +218,10 @@ def pre_process_elliptic():
         for node in tqdm(G_addr_addr.nodes(), total=G_addr_addr.number_of_nodes()):
             if node in df_wallet_features.index:
                 # Get all rows for the node
-                node_data = df_wallet_features.loc[node]
+                node_data = df_wallet_features.loc[node].to_dict()
 
-                # If it's a DataFrame (multiple entries), take the last one
-                if isinstance(node_data, pd.DataFrame):
-                    attr_dict = node_data.iloc[-1].to_dict()
-                elif isinstance(node_data, pd.Series):
-                    attr_dict = node_data.to_dict()
-                else:
-                    print(f"Unexpected format for node {node}: {type(node_data)}")
-                    #attr_dict = DUMMY_FEATURES.copy()
+                nx.set_node_attributes(G_addr_addr, {node: node_data})
 
-                # Convert complex types to string and remove unsupported ones
-                clean_attr_dict = {}
-
-                for k, v in attr_dict.items():
-                    #if isinstance(v, (dict, list, tuple, type)):
-                        #print(f"Skipping unsupported attr {k} (type={type(v)}) for node {node}")
-                        #continue
-                    clean_attr_dict[k] = v
-
-                nx.set_node_attributes(G_addr_addr, {node: clean_attr_dict})
-
-        """
-          # Set index for faster lookup
-        for node in G_addr_addr.nodes():
-            if node in df_wallet_features.index:
-                attr_dict = df_wallet_features.loc[node]
-                if len(attr_dict) == 57:
-                    attr_dict = attr_dict.to_dict()
-                else:
-                    attr_dict = attr_dict.iloc[-1].to_dict()
-
-                nx.set_node_attributes(G_addr_addr, {node: attr_dict})
-        
-                for k, v in attr_dict.items():
-                    if not isinstance(v, type):  # skip values of type `type`
-                        try:
-                            G_addr_addr.nodes[node][k] = v
-                        except Exception as e:
-                            print(f"Failed to set attribute {k} for node {node}: {e}")
-                    else:
-                        print(f'AAAAAAA  {k}')
-                
-        """
         print("setting node attributes")
         # Compute additional structural information
         G_addr_addr = get_structural_info(G_addr_addr)
@@ -402,6 +363,9 @@ class EllipticDataset(Dataset):
         data = node_transform(data)
         # the Elliptic dataset is very unbalanced so we create a balanced version
         data_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
+        #creating a third version, this version only contain illicit '0' and licit '1' labels
+        unknown_mask = data.y == 2
+
 
         torch.save(data, self.processed_paths[0])
         torch.save(data_balanced, self.processed_paths[1])
