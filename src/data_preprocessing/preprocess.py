@@ -325,7 +325,7 @@ class EllipticDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        return ['ellipticdataset_0.pt', 'ellipticdataset_1.pt']
+        return ['ellipticdataset_0.pt', 'ellipticdataset_1.pt', 'ellipticdataset_2.pt']
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
@@ -385,15 +385,17 @@ class EllipticDataset(Dataset):
         x_2class = x[mask_2class]
         topo_2class = topological_features[mask_2class]
         y_2class = y[mask_2class]
-        edge_index_2class = pyg_elliptic.edge_index  # Optional: You can also filter edges if needed
+        edge_index_2class = pyg_elliptic.edge_index
 
         # Create new Data object with filtered nodes
         data_2class = Data(x=x_2class, edge_index=edge_index_2class,
                            topological_features=topo_2class, y=y_2class)
+        data_2class =  RandomNodeSplit(split="train_rest",num_val=0.1,num_test=0.2)(data_2class)
 
 
         torch.save(data, self.processed_paths[0])
         torch.save(data_balanced, self.processed_paths[1])
+        torch.save(data_2class, self.processed_paths[2])
 
     def len(self):
         return len(self.processed_file_names)
@@ -627,5 +629,4 @@ dataset = AmlSimDataset(root = processed_data_location)
 #pre_process_elliptic()
 relative_path_processed = 'processed'
 processed_data_path = get_data_sub_folder(relative_path_processed)
-pre_process_elliptic()
-#data = EllipticDataset(root=processed_data_path)
+data = EllipticDataset(root=processed_data_path)

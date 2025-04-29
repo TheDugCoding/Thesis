@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GATConv
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
-
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score
 
 from src.data_preprocessing.preprocess import AmlSimDataset
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
@@ -30,12 +30,12 @@ class GAT(torch.nn.Module):
         self.conv1 = GATConv(in_channels, hidden_channels, heads, dropout=0.6)
         # On the Pubmed dataset, use `heads` output heads in `conv2`.
         self.conv2 = GATConv(hidden_channels * heads, out_channels, heads=1,
-                             concat=False, dropout=0.6)
+                             concat=False, dropout=0.2)
 
     def forward(self, x, edge_index):
-        x = F.dropout(x, p=0.6, training=self.training)
+        #x = F.dropout(x, p=0.6, training=self.training)
         x = F.elu(self.conv1(x, edge_index))
-        x = F.dropout(x, p=0.6, training=self.training)
+        #x = F.dropout(x, p=0.6, training=self.training)
         x = self.conv2(x, edge_index)
         x = torch.sigmoid(x)
         return x
@@ -72,7 +72,9 @@ for epoch in range(100):
 model.eval()
 preds = model(data.x, data.edge_index).argmax(dim=1)
 accuracy = (preds[data.test_mask] == data.y[data.test_mask]).sum().item() / data.y[data.test_mask].size(0)
+recall = recall_score(data.y[data.test_mask].cpu().numpy(), preds[data.test_mask].cpu().numpy(), average='macro')
 print(f"Final Accuracy: {accuracy:.4f}")
+print(f"Final Recall: {recall:.4f}")
 print('Confusion matrix')
 confusion_matrix = confusion_matrix([label.bool().item() for label in data.y[data.test_mask]], [pred.bool().item() for pred in preds[data.test_mask]])
 print(confusion_matrix)

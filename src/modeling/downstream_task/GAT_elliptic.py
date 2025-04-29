@@ -45,22 +45,22 @@ class GAT(torch.nn.Module):
 # Load your dataset
 #data = EllipticDataset(root=processed_data_path)
 
-data = AmlSimDataset(root=processed_data_path)
+data = EllipticDataset(root=processed_data_path)
 
-data_train = data[0]
+data = data[2]
 
 train_loader = NeighborLoader(
-    data_train,
+    data,
     num_neighbors=[10, 10],
     batch_size=32,
-    input_nodes=data_train.train_mask
+    input_nodes=data.train_mask
 )
 
 test_loader = NeighborLoader(
-    data_train,
+    data,
     num_neighbors=[10, 10],
-    batch_size=32,  # Adjust depending on memory
-    #input_nodes=data_test.test_mask
+    batch_size=32,
+    input_nodes= data.test_mask
 )
 
 # Define model, optimizer, and loss function
@@ -141,4 +141,3 @@ plt.title('Confusion Matrix')
 plt.savefig('confusion_matrix_plot.png')  # Save the plot as a PNG file
 
 plt.show()
-
