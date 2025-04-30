@@ -391,7 +391,7 @@ class EllipticDataset(Dataset):
         # Create and save the PyG Data object, in future add the edge features if required
         data = Data(x=x, edge_index=pyg_elliptic.edge_index, topological_features = topological_features, y=y)
         node_transform = RandomNodeSplit(split="train_rest",num_val=0.1,num_test=0.2)
-        data = node_transform(data)
+        data_original = node_transform(data)
         # the Elliptic dataset is very unbalanced so we create a balanced version
         data_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
 
@@ -431,7 +431,7 @@ class EllipticDataset(Dataset):
         # and they have the same number of samples
 
         data_2class_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
-        data_2class_balanced = T.RemoveTrainingClasses([2])(data_2class_balanced)
+        #data_2class_balanced = T.RemoveTrainingClasses([2])(data_2class_balanced)
         # unlabel class 2
         class_2_nodes = data_2class_balanced.y == 2
         data_2class_balanced.y[class_2_nodes] = -1
@@ -439,7 +439,7 @@ class EllipticDataset(Dataset):
         data_2class_balanced.test_mask[class_2_nodes] = False
 
 
-        torch.save(data, self.processed_paths[0])
+        torch.save(data_original, self.processed_paths[0])
         torch.save(data_balanced, self.processed_paths[1])
         torch.save(data_2class, self.processed_paths[2])
         torch.save(data_2class_balanced, self.processed_paths[3])
