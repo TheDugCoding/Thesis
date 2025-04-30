@@ -390,21 +390,23 @@ class EllipticDataset(Dataset):
         """
 
         #keeping the dataset but only use licit and illicit nodes for training
+        # create new Data object with filtered nodes
+        data_2class = Data(x=x, edge_index=pyg_elliptic.edge_index,
+                           topological_features=topological_features, y=y)
+
         num_known_nodes = mask_2class.sum().item()
         permutations = torch.randperm(num_known_nodes)
         train_size = int(0.8 * num_known_nodes)
         val_size = int(0.1 * num_known_nodes)
         test_size = num_known_nodes - train_size - val_size
-        data.train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-        data.val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-        data.test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+        data_2class.train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+        data_2class.val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+        data_2class.test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
         train_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[:train_size]]
         val_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[train_size:train_size + val_size]]
         test_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[train_size + val_size:]]
 
-        # create new Data object with filtered nodes
-        data_2class = Data(x=x, edge_index=pyg_elliptic.edge_index,
-                           topological_features = topological_features, y=y)
+
         data_2class.train_mask[train_indices] = True
         data_2class.val_mask[val_indices] = True
         data_2class.test_mask[test_indices] = True
