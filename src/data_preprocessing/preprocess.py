@@ -382,15 +382,32 @@ class EllipticDataset(Dataset):
         #creating a third version, this version only contain illicit '0' and licit '1' labels
         # Filter to keep only class 0 and class 1 (exclude class 2)
         mask_2class = y < 2  # class 0 and 1 only
+        """
         x_2class = x[mask_2class]
         topo_2class = topological_features[mask_2class]
         y_2class = y[mask_2class].long()
         edge_index_2class, _ = subgraph(mask_2class, pyg_elliptic.edge_index, relabel_nodes=True)
+        """
 
-        # Create new Data object with filtered nodes
-        data_2class = Data(x=x_2class, edge_index=edge_index_2class,
-                           topological_features=topo_2class, y=y_2class)
-        data_2class =  RandomNodeSplit(split="train_rest",num_val=0.1,num_test=0.2)(data_2class)
+        #keeping the dataset but only use licit and illicit nodes for training
+        num_known_nodes = mask_2class.sum().item()
+        permutations = torch.randperm(num_known_nodes)
+        train_size = int(0.8 * num_known_nodes)
+        val_size = int(0.1 * num_known_nodes)
+        test_size = num_known_nodes - train_size - val_size
+        data.train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+        data.val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+        data.test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+        train_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[:train_size]]
+        val_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[train_size:train_size + val_size]]
+        test_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[train_size + val_size:]]
+
+        # create new Data object with filtered nodes
+        data_2class = Data(x=x, edge_index=pyg_elliptic.edge_index,
+                           topological_features = topological_features, y=y)
+        data_2class.train_mask[train_indices] = True
+        data_2class.val_mask[val_indices] = True
+        data_2class.test_mask[test_indices] = True
 
 
         torch.save(data, self.processed_paths[0])
@@ -627,7 +644,7 @@ dataset = AmlSimDataset(root = processed_data_location)
 # dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
 # pre_process_ethereum()
 #pre_process_elliptic()
-#relative_path_processed = 'processed'
-#processed_data_path = get_data_sub_folder(relative_path_processed)
-#data = EllipticDataset(root=processed_data_path)
+relative_path_processed = 'processed'
+processed_data_path = get_data_sub_folder(relative_path_processed)
+data = EllipticDataset(root=processed_data_path)
 #pre_process_ethereum()
