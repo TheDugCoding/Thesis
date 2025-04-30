@@ -7,6 +7,7 @@ import torch
 from torch_geometric.data import Dataset, Data
 from torch_geometric.transforms import RandomNodeSplit
 from torch_geometric.utils import from_networkx, subgraph
+from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 
 
@@ -203,6 +204,19 @@ def pre_process_elliptic():
         df_wallet_features = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_node_features))
         df_wallet_features.drop_duplicates(subset='address', keep='last')
 
+        # Keep address separately for later use
+        addresses = df_wallet_features['address']
+        # Drop non-feature columns (like 'address' or 'time_step') if any
+        feature_columns = df_wallet_features.columns.difference(['address','timestep'])
+        features = df_wallet_features[feature_columns]
+        # Normalize features
+        scaler = MinMaxScaler()
+        normalized_features = scaler.fit_transform(features)
+        df_wallet_features = pd.DataFrame(normalized_features, columns=feature_columns)
+        df_wallet_features['address'] = addresses
+
+
+
         # Initialize a directed graph
         G_addr_addr = nx.DiGraph()
 
@@ -325,7 +339,7 @@ class EllipticDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        return ['ellipticdataset_0.pt', 'ellipticdataset_1.pt', 'ellipticdataset_2.pt']
+        return ['ellipticdataset_0.pt', 'ellipticdataset_1.pt', 'ellipticdataset_2.pt', 'ellipticdataset_3.pt']
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
@@ -412,10 +426,16 @@ class EllipticDataset(Dataset):
         data_2class.val_mask[val_indices] = True
         data_2class.test_mask[test_indices] = True
 
+        #creating a fourth class this version only contain illicit '0' and licit '1' labels,
+        # and they have the same number of samples
+
+        data_2class_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
+
 
         torch.save(data, self.processed_paths[0])
         torch.save(data_balanced, self.processed_paths[1])
         torch.save(data_2class, self.processed_paths[2])
+        torch.save(data_2class_balanced, self.processed_paths[3])
 
     def len(self):
         return len(self.processed_file_names)
