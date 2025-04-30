@@ -434,7 +434,10 @@ class EllipticDataset(Dataset):
         data_2class_balanced = T.RemoveTrainingClasses([2])(data_2class_balanced)
         # unlabel class 2
         class_2_nodes = data_2class_balanced.y == 2
-        data_2class_balanced.y[class_2_nodes] = -1  # -1 denotes unlabeled class 2 nodes
+        data_2class_balanced.y[class_2_nodes] = -1
+        data_2class_balanced.val_mask[class_2_nodes] = False
+        data_2class_balanced.test_mask[class_2_nodes] = False
+
 
         torch.save(data, self.processed_paths[0])
         torch.save(data_balanced, self.processed_paths[1])

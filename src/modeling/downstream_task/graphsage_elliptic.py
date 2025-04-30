@@ -29,7 +29,7 @@ else:
 #set dataset to use, hyperparameters and epochs
 data = EllipticDataset(root=processed_data_path)
 
-data = data[1]
+data = data[3]
 epochs = 10
 
 train_loader = NeighborLoader(
@@ -62,10 +62,10 @@ model = GraphSAGE(
     in_channels=data.num_features,
     hidden_channels=256,
     num_layers=2,
-    out_channels=3,
+    out_channels=2,
 ).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
-class_counts_int = torch.bincount(data.y).int().tolist()
+#class_counts_int = torch.bincount(data.y).int().tolist()
 #w0 = 0.95
 #w1= 0.05
 #w2= 1/class_counts_int[2]
