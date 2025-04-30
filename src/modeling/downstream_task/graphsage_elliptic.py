@@ -28,18 +28,22 @@ else:
 
 #set dataset to use, hyperparameters and epochs
 data = EllipticDataset(root=processed_data_path)
+
 data = data[1]
 epochs = 10
 
 train_loader = NeighborLoader(
     data,
+    shuffle=True,
     num_neighbors=[10, 10],
     batch_size=32,
     input_nodes=data.train_mask
+
 )
 
 val_loader = NeighborLoader(
     data,
+    shuffle=True,
     num_neighbors=[10, 10],
     batch_size=32,
     input_nodes=data.val_mask
@@ -47,6 +51,7 @@ val_loader = NeighborLoader(
 
 test_loader = NeighborLoader(
     data,
+    shuffle=True,
     num_neighbors=[10, 10],
     batch_size=32,
     input_nodes= data.test_mask
@@ -57,7 +62,7 @@ model = GraphSAGE(
     in_channels=data.num_features,
     hidden_channels=256,
     num_layers=2,
-    out_channels=2,
+    out_channels=3,
 ).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
 class_counts_int = torch.bincount(data.y).int().tolist()
@@ -66,7 +71,7 @@ class_counts_int = torch.bincount(data.y).int().tolist()
 #w2= 1/class_counts_int[2]
 #weights = torch.tensor([w0, w1], dtype=torch.float32).to(device)
 #criterion = FocalLoss(alpha=0.25, gamma=2.0)
-criterion = torch.nn.CrossEntropyLoss(ignore_index=2)
+criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 # Training loop
 def train(train_loader):

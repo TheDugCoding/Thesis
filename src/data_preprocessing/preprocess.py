@@ -9,6 +9,7 @@ from torch_geometric.transforms import RandomNodeSplit
 from torch_geometric.utils import from_networkx, subgraph
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
+import torch_geometric.transforms as T
 
 
 from src.data_preprocessing.utils import get_structural_info
@@ -430,7 +431,10 @@ class EllipticDataset(Dataset):
         # and they have the same number of samples
 
         data_2class_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
-
+        data_2class_balanced = T.RemoveTrainingClasses([2])(data_2class_balanced)
+        # unlabel class 2
+        class_2_nodes = data_2class_balanced.y == 2
+        data_2class_balanced.y[class_2_nodes] = -1  # -1 denotes unlabeled class 2 nodes
 
         torch.save(data, self.processed_paths[0])
         torch.save(data_balanced, self.processed_paths[1])
