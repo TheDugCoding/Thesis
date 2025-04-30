@@ -18,6 +18,7 @@ relative_path_trained_model = 'modeling/downstream_task/trained_models'
 processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_model_path = get_src_sub_folder(relative_path_trained_model)
 
+
 if torch.cuda.is_available():
     device = torch.device('cuda')
 elif torch_geometric.is_xpu_available():
@@ -35,8 +36,8 @@ class GAT(torch.nn.Module):
 
     def forward(self, x, edge_index):
         #Dropout helps prevent overfitting by randomly nullifying outputs from neurons during the training process. This encourages the network to learn redundant representations for everything and hence, increases the model's ability to generalize.
-        x = F.dropout(x, p=0.3, training=self.training)
-        x = F.elu(self.conv1(x, edge_index))
+        #x = F.dropout(x, p=0.3, training=self.training)
+        x = F.relu(self.conv1(x, edge_index))
         x = F.dropout(x, p=0.3, training=self.training)
         x = self.conv2(x, edge_index)
         return x
@@ -47,7 +48,7 @@ class GAT(torch.nn.Module):
 
 data = EllipticDataset(root=processed_data_path)
 
-data = data[0]
+data = data[2]
 
 train_loader = NeighborLoader(
     data,
@@ -64,15 +65,15 @@ test_loader = NeighborLoader(
 )
 
 # Define model, optimizer, and loss function
-model = GAT(data.num_features, 64, 3,
+model = GAT(data.num_features, 256, 2,
             8).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
-class_counts_int = torch.bincount(data.y).int().tolist()
-w0 = class_counts_int[0]
-w1= class_counts_int[1]
-w2= class_counts_int[2]
-weights = torch.tensor([w0, w1, w2], dtype=torch.float32).to(device)
-criterion = torch.nn.CrossEntropyLoss(weight=weights)
+#class_counts_int = torch.bincount(data.y).int().tolist()
+#w0 = class_counts_int[0]
+#w1= class_counts_int[1]
+#w2= class_counts_int[2]
+#weights = torch.tensor([w0, w1, w2], dtype=torch.float32).to(device)
+criterion = torch.nn.CrossEntropyLoss()
 
 
 
@@ -102,7 +103,7 @@ def train(train_loader):
 
 #Run training
 with open("training_log_gat_synthetic.txt", "w") as file:
-    for epoch in range(100):
+    for epoch in range(20):
         loss = train(train_loader)
         log = f"Epoch {epoch+1:02d}, Loss: {loss:.6f}\n"
         print(log)
@@ -116,7 +117,7 @@ preds = []
 true = []
 
 with torch.no_grad():
-    for batch in test_loader:
+    for batch in tqdm(test_loader):
         batch = batch.to(device)
         out = model(batch.x, batch.edge_index)
         preds.append(out[:batch.batch_size].argmax(dim=1).cpu())

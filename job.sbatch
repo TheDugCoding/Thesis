@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=graphsage_training    # Job name
+#SBATCH --job-name=gat_training    # Job name
 #SBATCH --output=pyg-multinode.log        # outputfile
 #SBATCH --error=error.txt             # Standard error file
 #SBATCH --nodes=1                     # Number of nodes
@@ -17,7 +17,7 @@
 export PROJECT_PATH=/science-nfs-sys/vsm01/users/1738380/Desktop/Thesis
 export PYTHONPATH=$PYTHONPATH:$PROJECT_PATH
 
-srun python $PROJECT_PATH/src/modeling/downstream_task/graphsage_elliptic.py
+srun python $PROJECT_PATH/src/modeling/downstream_task/GAT_elliptic.py
 
 
 #Optionally, you can include cleanup commands here (e.g., after the job finishes)
