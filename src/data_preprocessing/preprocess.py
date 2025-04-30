@@ -379,15 +379,16 @@ class EllipticDataset(Dataset):
         data = node_transform(data)
         # the Elliptic dataset is very unbalanced so we create a balanced version
         data_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
-        #creating a third version, this version only contain illicit '0' and licit '1' labels
-        # Filter to keep only class 0 and class 1 (exclude class 2)
-        mask_2class = y < 2  # class 0 and 1 only
+
         """
         x_2class = x[mask_2class]
         topo_2class = topological_features[mask_2class]
         y_2class = y[mask_2class].long()
         edge_index_2class, _ = subgraph(mask_2class, pyg_elliptic.edge_index, relabel_nodes=True)
         """
+        # creating a third version, this version only contain illicit '0' and licit '1' labels
+        # Filter to keep only class 0 and class 1 (exclude class 2)
+        mask_2class = y < 2  # keeping only class 0 and 1
 
         #keeping the dataset but only use licit and illicit nodes for training
         # create new Data object with filtered nodes
