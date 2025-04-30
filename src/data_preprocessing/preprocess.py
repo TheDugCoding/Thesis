@@ -340,7 +340,7 @@ class EllipticDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        return ['ellipticdataset_0.pt', 'ellipticdataset_1.pt', 'ellipticdataset_2.pt', 'ellipticdataset_3.pt']
+        return ['ellipticdataset_0.pt', 'ellipticdataset_1.pt', 'ellipticdataset_2.pt', 'ellipticdataset_3.pt', 'ellipticdataset_4.pt']
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
@@ -430,7 +430,8 @@ class EllipticDataset(Dataset):
         #creating a fourth class this version only contain illicit '0' and licit '1' labels,
         # and they have the same number of samples
 
-        data_2class_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
+        data_2class_balanced = data
+        data_2class_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data_2class_balanced)
         #data_2class_balanced = T.RemoveTrainingClasses([2])(data_2class_balanced)
         # unlabel class 2
         class_2_nodes = data_2class_balanced.y == 2
@@ -438,11 +439,11 @@ class EllipticDataset(Dataset):
         data_2class_balanced.val_mask[class_2_nodes] = False
         data_2class_balanced.test_mask[class_2_nodes] = False
 
-
-        torch.save(data_original, self.processed_paths[0])
-        torch.save(data_balanced, self.processed_paths[1])
-        torch.save(data_2class, self.processed_paths[2])
-        torch.save(data_2class_balanced, self.processed_paths[3])
+        torch.save(data, self.processed_paths[0])
+        torch.save(data_original, self.processed_paths[1])
+        torch.save(data_balanced, self.processed_paths[2])
+        torch.save(data_2class, self.processed_paths[3])
+        torch.save(data_2class_balanced, self.processed_paths[4])
 
     def len(self):
         return len(self.processed_file_names)
