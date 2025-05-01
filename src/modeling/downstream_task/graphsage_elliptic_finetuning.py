@@ -1,3 +1,5 @@
+import ast
+
 import optuna
 import torch
 import torch_geometric
@@ -21,30 +23,28 @@ elif torch_geometric.is_xpu_available():
 else:
     device = torch.device('cpu')
 
-
-#set dataset to use, hyperparameters and epochs
+# set dataset to use, hyperparameters and epochs
 data = EllipticDataset(root=processed_data_path)
 data = data[4]
 
 
-
 def objective(trial):
-    # Sample hyperparameters
+    # hyper-parameters
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 3, 4)
+    num_layers = trial.suggest_int("num_layers", 2, 4)
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20])
     neighbours_size = trial.suggest_categorical("neighbours_size", [
-        [10, 10],
-        [20, 20],
-        [10, 10, 25],
-        [5, 5, 10],
-        [15, 30],
-        [10, 20, 40],
-        [30, 50],
-        [10, 20, 30, 40]
+        "[10, 10]",
+        "[20, 20]",
+        "[10, 10, 25]",
+        "[5, 5, 10]",
+        "[15, 30]",
+        "[10, 20, 40]",
+        "[30, 50]",
+        "[10, 20, 30, 40]"
     ])
 
     # Define model
@@ -62,7 +62,7 @@ def objective(trial):
     train_loader = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=neighbours_size,
+        num_neighbors=ast.literal_eval(neighbours_size),
         batch_size=32,
         input_nodes=data.train_mask
 
@@ -71,7 +71,7 @@ def objective(trial):
     val_loader = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=neighbours_size,
+        num_neighbors=ast.literal_eval(neighbours_size),
         batch_size=32,
         input_nodes=data.val_mask
     )
@@ -115,11 +115,11 @@ def objective(trial):
 
 
 with open("graphsage_finetuning.txt", "w") as file:
-    # Run Optuna study
+    # run Optuna study
     study = optuna.create_study(direction="maximize")
     study.optimize(objective, n_trials=30, show_progress_bar=True)
 
-    # Print and save the best trial
+    # print and save the best trial
     file.write("Best trial:\n")
     trial = study.best_trial
     file.write(f"  F1 Score: {trial.value}\n")
