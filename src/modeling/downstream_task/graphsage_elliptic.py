@@ -3,12 +3,10 @@ import os
 import matplotlib.pyplot as plt
 import torch
 import torch_geometric
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, average_precision_score, f1_score, recall_score
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import GraphSAGE
 from tqdm import tqdm
-import torch.nn.functional as F
-import torch.nn as nn
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
@@ -29,13 +27,13 @@ else:
 #set dataset to use, hyperparameters and epochs
 data = EllipticDataset(root=processed_data_path)
 
-data = data[3]
-epochs = 10
+data = data[4]
+epochs = 5
 
 train_loader = NeighborLoader(
     data,
     shuffle=True,
-    num_neighbors=[10, 10],
+    num_neighbors=[10, 10, 25],
     batch_size=32,
     input_nodes=data.train_mask
 
@@ -44,7 +42,7 @@ train_loader = NeighborLoader(
 val_loader = NeighborLoader(
     data,
     shuffle=True,
-    num_neighbors=[10, 10],
+    num_neighbors=[10, 10, 25],
     batch_size=32,
     input_nodes=data.val_mask
 )
@@ -52,7 +50,7 @@ val_loader = NeighborLoader(
 test_loader = NeighborLoader(
     data,
     shuffle=True,
-    num_neighbors=[10, 10],
+    num_neighbors=[10, 10, 25],
     batch_size=32,
     input_nodes= data.test_mask
 )
@@ -61,16 +59,10 @@ test_loader = NeighborLoader(
 model = GraphSAGE(
     in_channels=data.num_features,
     hidden_channels=256,
-    num_layers=2,
+    num_layers=3,
     out_channels=2,
 ).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
-#class_counts_int = torch.bincount(data.y).int().tolist()
-#w0 = 0.95
-#w1= 0.05
-#w2= 1/class_counts_int[2]
-#weights = torch.tensor([w0, w1], dtype=torch.float32).to(device)
-#criterion = FocalLoss(alpha=0.25, gamma=2.0)
 criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 # Training loop
@@ -96,32 +88,47 @@ def train(train_loader):
 
     return  total_loss / total_examples
 
+def validate(val_loader):
+    model.eval()
+    preds = []
+    true = []
+    probs = []
+    with torch.no_grad():
+        for batch in val_loader:
+            batch = batch.to(device)
+            out = model(batch.x, batch.edge_index)
+            prob = torch.softmax(out[:batch.batch_size], dim=1)
+            preds.append(prob.argmax(dim=1).cpu())
+            probs.append(prob.cpu())
+            true.append(batch.y[:batch.batch_size].cpu())
 
-#Run training
+    preds = torch.cat(preds)
+    probs = torch.cat(probs)
+    true_labels = torch.cat(true)
+
+    accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
+    recall = recall_score(true_labels, preds, average='macro')
+    f1 = f1_score(true_labels, preds, average='macro')
+
+    # AUC-PR
+    probs_class1 = probs[:, 1]
+    auc_pr = average_precision_score(true_labels, probs_class1)
+
+    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score (macro): {f1:.4f}, AUC-PR (macro): {auc_pr:.4f}")
+    return accuracy, recall, f1, auc_pr
+
+
+
+#Run training and validation
 with open("training_log_graphsage.txt", "w") as file:
     for epoch in range(epochs):
         loss = train(train_loader)
         log = f"Epoch {epoch+1:02d}, Loss: {loss:.6f}\n"
         print(log)
         file.write(log)
+        validate(val_loader)
 
-        #validation
-        model.eval()
-        preds = []
-        true = []
-        with torch.no_grad():
-            for batch in val_loader:
-                batch = batch.to(device)
-                out = model(batch.x, batch.edge_index)
-                preds.append(out[:batch.batch_size].argmax(dim=1).cpu())
-                true.append(batch.y[:batch.batch_size].cpu())
-        preds = torch.cat(preds)
-        true_labels = torch.cat(true)
-        accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
-        recall = recall_score(true_labels, preds, average='macro')
-        f1 = f1_score(true_labels, preds, average='macro')
 
-        print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score (macro): {f1:.4f}")
 
 torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_graphsage_trained.pth'))
 

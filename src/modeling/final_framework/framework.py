@@ -6,10 +6,10 @@ import torch_geometric
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import SAGEConv
 from tqdm import tqdm
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score, average_precision_score
 
 from src.data_preprocessing.preprocess import EllipticDataset, RealDataTraining, EllipticDatasetWithoutFeatures
-from src.modeling.downstream_task.GAT_elliptic import GAT
+from torch_geometric.nn import GraphSAGE
 from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomax, Encoder
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
@@ -55,20 +55,31 @@ else:
 # Load your dataset
 data = EllipticDataset(root=processed_data_path)
 
-data = data[0]
+data = data[4]
 
 train_loader = NeighborLoader(
     data,
+    shuffle=True,
     num_neighbors=[10, 10],
     batch_size=32,
     input_nodes=data.train_mask
+
+)
+
+val_loader = NeighborLoader(
+    data,
+    shuffle=True,
+    num_neighbors=[10, 10],
+    batch_size=32,
+    input_nodes=data.val_mask
 )
 
 test_loader = NeighborLoader(
     data,
+    shuffle=True,
     num_neighbors=[10, 10],
     batch_size=32,
-    input_nodes=data.test_mask
+    input_nodes= data.test_mask
 )
 
 # define the framework, first DGI and then the GNN used in the downstream task
@@ -86,9 +97,18 @@ for param in dgi_model.encoder.conv2.parameters():
 for param in dgi_model.encoder.conv3.parameters():
     param.requires_grad = False
 
-#define the downstream GNN, it is the same as GAT elliptic++. However the input is different according to the framework architecture
-gnn_model = GAT(data.num_features + 64, 64, 3,
-            8).to(device)
+#define the downstream GNN, it is the same as graphsage elliptic++. However the input is different according to the framework architecture
+#gnn_model = GAT(data.num_features + 64, 64, 3,
+#            8).to(device)
+
+# same model as in garphsage_elliptic
+gnn_model = GraphSAGE(
+    in_channels=data.num_features + 64,
+    hidden_channels=256,
+    num_layers=2,
+    out_channels=2,
+).to(device)
+
 model = DGIPlusGNN(dgi_model, gnn_model).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 criterion = torch.nn.CrossEntropyLoss()
@@ -117,14 +137,44 @@ def train(train_loader):
 
     return total_loss / len(train_loader.dataset)
 
+def validate(val_loader):
+    model.eval()
+    preds = []
+    true = []
+    probs = []
+    with torch.no_grad():
+        for batch in val_loader:
+            batch = batch.to(device)
+            out = model(batch)
+            prob = torch.softmax(out[:batch.batch_size], dim=1)
+            preds.append(prob.argmax(dim=1).cpu())
+            probs.append(prob.cpu())
+            true.append(batch.y[:batch.batch_size].cpu())
+
+    preds = torch.cat(preds)
+    probs = torch.cat(probs)
+    true_labels = torch.cat(true)
+
+    accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
+    recall = recall_score(true_labels, preds, average='macro')
+    f1 = f1_score(true_labels, preds, average='macro')
+
+    # AUC-PR
+    probs_class1 = probs[:, 1]
+    auc_pr = average_precision_score(true_labels, probs_class1)
+
+    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score (macro): {f1:.4f}, AUC-PR (macro): {auc_pr:.4f}")
+    return accuracy, recall, f1, auc_pr
+
 if not os.path.exists(os.path.join(trained_model_path, 'final_framework_trained.pth')):
     #Run training
     with open("training_framework.txt", "w") as file:
-        for epoch in range(30):
+        for epoch in range(5):
             loss = train(train_loader)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)
+            validate(val_loader)
 
     torch.save(model.state_dict(), os.path.join(trained_model_path, 'final_framework_trained.pth'))
 else:
@@ -152,7 +202,7 @@ print('Confusion matrix')
 recall = recall_score(true_labels, preds, average='macro')
 f1 = f1_score(true_labels, preds, average='macro')
 
-with open("final_accuracy_gat_trained.txt", "w") as f:
+with open("final_accuracy_graphsage_trained.txt", "w") as f:
     f.write(f"Final Accuracy: {accuracy:.4f}\n")
     f.write(f"Recall (macro): {recall:.4f}\n")
     f.write(f"F1 Score (macro): {f1:.4f}\n")
