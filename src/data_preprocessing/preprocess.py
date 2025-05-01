@@ -431,6 +431,8 @@ class EllipticDataset(Dataset):
         # and they have the same number of samples
 
         data_2class_balanced = data
+        #replace class 2with -1, to unlabel them
+        data_2class_balanced.y[data_2class_balanced.y == 2] = -1
         data_2class_balanced = RandomNodeSplit(split='random', num_train_per_class=11000, num_val=0.1, num_test=0.2)(data_2class_balanced)
         #data_2class_balanced = T.RemoveTrainingClasses([2])(data_2class_balanced)
         # unlabel class 2
