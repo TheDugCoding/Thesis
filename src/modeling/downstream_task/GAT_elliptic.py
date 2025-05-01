@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 import torch_geometric
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score, average_precision_score
 from torch_geometric.nn import GATConv
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
@@ -36,9 +36,9 @@ class GAT(torch.nn.Module):
 
     def forward(self, x, edge_index):
         #Dropout helps prevent overfitting by randomly nullifying outputs from neurons during the training process. This encourages the network to learn redundant representations for everything and hence, increases the model's ability to generalize.
-        x = F.dropout(x, p=0.3, training=self.training)
+        x = F.dropout(x, p=0.6, training=self.training)
         x = F.relu(self.conv1(x, edge_index))
-        x = F.dropout(x, p=0.3, training=self.training)
+        x = F.dropout(x, p=0.6, training=self.training)
         x = self.conv2(x, edge_index)
         return x
 
@@ -48,17 +48,28 @@ class GAT(torch.nn.Module):
 
 data = EllipticDataset(root=processed_data_path)
 data = data[4]
-epochs = 20
+epochs = 30
 
 train_loader = NeighborLoader(
     data,
+    shuffle=True,
     num_neighbors=[10, 10],
     batch_size=32,
     input_nodes=data.train_mask
+
+)
+
+val_loader = NeighborLoader(
+    data,
+    shuffle=True,
+    num_neighbors=[10, 10],
+    batch_size=32,
+    input_nodes=data.val_mask
 )
 
 test_loader = NeighborLoader(
     data,
+    shuffle=True,
     num_neighbors=[10, 10],
     batch_size=32,
     input_nodes= data.test_mask
@@ -68,14 +79,7 @@ test_loader = NeighborLoader(
 model = GAT(data.num_features, 256, 2,
             8).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
-#class_counts_int = torch.bincount(data.y).int().tolist()
-#w0 = class_counts_int[0]
-#w1= class_counts_int[1]
-#w2= class_counts_int[2]
-#weights = torch.tensor([w0, w1, w2], dtype=torch.float32).to(device)
-criterion = torch.nn.CrossEntropyLoss()
-
-
+criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 # Training loop
 def train(train_loader):
@@ -83,7 +87,7 @@ def train(train_loader):
     total_loss = 0
     total_examples = 0
 
-    for batch in tqdm(train_loader):
+    for batch in tqdm(train_loader, desc="training"):
         batch = batch.to(device)
         optimizer.zero_grad()
 
@@ -100,6 +104,35 @@ def train(train_loader):
 
     return  total_loss / total_examples
 
+def validate(val_loader):
+    model.eval()
+    preds = []
+    true = []
+    probs = []
+    with torch.no_grad():
+        for batch in val_loader:
+            batch = batch.to(device)
+            out = model(batch.x, batch.edge_index)
+            prob = torch.softmax(out[:batch.batch_size], dim=1)
+            preds.append(prob.argmax(dim=1).cpu())
+            probs.append(prob.cpu())
+            true.append(batch.y[:batch.batch_size].cpu())
+
+    preds = torch.cat(preds)
+    probs = torch.cat(probs)
+    true_labels = torch.cat(true)
+
+    accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
+    recall = recall_score(true_labels, preds, average='macro')
+    f1 = f1_score(true_labels, preds, average='macro')
+
+    # AUC-PR
+    probs_class1 = probs[:, 1]
+    auc_pr = average_precision_score(true_labels, probs_class1)
+
+    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score (macro): {f1:.4f}, AUC-PR (macro): {auc_pr:.4f}")
+    return accuracy, recall, f1, auc_pr
+
 
 #Run training
 with open("training_log_gat_synthetic.txt", "w") as file:
@@ -108,6 +141,7 @@ with open("training_log_gat_synthetic.txt", "w") as file:
         log = f"Epoch {epoch+1:02d}, Loss: {loss:.6f}\n"
         print(log)
         file.write(log)
+        validate(val_loader)
 
 torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_gat_trained.pth'))
 

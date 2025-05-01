@@ -26,14 +26,13 @@ else:
 
 #set dataset to use, hyperparameters and epochs
 data = EllipticDataset(root=processed_data_path)
-
 data = data[4]
 epochs = 5
 
 train_loader = NeighborLoader(
     data,
     shuffle=True,
-    num_neighbors=[10, 10, 25],
+    num_neighbors=[10, 10],
     batch_size=32,
     input_nodes=data.train_mask
 
@@ -42,7 +41,7 @@ train_loader = NeighborLoader(
 val_loader = NeighborLoader(
     data,
     shuffle=True,
-    num_neighbors=[10, 10, 25],
+    num_neighbors=[10, 10],
     batch_size=32,
     input_nodes=data.val_mask
 )
@@ -50,7 +49,7 @@ val_loader = NeighborLoader(
 test_loader = NeighborLoader(
     data,
     shuffle=True,
-    num_neighbors=[10, 10, 25],
+    num_neighbors=[10, 10],
     batch_size=32,
     input_nodes= data.test_mask
 )
@@ -71,7 +70,7 @@ def train(train_loader):
     total_loss = 0
     total_examples = 0
 
-    for batch in tqdm(train_loader):
+    for batch in tqdm(train_loader, desc="training"):
         batch = batch.to(device)
         optimizer.zero_grad()
 
@@ -108,13 +107,13 @@ def validate(val_loader):
 
     accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
     recall = recall_score(true_labels, preds, average='macro')
-    f1 = f1_score(true_labels, preds, average='macro')
+    f1 = f1_score(true_labels, preds, average='weighted')
 
     # AUC-PR
-    probs_class1 = probs[:, 1]
-    auc_pr = average_precision_score(true_labels, probs_class1)
+    probs_class0 = probs[:, 0]
+    auc_pr = average_precision_score(true_labels, probs_class0, average='weighted')
 
-    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score (macro): {f1:.4f}, AUC-PR (macro): {auc_pr:.4f}")
+    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score: {f1:.4f}, AUC-PR (macro): {auc_pr:.4f}")
     return accuracy, recall, f1, auc_pr
 
 
