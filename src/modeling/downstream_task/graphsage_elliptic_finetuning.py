@@ -26,39 +26,26 @@ else:
 data = EllipticDataset(root=processed_data_path)
 data = data[4]
 
-train_loader = NeighborLoader(
-    data,
-    shuffle=True,
-    num_neighbors=[10, 10],
-    batch_size=32,
-    input_nodes=data.train_mask
 
-)
-
-val_loader = NeighborLoader(
-    data,
-    shuffle=True,
-    num_neighbors=[10, 10],
-    batch_size=32,
-    input_nodes=data.val_mask
-)
-
-test_loader = NeighborLoader(
-    data,
-    shuffle=True,
-    num_neighbors=[10, 10],
-    batch_size=32,
-    input_nodes= data.test_mask
-)
 
 def objective(trial):
     # Sample hyperparameters
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
+    num_layers = trial.suggest_int("num_layers", 2, 3, 4)
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20])
+    neighbours_size = trial.suggest_categorical("neighbours_size", [
+        [10, 10],
+        [20, 20],
+        [10, 10, 25],
+        [5, 5, 10],
+        [15, 30],
+        [10, 20, 40],
+        [30, 50],
+        [10, 20, 30, 40]
+    ])
 
     # Define model
     model = GraphSAGE(
@@ -71,6 +58,23 @@ def objective(trial):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
+
+    train_loader = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=neighbours_size,
+        batch_size=32,
+        input_nodes=data.train_mask
+
+    )
+
+    val_loader = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=neighbours_size,
+        batch_size=32,
+        input_nodes=data.val_mask
+    )
 
     def train_once():
         model.train()
