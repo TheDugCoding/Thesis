@@ -237,7 +237,7 @@ def test():
 
 if __name__ == '__main__':
 
-
+    """
     dataset = RealDataTraining(root = processed_data_path, add_topological_features = True)
 
     data_rabo = dataset[0]
@@ -256,7 +256,7 @@ if __name__ == '__main__':
         shuffle=True,
         num_neighbors=[10, 10, 25],
     )
-    """
+    
     dataset = AmlTestDataset(root=processed_data_path, add_topological_features=False)
 
     data = dataset[0]
@@ -267,9 +267,9 @@ if __name__ == '__main__':
         shuffle=True,
         num_neighbors=[10, 10, 25]
     )
-    
+    """
 
-    data = EllipticDatasetWithoutFeatures(root=processed_data_path, add_topological_features=True)
+    data = EllipticDataset(root=processed_data_path)
 
     data = data[0]
 
@@ -278,10 +278,10 @@ if __name__ == '__main__':
         num_neighbors=[10, 10, 25],
         batch_size=32,
     )
-    """
+
 
     #set the train loader from the biggest to the smallest, otherwise it won't work
-    train_loaders = [train_loader_ethereum, train_loader_rabo]
+    train_loaders = [train_loader_elliptic]
 
     #define the model, the unique layers correspond to the number of "flipping layers", meaning that
     #each dataset has its own layer
@@ -292,14 +292,14 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
-    with open("training_log_rabo_and_ethereum_topo_true.txt", "w") as file:
+    with open("training_log_elliptic_with_features_topo_false.txt", "w") as file:
         for epoch in range(1, 30):
             loss = train(epoch, train_loaders)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)
 
-    torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_rabo_and_ethereum_topo_true.pth'))
+    torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_only_elliptic_with_features_topo_false.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')
