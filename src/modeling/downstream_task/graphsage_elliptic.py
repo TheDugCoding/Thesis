@@ -119,7 +119,7 @@ def validate(val_loader):
 
 
 #Run training and validation
-with open("training_log_graphsage.txt", "w") as file:
+with open("training_log_losses_per_epoch.txt", "w") as file:
     for epoch in range(epochs):
         loss = train(train_loader)
         log = f"Epoch {epoch+1:02d}, Loss: {loss:.6f}\n"
@@ -138,7 +138,7 @@ preds = []
 true = []
 
 with torch.no_grad():
-    for batch in test_loader:
+    for batch in tqdm(test_loader, desc='Testing'):
         batch = batch.to(device)
         out = model(batch.x, batch.edge_index)
         preds.append(out[:batch.batch_size].argmax(dim=1).cpu())
@@ -148,14 +148,14 @@ preds = torch.cat(preds)
 true_labels = torch.cat(true)
 accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
 recall = recall_score(true_labels, preds, average='macro')
-f1 = f1_score(true_labels, preds, average='macro')
+f1 = f1_score(true_labels, preds, average='weighted')
 
 print(f"Final Accuracy: {accuracy:.4f}\n")
 print(f"Recall (macro): {recall:.4f}\n")
-print(f"F1 Score (macro): {f1:.4f}\n")
+print(f"F1 Score: {f1:.4f}\n")
 print('Confusion matrix')
 
-with open("final_accuracy_graphsage_trained.txt", "w") as f:
+with open("performance_metrics_graphsage_trained.txt", "w") as f:
     f.write(f"Final Accuracy: {accuracy:.4f}\n")
     f.write(f"Recall (macro): {recall:.4f}\n")
     f.write(f"F1 Score (macro): {f1:.4f}\n")
@@ -169,8 +169,5 @@ disp.plot()
 plt.title('Confusion Matrix')
 plt.savefig('confusion_matrix_plot.png')
 print(cm)
-disp.plot()
-plt.title('Confusion Matrix')
-plt.savefig('confusion_matrix_plot.png')  # Save the plot as a PNG file
 
 plt.show()

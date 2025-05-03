@@ -124,13 +124,13 @@ def validate(val_loader):
 
     accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
     recall = recall_score(true_labels, preds, average='macro')
-    f1 = f1_score(true_labels, preds, average='macro')
+    f1 = f1_score(true_labels, preds, average='weighted')
 
     # AUC-PR
     probs_class1 = probs[:, 1]
     auc_pr = average_precision_score(true_labels, probs_class1)
 
-    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score (macro): {f1:.4f}, AUC-PR (macro): {auc_pr:.4f}")
+    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score: {f1:.4f}, AUC-PR (macro): {auc_pr:.4f}")
     return accuracy, recall, f1, auc_pr
 
 
@@ -145,13 +145,14 @@ with open("training_log_gat_synthetic.txt", "w") as file:
 
 torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_gat_trained.pth'))
 
+print("\n----EVALUATION----\n")
 # Inference
 model.eval()
 preds = []
 true = []
 
 with torch.no_grad():
-    for batch in tqdm(test_loader):
+    for batch in test_loader:
         batch = batch.to(device)
         out = model(batch.x, batch.edge_index)
         preds.append(out[:batch.batch_size].argmax(dim=1).cpu())
@@ -160,12 +161,15 @@ with torch.no_grad():
 preds = torch.cat(preds)
 true_labels = torch.cat(true)
 accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
-print(f"Final Accuracy: {accuracy:.4f}")
-print('Confusion matrix')
 recall = recall_score(true_labels, preds, average='macro')
-f1 = f1_score(true_labels, preds, average='macro')
+f1 = f1_score(true_labels, preds, average='weighted')
 
-with open("final_accuracy_gat_trained.txt", "w") as f:
+print(f"Final Accuracy: {accuracy:.4f}\n")
+print(f"Recall (macro): {recall:.4f}\n")
+print(f"F1 Score: {f1:.4f}\n")
+print('Confusion matrix')
+
+with open("performance_metrics_graphsage_trained.txt", "w") as f:
     f.write(f"Final Accuracy: {accuracy:.4f}\n")
     f.write(f"Recall (macro): {recall:.4f}\n")
     f.write(f"F1 Score (macro): {f1:.4f}\n")
