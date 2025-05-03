@@ -8,12 +8,14 @@ from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import GraphSAGE
 from torch_geometric.nn import SAGEConv
 from tqdm import tqdm
+from models_to_test import model_list
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from src.modeling.final_framework.framework import DGIPlusGNN, corruption
 from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomax, Encoder
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 from src.modeling.utils.modeling_utils import train, validate, evaluate
+from src.modeling.testing.models_to_test import model_list
 
 script_dir = get_data_folder()
 relative_path_processed = 'processed'
@@ -78,7 +80,7 @@ for param in dgi_model.encoder.conv3.parameters():
     # gnn_model = GAT(data.num_features + 64, 64, 3,
     #            8).to(device)
 
-# same model as in graphsage_elliptic
+# same model as in graphsage_elliptic, used in the framework
 gnn_model_downstream_framework = GraphSAGE(
     in_channels=data.num_features + 64,
     hidden_channels=256,
@@ -87,51 +89,63 @@ gnn_model_downstream_framework = GraphSAGE(
 ).to(device)
 
 #model to test
-gnn_model_graphsage = GraphSAGE(
-    in_channels=data.num_features,
-    hidden_channels=256,
-    num_layers=3,
-    out_channels=2,
-).to(device)
+models_to_compare = model_list(data)
+for name, components in models_to_compare.items():
+    components['model'] = components['model'].to(device)
 
 model_framework = DGIPlusGNN(dgi_model, gnn_model_downstream_framework).to(device)
 optimizer_framework = torch.optim.Adam(model_framework.parameters(), lr=0.005, weight_decay=5e-4)
-optimizer_graphsage = torch.optim.Adam(gnn_model_graphsage.parameters(), lr=0.005, weight_decay=5e-4)
+
 criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 if not os.path.exists(os.path.join(trained_model_path, 'final_framework_trained.pth')):
     # Run training
     with open("training_log_per_epoch.txt", "w") as file:
         for epoch in range(5):
+            #train tthe framework
             loss_framework = train(train_loader, model_framework, optimizer_framework, device, criterion, True)
-            loss_graphsage = train(train_loader, gnn_model_graphsage, optimizer_graphsage, device, criterion, False)
-            log = f"Epoch {epoch + 1:02d}, Loss Framework: {loss_framework:.6f}\n, Loss Graphsage GNN: {loss_graphsage:.6f}\n"
-            accuracy_framework, recall_framework, f1_framework, auc_pr_framework = validate(val_loader, model_framework, device, True)
-            accuracy_graphsage, recall_graphsage, f1_graphsage, auc_pr_graphsage = validate(val_loader, gnn_model_graphsage, device, False)
+            log = (f"Epoch {epoch + 1:02d}, Loss Framework: {loss_framework:.6f}")
+            print(log)
+            file.write(log)
+            #train all the other models
+            for name, components in models_to_compare.items():
+                loss_gnn = train(train_loader, components['model'], components['optimizer'], device, components['criterion'], False)
+                log = (f"Epoch {epoch + 1:02d}, Loss {name}: {loss_gnn:.6f}")
+                print(f"Epoch {epoch + 1:02d}, Loss {name}: {loss_gnn:.6f}")
+                file.write(log)
 
-            # Logging
+            #validation
+            accuracy_framework, recall_framework, f1_framework, auc_pr_framework = validate(val_loader, model_framework, device, True)
             log = (
                 f"Epoch {epoch + 1:02d}\n"
-                f"  Loss Framework     : {loss_framework:.6f}\n"
-                f"  Loss Graphsage GNN    : {loss_graphsage:.6f}\n"
                 f"  Framework Metrics  - Accuracy: {accuracy_framework:.4f}, Recall: {recall_framework:.4f}, "
-                f"F1: {f1_framework:.4f}, AUC-PR: {auc_pr_framework:.4f}\n"
-                f"  Graphsage Metrics   - Accuracy: {accuracy_graphsage:.4f}, Recall: {recall_graphsage:.4f}, "
-                f"F1: {f1_graphsage:.4f}, AUC-PR: {auc_pr_graphsage:.4f}\n\n"
-            )
-
+                f"F1: {f1_framework:.4f}, AUC-PR: {auc_pr_framework:.4f}\n")
             print(log)
             file.write(log)
 
+            for name, components in models_to_compare.items():
+                accuracy_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device, False)
+                # Logging
+                log = (
+                    f"Epoch {epoch + 1:02d}\n"
+                    f"  {name} Metrics   - Accuracy: {accuracy_gnn:.4f}, Recall: {recall_gnn:.4f}, "
+                    f"F1: {f1_gnn:.4f}, AUC-PR: {auc_pr_gnn:.4f}\n\n"
+                )
+                print(log)
+                file.write(log)
+
     torch.save(model_framework.state_dict(), os.path.join(trained_model_path, 'final_framework_trained.pth'))
-    torch.save(gnn_model_graphsage.state_dict(), os.path.join(trained_model_path, 'graphsage_gnn_trained.pth'))
+    for name, components in models_to_compare.items():
+        torch.save(components['model'].state_dict(), os.path.join(trained_model_path, f'{name}_gnn_trained.pth'))
 else:
     model_framework.load_state_dict(
         torch.load(os.path.join(trained_model_path, 'final_framework_trained.pth'), map_location=device))
-    gnn_model_graphsage.load_state_dict(
-        torch.load(os.path.join(trained_model_path, 'graphsage_gnn_trained.pth'), map_location=device))
+    for name, components in models_to_compare.items():
+        components['model'].load_state_dict(
+            torch.load(os.path.join(trained_model_path, f'{name}_gnn_trained.pth'), map_location=device))
 
 print("\n----EVALUATION----\n")
 # Inference
 evaluate(model_framework, test_loader, device, 'framework', True)
-evaluate(gnn_model_graphsage, test_loader, device, 'graphsage', False)
+for name, components in models_to_compare.items():
+    evaluate(components['model'], test_loader, device, name, False)

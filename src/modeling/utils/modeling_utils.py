@@ -57,6 +57,13 @@ def train(train_loader, model, optimizer, device, criterion, framework=False):
     return  total_loss / total_examples
 
 def validate(val_loader, model, device, framework=False):
+    """
+    :param val_loader:
+    :param model:
+    :param device:
+    :param framework:
+    :return:
+    """
     model.eval()
     preds = []
     true = []
@@ -86,7 +93,6 @@ def validate(val_loader, model, device, framework=False):
     probs_class1 = probs[:, 1]
     auc_pr = average_precision_score(true_labels, probs_class1)
 
-    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score (macro): {f1:.4f}, AUC-PR (macro): {auc_pr:.4f}")
     return accuracy, recall, f1, auc_pr
 
 def evaluate(model, test_loader, device, name, framework=False):
