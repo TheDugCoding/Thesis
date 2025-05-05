@@ -203,18 +203,21 @@ def pre_process_elliptic():
         df_addr_addr = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_edges))
         df_addr_addr = df_addr_addr.drop_duplicates()
         df_wallet_features = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_node_features))
-        df_wallet_features.drop_duplicates(subset='address', keep='last')
+        #keep
+        df_wallet_features = df_wallet_features.drop_duplicates(subset='address', keep='last')
 
         # Keep address separately for later use
         addresses = df_wallet_features['address']
+        classes = df_wallet_features['class']
         # Drop non-feature columns (like 'address' or 'time_step') if any
-        feature_columns = df_wallet_features.columns.difference(['address','timestep'])
+        feature_columns = df_wallet_features.columns.difference(['address','timestep','class'])
         features = df_wallet_features[feature_columns]
         # Normalize features
         scaler = MinMaxScaler()
         normalized_features = scaler.fit_transform(features)
         df_wallet_features = pd.DataFrame(normalized_features, columns=feature_columns)
         df_wallet_features['address'] = addresses
+        df_wallet_features['class'] = classes
 
 
 

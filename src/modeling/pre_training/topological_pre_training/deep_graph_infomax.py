@@ -157,7 +157,7 @@ class Encoder(torch.nn.Module):
 
 
 
-    # framework =  if it is used for training is true, otherwise if it is used inside the framework use true
+    # framework =  if it is used for training is true, otherwise if it is used outside the framework and for training is False
     def forward(self, x, edge_index, batch_size, framework, layer):
         act = torch.nn.PReLU().to(device)
         x = act(self.dataset_convs[layer](x, edge_index))
@@ -272,6 +272,10 @@ if __name__ == '__main__':
     data = EllipticDataset(root=processed_data_path)
 
     data = data[0]
+
+    #data.x = data.topological_features
+
+
 
     train_loader_elliptic = NeighborLoader(
         data,
