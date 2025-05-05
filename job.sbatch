@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=graphsage_finetuning   # Job name
+#SBATCH --job-name=testing_models   # Job name
 #SBATCH --output=pyg-multinode.log        # outputfile
 #SBATCH --error=error.txt             # Standard error file
 #SBATCH --nodes=1                     # Number of nodes
@@ -17,7 +17,7 @@
 export PROJECT_PATH=/science-nfs-sys/vsm01/users/1738380/Desktop/Thesis
 export PYTHONPATH=$PYTHONPATH:$PROJECT_PATH
 
-srun python $PROJECT_PATH/src/modeling/pre_training/topological_pre_training/deep_graph_infomax.py
+srun python $PROJECT_PATH/src/modeling/testing/testing_models.py
 
 
 #Optionally, you can include cleanup commands here (e.g., after the job finishes)
