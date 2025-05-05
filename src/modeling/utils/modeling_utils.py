@@ -59,10 +59,10 @@ def train(train_loader, model, optimizer, device, criterion, framework=False):
 def validate(val_loader, model, device, framework=False):
     """
     :param val_loader:
-    :param model:
+    :param model: gnn model to test
     :param device:
-    :param framework:
-    :return:
+    :param framework: True if the model is the framework
+    :return: accuracy, recall, f1, auc_pr
     """
     model.eval()
     preds = []

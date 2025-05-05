@@ -36,6 +36,7 @@ else:
 data = EllipticDataset(root=processed_data_path)
 
 data = data[4]
+epochs = 2
 
 train_loader = NeighborLoader(
     data,
@@ -101,24 +102,25 @@ criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 if not os.path.exists(os.path.join(trained_model_path, 'final_framework_trained.pth')):
     # Run training
     with open("training_log_per_epoch.txt", "w") as file:
-        for epoch in range(5):
+        for epoch in range(epochs):
             #train tthe framework
             loss_framework = train(train_loader, model_framework, optimizer_framework, device, criterion, True)
-            log = (f"Epoch {epoch + 1:02d}, Loss Framework: {loss_framework:.6f}")
+            log = (f"\n\n---TRAINING--- Epoch {epoch + 1:02d}\n"
+                   f"Loss Framework: {loss_framework:.6f}\n")
             print(log)
             file.write(log)
             #train all the other models
             for name, components in models_to_compare.items():
                 loss_gnn = train(train_loader, components['model'], components['optimizer'], device, components['criterion'], False)
-                log = (f"Epoch {epoch + 1:02d}, Loss {name}: {loss_gnn:.6f}")
-                print(f"Epoch {epoch + 1:02d}, Loss {name}: {loss_gnn:.6f}")
+                log = (f"Loss {name}: {loss_gnn:.6f}\n")
+                print(log)
                 file.write(log)
 
             #validation
             accuracy_framework, recall_framework, f1_framework, auc_pr_framework = validate(val_loader, model_framework, device, True)
             log = (
-                f"Epoch {epoch + 1:02d}\n"
-                f"  Framework Metrics  - Accuracy: {accuracy_framework:.4f}, Recall: {recall_framework:.4f}, "
+                f"---VALIDATION--- Epoch {epoch + 1:02d}\n"
+                f"Framework Metrics --- Accuracy: {accuracy_framework:.4f}, Recall: {recall_framework:.4f}, "
                 f"F1: {f1_framework:.4f}, AUC-PR: {auc_pr_framework:.4f}\n")
             print(log)
             file.write(log)
@@ -127,9 +129,8 @@ if not os.path.exists(os.path.join(trained_model_path, 'final_framework_trained.
                 accuracy_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device, False)
                 # Logging
                 log = (
-                    f"Epoch {epoch + 1:02d}\n"
-                    f"  {name} Metrics   - Accuracy: {accuracy_gnn:.4f}, Recall: {recall_gnn:.4f}, "
-                    f"F1: {f1_gnn:.4f}, AUC-PR: {auc_pr_gnn:.4f}\n\n"
+                    f"{name} Metrics --- Accuracy: {accuracy_gnn:.4f}, Recall: {recall_gnn:.4f}, "
+                    f"F1: {f1_gnn:.4f}, AUC-PR: {auc_pr_gnn:.4f}\n"
                 )
                 print(log)
                 file.write(log)
