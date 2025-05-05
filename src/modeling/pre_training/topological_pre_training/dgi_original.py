@@ -100,7 +100,7 @@ with open("training_log.txt", "w") as file:
         file.write(log)
 
 test_acc = test()
-with open("test?accuracy.txt", "w") as file:
+with open("test_accuracy.txt", "w") as file:
     log = f'Test Accuracy: {test_acc:.4f}'
     print(log)
     file.write(log)

@@ -204,7 +204,7 @@ def pre_process_elliptic():
         df_addr_addr = df_addr_addr.drop_duplicates()
         df_wallet_features = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_node_features))
         #keep
-        df_wallet_features = df_wallet_features.drop_duplicates(subset='address', keep='last')
+        #df_wallet_features = df_wallet_features.drop_duplicates(subset='address', keep='last')
 
         # Keep address separately for later use
         addresses = df_wallet_features['address']
