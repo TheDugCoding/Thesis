@@ -654,32 +654,33 @@ class AmlTestDataset(Dataset):
         """Loads and returns the graph at the given index."""
         return self.data
 
+if __name__ == "__main__":
+    # Usage
+    '''
+    dataset = FinancialGraphDataset(root = processed_data_location)
+    print("Dataset saved at:", os.path.join(relative_path_processed, 'processed/financial_graphs.pt'))
+    print(dataset[0])  # Print first graph
+    print(dataset[1])  # Print first graph
+    
+    dataset = FinancialGraphDataset(root="data/financial_graphs")
+    print(len(dataset))  # Should print 4 (since we have 4 processed graphs)
+    
+    graph_0 = dataset[0]  # Load the first graph
+    print(graph_0)  # Print PyG data object
+    
+    print('done')
+    print('hi')
+    print('done')
+    
+    
+    dataset = AmlSimDataset(root = processed_data_location)
+    '''
 
-# Usage
-'''
-dataset = FinancialGraphDataset(root = processed_data_location)
-print("Dataset saved at:", os.path.join(relative_path_processed, 'processed/financial_graphs.pt'))
-print(dataset[0])  # Print first graph
-print(dataset[1])  # Print first graph
-
-dataset = FinancialGraphDataset(root="data/financial_graphs")
-print(len(dataset))  # Should print 4 (since we have 4 processed graphs)
-
-graph_0 = dataset[0]  # Load the first graph
-print(graph_0)  # Print PyG data object
-
-print('done')
-print('hi')
-print('done')
-
-
-dataset = AmlSimDataset(root = processed_data_location)
-'''
-
-# dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
-# pre_process_ethereum()
-#pre_process_elliptic()
-relative_path_processed = 'processed'
-processed_data_path = get_data_sub_folder(relative_path_processed)
-data = EllipticDataset(root=processed_data_path)
-#pre_process_ethereum()
+    # dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
+    # pre_process_ethereum()
+    #pre_process_elliptic()
+    relative_path_processed = 'processed'
+    processed_data_path = get_data_sub_folder(relative_path_processed)
+    data = EllipticDataset(root=processed_data_path)
+    print("")
+    #pre_process_ethereum()

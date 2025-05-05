@@ -76,6 +76,8 @@ class DeepGraphInfomax(torch.nn.Module):
         """Returns the latent space for the input arguments, their
         corruptions and their summary representation.
         """
+        #layer: the first layer of the encoder is different for each dataset
+        #framework: if DGI is part of the framework then True, otherwise False
         pos_z = self.encoder(*args, layer=layer, framework=framework, **kwargs)
 
         cor = self.corruption(*args, **kwargs)
@@ -142,6 +144,10 @@ class DeepGraphInfomax(torch.nn.Module):
         return f'{self.__class__.__name__}({self.hidden_channels})'
 
 class Encoder(torch.nn.Module):
+    """
+    Class used as the encoder, since we are not using PCA or other feature dimensionality reductions techniques
+    the first layer of the encoder must be different for each dataset
+    """
     def __init__(self, hidden_channels, output_channels, unique_layers):
         super().__init__()
 

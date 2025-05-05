@@ -145,8 +145,22 @@ else:
         components['model'].load_state_dict(
             torch.load(os.path.join(trained_model_path, f'{name}_gnn_trained.pth'), map_location=device))
 
-print("\n----EVALUATION----\n")
 # Inference
-evaluate(model_framework, test_loader, device, 'framework', True)
-for name, components in models_to_compare.items():
-    evaluate(components['model'], test_loader, device, name, False)
+accuracy, recall, f1, pr_auc, confusion_matrix_model = evaluate(model_framework, test_loader, device, 'framework', True)
+with open(f"evaluation_performance_metrics_trained.txt", "w") as f:
+    f.write("----EVALUATION----\n")
+    f.write("----framework----\n")
+    f.write(f"Accuracy: {accuracy:.4f}\n")
+    f.write(f"Recall: {recall:.4f}\n")
+    f.write(f"F1 Score: {f1:.4f}\n")
+    f.write(f"pr_auc Score: {pr_auc:.4f}\n")
+    f.write(f"confusion matrix: {confusion_matrix_model:.4f}\n")
+
+    for name, components in models_to_compare.items():
+        accuracy, recall, f1, pr_auc, confusion_matrix_model = evaluate(components['model'], test_loader, device, name, False)
+        f.write(f"----{name}----\n")
+        f.write(f"Accuracy: {accuracy:.4f}\n")
+        f.write(f"Recall: {recall:.4f}\n")
+        f.write(f"F1 Score: {f1:.4f}\n")
+        f.write(f"pr_auc Score: {pr_auc:.4f}\n")
+        f.write(f"confusion matrix: {confusion_matrix_model:.4f}\n")

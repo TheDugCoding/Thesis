@@ -36,6 +36,8 @@ def train(train_loader, model, optimizer, device, criterion, framework=False):
     total_loss = 0
     total_examples = 0
 
+    print("\n----TRAINING----\n")
+
     for batch in tqdm(train_loader, desc="training"):
         batch = batch.to(device)
         optimizer.zero_grad()
@@ -58,16 +60,19 @@ def train(train_loader, model, optimizer, device, criterion, framework=False):
 
 def validate(val_loader, model, device, framework=False):
     """
-    :param val_loader:
+    :param val_loader: val_loader of the dataset
     :param model: gnn model to test
-    :param device:
+    :param device: the device to use
     :param framework: True if the model is the framework
-    :return: accuracy, recall, f1, auc_pr
+    :return: accuracy, recall, f1, pr_auc
     """
     model.eval()
     preds = []
     true = []
     probs = []
+
+    print("\n----VALIDATION----\n")
+
     with torch.no_grad():
         for batch in val_loader:
             batch = batch.to(device)
@@ -89,16 +94,19 @@ def validate(val_loader, model, device, framework=False):
     recall = recall_score(true_labels, preds, average='macro')
     f1 = f1_score(true_labels, preds, average='weighted')
 
-    # AUC-PR
-    probs_class1 = probs[:, 1]
-    auc_pr = average_precision_score(true_labels, probs_class1)
+    # PR-AUC
+    probs_class0 = probs[:, 0]
+    pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0)
 
-    return accuracy, recall, f1, auc_pr
+    return accuracy, recall, f1, pr_auc
 
 def evaluate(model, test_loader, device, name, framework=False):
     model.eval()
     preds = []
     true = []
+    probs = []
+
+    print("\n----EVALUATION----\n")
 
     with torch.no_grad():
         for batch in tqdm(test_loader):
@@ -107,15 +115,24 @@ def evaluate(model, test_loader, device, name, framework=False):
                 out = model(batch)
             else:
                 out = model(batch.x, batch.edge_index)
-            preds.append(out[:batch.batch_size].argmax(dim=1).cpu())
+            prob = torch.softmax(out[:batch.batch_size], dim=1)
+            preds.append(prob.argmax(dim=1).cpu())
+            probs.append(prob.cpu())
             true.append(batch.y[:batch.batch_size].cpu())
 
     preds = torch.cat(preds)
+    probs = torch.cat(probs)
     true_labels = torch.cat(true)
+
     accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
     recall = recall_score(true_labels, preds, average='macro')
     f1 = f1_score(true_labels, preds, average='weighted')
 
+    # PR-AUC
+    probs_class0 = probs[:, 0]
+    pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0)
+
+    """
     print(f"Final Accuracy: {accuracy:.4f}\n")
     print(f"Recall (macro): {recall:.4f}\n")
     print(f"F1 Score: {f1:.4f}\n")
@@ -125,15 +142,17 @@ def evaluate(model, test_loader, device, name, framework=False):
         f.write(f"Final Accuracy: {accuracy:.4f}\n")
         f.write(f"Recall (macro): {recall:.4f}\n")
         f.write(f"F1 Score (macro): {f1:.4f}\n")
+    """
 
     true_labels = true_labels.numpy()
-    predicted_labels = preds.numpy()
 
-    cm = confusion_matrix(true_labels, preds)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    confusion_matrix_model = confusion_matrix(true_labels, preds)
+    disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_model)
     disp.plot()
     plt.title('Confusion Matrix')
     plt.savefig(f'confusion_matrix_{name}_plot_.png')
-    print(cm)
+    print(confusion_matrix_model)
 
     plt.show()
+
+    return accuracy, recall, f1, pr_auc, confusion_matrix_model
