@@ -95,6 +95,7 @@ def plot_metric(data_dict, title, ylabel):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
+    plt.savefig(f'confusion_matrix_{title}_plot_.png')
     plt.show()
 
 
