@@ -682,5 +682,5 @@ if __name__ == "__main__":
     relative_path_processed = 'processed'
     processed_data_path = get_data_sub_folder(relative_path_processed)
     data = EllipticDataset(root=processed_data_path)
-    print("")
+
     #pre_process_ethereum()

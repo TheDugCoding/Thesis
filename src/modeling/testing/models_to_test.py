@@ -1,6 +1,11 @@
+import os
+
 import torch
 from torch_geometric.nn import GraphSAGE, GAT
+from torch_geometric.nn import SAGEConv
 
+from src.modeling.final_framework.framework import DGIPlusGNN, corruption
+from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomax, Encoder
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -22,6 +27,38 @@ def model_list(data):
     """
 
     #list of models  to test
+
+    """----FRAMEWORK----"""
+    # define the framework, first DGI and then the GNN used in the downstream task
+    dgi_model = DeepGraphInfomax(
+        hidden_channels=64, encoder=Encoder(64, 64, 2),
+        summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
+        corruption=corruption)
+    # load the pretrained parameters
+    dgi_model.load_state_dict(torch.load(os.path.join(trained_dgi_model_path, 'modeling_graphsage_unsup_trained.pth')))
+    # reset first layer, be sure that the hidden channels are the same in DGI
+    dgi_model.encoder.dataset_convs[0] = SAGEConv(4, 64)
+    # freeze layers 2 and 3, let layer 1 learn
+    for param in dgi_model.encoder.conv2.parameters():
+        param.requires_grad = False
+    for param in dgi_model.encoder.conv3.parameters():
+        param.requires_grad = False
+
+        # define the downstream GNN, it is the same as graphsage elliptic++. However the input is different according to the framework architecture
+        # gnn_model = GAT(data.num_features + 64, 64, 3,
+        #            8).to(device)
+
+    # same model as in graphsage_elliptic, used in the framework
+    gnn_model_downstream_framework = GraphSAGE(
+        in_channels=data.num_features + 64,
+        hidden_channels=256,
+        num_layers=3,
+        out_channels=2,
+    )
+
+    gnn_model_framework = DGIPlusGNN(dgi_model, gnn_model_downstream_framework)
+    optimizer_gnn_framework = torch.optim.Adam(gnn_model_framework.parameters(), lr=0.005, weight_decay=5e-4)
+    criterion_gnn_framework = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----GRAPHSAGE----"""
     gnn_model_graphsage = GraphSAGE(
@@ -46,6 +83,12 @@ def model_list(data):
     """---------------------------------------------"""
     # Store all in a nested dict
     model_dict = {
+        'framework': {
+            'model': gnn_model_framework,
+            'optimizer': optimizer_gnn_framework,
+            'criterion': criterion_gnn_framework,
+        },
+
         'graphsage': {
             'model': gnn_model_graphsage,
             'optimizer': optimizer_gnn_graphsage,

@@ -36,7 +36,7 @@ else:
 data = EllipticDataset(root=processed_data_path)
 
 data = data[4]
-epochs = 2
+epochs = 5
 
 train_loader = NeighborLoader(
     data,
@@ -62,71 +62,44 @@ test_loader = NeighborLoader(
     input_nodes=data.test_mask
 )
 
-# define the framework, first DGI and then the GNN used in the downstream task
-dgi_model = DeepGraphInfomax(
-    hidden_channels=64, encoder=Encoder(64, 64, 2),
-    summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
-    corruption=corruption).to(device)
-# load the pretrained parameters
-dgi_model.load_state_dict(torch.load(os.path.join(trained_dgi_model_path, 'modeling_graphsage_unsup_trained.pth')))
-# reset first layer, be sure that the hidden channels are the same in DGI
-dgi_model.encoder.dataset_convs[0] = SAGEConv(4, 64)
-# freeze layers 2 and 3, let layer 1 learn
-for param in dgi_model.encoder.conv2.parameters():
-    param.requires_grad = False
-for param in dgi_model.encoder.conv3.parameters():
-    param.requires_grad = False
 
-    # define the downstream GNN, it is the same as graphsage elliptic++. However the input is different according to the framework architecture
-    # gnn_model = GAT(data.num_features + 64, 64, 3,
-    #            8).to(device)
 
-# same model as in graphsage_elliptic, used in the framework
-gnn_model_downstream_framework = GraphSAGE(
-    in_channels=data.num_features + 64,
-    hidden_channels=256,
-    num_layers=3,
-    out_channels=2,
-).to(device)
-
-#model to test
+#model to test set the device
 models_to_compare = model_list(data)
 for name, components in models_to_compare.items():
     components['model'] = components['model'].to(device)
-
-model_framework = DGIPlusGNN(dgi_model, gnn_model_downstream_framework).to(device)
-optimizer_framework = torch.optim.Adam(model_framework.parameters(), lr=0.005, weight_decay=5e-4)
-
-criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 if not os.path.exists(os.path.join(trained_model_path, 'final_framework_trained.pth')):
     # Run training
     with open("training_log_per_epoch.txt", "w") as file:
         for epoch in range(epochs):
-            #train tthe framework
-            loss_framework = train(train_loader, model_framework, optimizer_framework, device, criterion, True)
-            log = (f"\n\n---TRAINING--- Epoch {epoch + 1:02d}\n"
-                   f"Loss Framework: {loss_framework:.6f}\n")
+
+            #train the framework
+            log = (f"\n\n---TRAINING--- Epoch {epoch + 1:02d}\n")
             print(log)
             file.write(log)
-            #train all the other models
+            #train the models, framework need a special variable
             for name, components in models_to_compare.items():
-                loss_gnn = train(train_loader, components['model'], components['optimizer'], device, components['criterion'], False)
+                if name == 'framework':
+                    loss_gnn = train(train_loader, components['model'], components['optimizer'], device, components['criterion'], True)
+                else:
+                    loss_gnn = train(train_loader, components['model'], components['optimizer'], device,
+                                     components['criterion'], False)
                 log = (f"Loss {name}: {loss_gnn:.6f}\n")
                 print(log)
                 file.write(log)
 
             #validation
-            accuracy_framework, recall_framework, f1_framework, auc_pr_framework = validate(val_loader, model_framework, device, True)
             log = (
-                f"---VALIDATION--- Epoch {epoch + 1:02d}\n"
-                f"Framework Metrics --- Accuracy: {accuracy_framework:.4f}, Recall: {recall_framework:.4f}, "
-                f"F1: {f1_framework:.4f}, AUC-PR: {auc_pr_framework:.4f}\n")
-            print(log)
+                f"---VALIDATION--- Epoch {epoch + 1:02d}\n")
             file.write(log)
 
             for name, components in models_to_compare.items():
-                accuracy_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device, False)
+                if name == 'framework':
+                    accuracy_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device, True)
+                else:
+                    accuracy_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device,
+                                                                            False)
                 # Logging
                 log = (
                     f"{name} Metrics --- Accuracy: {accuracy_gnn:.4f}, Recall: {recall_gnn:.4f}, "
@@ -135,32 +108,25 @@ if not os.path.exists(os.path.join(trained_model_path, 'final_framework_trained.
                 print(log)
                 file.write(log)
 
-    torch.save(model_framework.state_dict(), os.path.join(trained_model_path, 'final_framework_trained.pth'))
     for name, components in models_to_compare.items():
         torch.save(components['model'].state_dict(), os.path.join(trained_model_path, f'{name}_gnn_trained.pth'))
 else:
-    model_framework.load_state_dict(
-        torch.load(os.path.join(trained_model_path, 'final_framework_trained.pth'), map_location=device))
     for name, components in models_to_compare.items():
         components['model'].load_state_dict(
             torch.load(os.path.join(trained_model_path, f'{name}_gnn_trained.pth'), map_location=device))
 
 # Inference
-accuracy, recall, f1, pr_auc, confusion_matrix_model = evaluate(model_framework, test_loader, device, 'framework', True)
+print("\n----EVALUATION----\n")
 with open(f"evaluation_performance_metrics_trained.txt", "w") as f:
     f.write("----EVALUATION----\n")
-    f.write("----framework----\n")
-    f.write(f"Accuracy: {accuracy:.4f}\n")
-    f.write(f"Recall: {recall:.4f}\n")
-    f.write(f"F1 Score: {f1:.4f}\n")
-    f.write(f"pr_auc Score: {pr_auc:.4f}\n")
-    f.write(f"confusion matrix: {confusion_matrix_model:.4f}\n")
-
     for name, components in models_to_compare.items():
-        accuracy, recall, f1, pr_auc, confusion_matrix_model = evaluate(components['model'], test_loader, device, name, False)
+        if name == 'framework':
+            accuracy, recall, f1, pr_auc, confusion_matrix_model = evaluate(components['model'], test_loader, device, name, True)
+        else:
+            accuracy, recall, f1, pr_auc, confusion_matrix_model = evaluate(components['model'], test_loader, device,
+                                                                            name, False)
         f.write(f"----{name}----\n")
         f.write(f"Accuracy: {accuracy:.4f}\n")
         f.write(f"Recall: {recall:.4f}\n")
         f.write(f"F1 Score: {f1:.4f}\n")
         f.write(f"pr_auc Score: {pr_auc:.4f}\n")
-        f.write(f"confusion matrix: {confusion_matrix_model:.4f}\n")

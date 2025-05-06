@@ -36,7 +36,6 @@ def train(train_loader, model, optimizer, device, criterion, framework=False):
     total_loss = 0
     total_examples = 0
 
-    print("\n----TRAINING----\n")
 
     for batch in tqdm(train_loader, desc="training"):
         batch = batch.to(device)
@@ -71,8 +70,6 @@ def validate(val_loader, model, device, framework=False):
     true = []
     probs = []
 
-    print("\n----VALIDATION----\n")
-
     with torch.no_grad():
         for batch in val_loader:
             batch = batch.to(device)
@@ -105,8 +102,6 @@ def evaluate(model, test_loader, device, name, framework=False):
     preds = []
     true = []
     probs = []
-
-    print("\n----EVALUATION----\n")
 
     with torch.no_grad():
         for batch in tqdm(test_loader):
@@ -149,7 +144,7 @@ def evaluate(model, test_loader, device, name, framework=False):
     confusion_matrix_model = confusion_matrix(true_labels, preds)
     disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_model)
     disp.plot()
-    plt.title('Confusion Matrix')
+    plt.title(f'Confusion Matrix {name}')
     plt.savefig(f'confusion_matrix_{name}_plot_.png')
     print(confusion_matrix_model)
 
