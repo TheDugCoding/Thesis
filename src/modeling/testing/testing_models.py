@@ -28,7 +28,7 @@ else:
 data = EllipticDataset(root=processed_data_path)
 
 data = data[4]
-epochs = 5
+epochs = 50
 
 train_loader = NeighborLoader(
     data,
