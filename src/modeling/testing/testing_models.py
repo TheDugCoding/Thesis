@@ -1,21 +1,13 @@
 import os
 
-import matplotlib.pyplot as plt
 import torch
 import torch_geometric
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score
 from torch_geometric.loader import NeighborLoader
-from torch_geometric.nn import GraphSAGE
-from torch_geometric.nn import SAGEConv
-from tqdm import tqdm
-from models_to_test import model_list
 
 from src.data_preprocessing.preprocess import EllipticDataset
-from src.modeling.final_framework.framework import DGIPlusGNN, corruption
-from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomax, Encoder
-from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
-from src.modeling.utils.modeling_utils import train, validate, evaluate
 from src.modeling.testing.models_to_test import model_list
+from src.modeling.utils.modeling_utils import train, validate, evaluate
+from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
 relative_path_processed = 'processed'

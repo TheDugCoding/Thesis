@@ -1,7 +1,7 @@
 import os
 
 import torch
-from torch_geometric.nn import GraphSAGE, GAT
+from torch_geometric.nn import GraphSAGE, GAT, GIN
 from torch_geometric.nn import SAGEConv
 
 from src.modeling.final_framework.framework import DGIPlusGNN, corruption
@@ -80,8 +80,20 @@ def model_list(data):
     optimizer_gnn_gat = torch.optim.Adam(gnn_model_graphsage.parameters(), lr=0.005, weight_decay=5e-4)
     criterion_gnn_gat = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
+    """----GIN----"""
+    gnn_model_gin = GIN(
+        in_channels=data.num_features,
+        hidden_channels=256,
+        num_layers=2,
+        out_channels=2,
+    )
+
+    optimizer_gnn_gin = torch.optim.Adam(gnn_model_gin.parameters(), lr=0.005, weight_decay=5e-4)
+    criterion_gnn_gin = torch.nn.CrossEntropyLoss(ignore_index=-1)
+
+
     """---------------------------------------------"""
-    # Store all in a nested dict
+    # Store all in a nested dict, all the models above must be in this dict
     model_dict = {
         'framework': {
             'model': gnn_model_framework,
@@ -99,6 +111,12 @@ def model_list(data):
             'model': gnn_model_gat,
             'optimizer': optimizer_gnn_gat,
             'criterion': criterion_gnn_gat
+        },
+
+        'gin': {
+            'model': gnn_model_gin,
+            'optimizer': optimizer_gnn_gin,
+            'criterion': criterion_gnn_gin
         }
     }
 
