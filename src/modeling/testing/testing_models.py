@@ -61,7 +61,7 @@ models_to_compare = model_list(data)
 for name, components in models_to_compare.items():
     components['model'] = components['model'].to(device)
 
-if not os.path.exists(os.path.join(trained_model_path, 'final_framework_trained.pth')):
+if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pth')):
     # Run training
     with open("training_log_per_epoch.txt", "w") as file:
         for epoch in range(epochs):
