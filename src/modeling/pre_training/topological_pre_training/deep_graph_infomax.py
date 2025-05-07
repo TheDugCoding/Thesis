@@ -16,7 +16,6 @@ from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 EPS = 1e-15
 
-
 script_dir = get_data_folder()
 relative_path_processed  = 'processed'
 relative_path_trained_model = 'modeling/pre_training/topological_pre_training/trained_models'

@@ -155,7 +155,7 @@ class Encoder(torch.nn.Module):
         self.conv3 = SAGEConv(hidden_channels, output_channels)
 
     # framework =  if it is used for training is true, otherwise if it is used outside the framework and for training is False
-    def forward(self, x, edge_index, batch_size, framework, layer):
+    def forward(self, x, edge_index, batch_size, framework):
         act = torch.nn.PReLU().to(device)
         x = act(self.conv1(x, edge_index))
         x = act(self.conv2(x, edge_index))
@@ -241,8 +241,7 @@ if __name__ == '__main__':
     # set the train loader from the biggest to the smallest, otherwise it won't work
     train_loaders = [train_loader_ethereum, train_loader_rabo]
 
-    # define the model, the unique layers correspond to the number of "flipping layers", meaning that
-    # each dataset has its own layer
+    # define the model, no flipping layer
     model = DeepGraphInfomax(
         hidden_channels=64, encoder=Encoder(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),

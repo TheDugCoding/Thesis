@@ -331,7 +331,7 @@ with open("gat_finetuning.txt", "w") as file:
 with open("gin_finetuning.txt", "w") as file:
     # run Optuna study
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective_gat, n_trials=30, show_progress_bar=True)
+    study.optimize(objective_gin, n_trials=30, show_progress_bar=True)
 
     # print and save the best trial
     file.write("Best trial:\n")
