@@ -30,6 +30,7 @@ data = data[4]
 
 def objective_graphsage(trial):
     # hyper-parameters
+    act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
     num_layers = trial.suggest_int("num_layers", 2, 4)
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
@@ -54,7 +55,7 @@ def objective_graphsage(trial):
         num_layers=num_layers,
         out_channels=2,
         dropout=dropout,
-    ).to(device)
+        act=act).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
@@ -119,6 +120,7 @@ def objective_graphsage(trial):
 
 def objective_gat(trial):
     # hyper-parameters
+    act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     heads = trial.suggest_categorical("heads", [1, 2, 4, 8, 16])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
     num_layers = trial.suggest_int("num_layers", 2, 4)
@@ -144,7 +146,8 @@ def objective_gat(trial):
         num_layers=num_layers,
         out_channels=2,
         dropout=dropout,
-        heads=heads).to(device)
+        heads=heads,
+        act=act).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
@@ -209,6 +212,7 @@ def objective_gat(trial):
 
 def objective_gin(trial):
     # hyper-parameters
+    act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
     num_layers = trial.suggest_int("num_layers", 2, 4)
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
@@ -232,7 +236,8 @@ def objective_gin(trial):
         hidden_channels=hidden_channels,
         num_layers=num_layers,
         out_channels=2,
-        dropout=dropout).to(device)
+        dropout=dropout,
+        act=act).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
