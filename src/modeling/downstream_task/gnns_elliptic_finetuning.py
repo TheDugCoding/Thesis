@@ -4,8 +4,9 @@ import optuna
 import torch
 import torch_geometric
 from sklearn.metrics import average_precision_score
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import NeighborLoader, DataLoader
 from torch_geometric.nn import GraphSAGE,GAT, GIN
+from torch_geometric.nn import BatchNorm, LayerNorm, GraphNorm
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
@@ -27,9 +28,20 @@ else:
 data = EllipticDataset(root=processed_data_path)
 data = data[4]
 
+def get_norm(norm_type, hidden_channels):
+    if norm_type == "batch":
+        return BatchNorm(hidden_channels)
+    elif norm_type == "layer":
+        return LayerNorm(hidden_channels)
+    elif norm_type == "graph":
+        return GraphNorm(hidden_channels)
+    else:
+        return None
 
 def objective_graphsage(trial):
     # hyper-parameters
+    norm_choice = trial.suggest_categorical("norm", ["batch", "layer", "graph", None])
+    aggr = trial.suggest_categorical("aggr", ["mean", "sum", "max"])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
     num_layers = trial.suggest_int("num_layers", 2, 4)
@@ -48,6 +60,8 @@ def objective_graphsage(trial):
         "[10, 20, 30, 40]"
     ])
 
+    norm_layer = get_norm(norm_choice, hidden_channels)
+
     # Define model
     model = GraphSAGE(
         in_channels=data.num_features,
@@ -55,7 +69,9 @@ def objective_graphsage(trial):
         num_layers=num_layers,
         out_channels=2,
         dropout=dropout,
-        act=act).to(device)
+        act=act,
+        aggr=aggr,
+        norm=norm_layer).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
@@ -108,11 +124,12 @@ def objective_graphsage(trial):
 
         true_labels = torch.cat(true)
         # PR-AUC
+        probs = torch.cat(probs, dim=0)
         probs_class0 = probs[:, 0]
-        pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0)
+        pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
         return pr_auc
 
-    for _ in range(epochs):
+    for _ in range(int(epochs)):
         train_once()
 
     pr_auc = test_once()
@@ -120,6 +137,7 @@ def objective_graphsage(trial):
 
 def objective_gat(trial):
     # hyper-parameters
+    norm_choice = trial.suggest_categorical("norm", ["batch", "layer", "graph", None])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     heads = trial.suggest_categorical("heads", [1, 2, 4, 8, 16])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
@@ -139,6 +157,8 @@ def objective_gat(trial):
         "[10, 20, 30, 40]"
     ])
 
+    norm_layer = get_norm(norm_choice, hidden_channels)
+
     # Define model
     model = GAT(
         in_channels=data.num_features,
@@ -147,7 +167,9 @@ def objective_gat(trial):
         out_channels=2,
         dropout=dropout,
         heads=heads,
-        act=act).to(device)
+        v2=True,
+        act=act,
+        norm=norm_layer).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
@@ -200,11 +222,12 @@ def objective_gat(trial):
 
         true_labels = torch.cat(true)
         # PR-AUC
+        probs = torch.cat(probs, dim=0)
         probs_class0 = probs[:, 0]
-        pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0)
+        pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
         return pr_auc
 
-    for _ in range(epochs):
+    for _ in range(int(epochs)):
         train_once()
 
     pr_auc = test_once()
@@ -212,6 +235,7 @@ def objective_gat(trial):
 
 def objective_gin(trial):
     # hyper-parameters
+    norm_choice = trial.suggest_categorical("norm", ["batch", "layer", "graph", None])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
     num_layers = trial.suggest_int("num_layers", 2, 4)
@@ -219,16 +243,8 @@ def objective_gin(trial):
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+
+    norm_layer = get_norm(norm_choice, hidden_channels)
 
     # Define model
     model = GIN(
@@ -237,24 +253,23 @@ def objective_gin(trial):
         num_layers=num_layers,
         out_channels=2,
         dropout=dropout,
-        act=act).to(device)
+        act=act,
+        norm=norm_layer).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
-    train_loader = NeighborLoader(
+    train_loader = DataLoader(
         data,
         shuffle=True,
-        num_neighbors=ast.literal_eval(neighbours_size),
         batch_size=32,
         input_nodes=data.train_mask
 
     )
 
-    test_loader = NeighborLoader(
+    test_loader = DataLoader(
         data,
         shuffle=True,
-        num_neighbors=ast.literal_eval(neighbours_size),
         batch_size=32,
         input_nodes=data.test_mask
     )
@@ -290,11 +305,12 @@ def objective_gin(trial):
 
         true_labels = torch.cat(true)
         # PR-AUC
+        probs = torch.cat(probs, dim=0)
         probs_class0 = probs[:, 0]
-        pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0)
+        pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
         return pr_auc
 
-    for _ in range(epochs):
+    for _ in range(int(epochs)):
         train_once()
 
     pr_auc = test_once()

@@ -6,7 +6,7 @@ import torch_geometric
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import SAGEConv
 from tqdm import tqdm
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score, average_precision_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score, average_precision_score, precision_recall_curve
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from torch_geometric.nn import GraphSAGE
@@ -93,7 +93,7 @@ def validate(val_loader, model, device, framework=False):
 
     # PR-AUC
     probs_class0 = probs[:, 0]
-    pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0)
+    pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
 
     return accuracy, recall, f1, pr_auc
 
@@ -125,7 +125,8 @@ def evaluate(model, test_loader, device, name, framework=False):
 
     # PR-AUC
     probs_class0 = probs[:, 0]
-    pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0)
+    pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
+    precision, recall_vals, pr_thresholds = precision_recall_curve(true_labels, probs_class0, pos_label=0)
 
     """
     print(f"Final Accuracy: {accuracy:.4f}\n")
@@ -147,7 +148,19 @@ def evaluate(model, test_loader, device, name, framework=False):
     plt.title(f'Confusion Matrix {name}')
     plt.savefig(f'confusion_matrix_{name}_plot_.png')
     print(confusion_matrix_model)
-
     plt.show()
 
-    return accuracy, recall, f1, pr_auc, confusion_matrix_model
+    plt.figure(figsize=(8, 6))
+    plt.plot(recall_vals, precision, label=f'PR-AUC = {pr_auc:.4f}', color='blue')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title(f'Precision-Recall Curve - {name}')
+    plt.savefig(f'precision_recall_curve_{name}_plot_.png')
+    plt.legend(loc='lower left')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+
+    return accuracy, recall, f1, pr_auc, confusion_matrix_model, (precision, recall_vals, pr_thresholds)

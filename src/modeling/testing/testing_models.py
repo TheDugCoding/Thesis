@@ -113,9 +113,9 @@ with open(f"evaluation_performance_metrics_trained.txt", "w") as f:
     f.write("----EVALUATION----\n")
     for name, components in models_to_compare.items():
         if name == 'framework':
-            accuracy, recall, f1, pr_auc, confusion_matrix_model = evaluate(components['model'], test_loader, device, name, True)
+            accuracy, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], test_loader, device, name, True)
         else:
-            accuracy, recall, f1, pr_auc, confusion_matrix_model = evaluate(components['model'], test_loader, device,
+            accuracy, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], test_loader, device,
                                                                             name, False)
         f.write(f"----{name}----\n")
         f.write(f"Accuracy: {accuracy:.4f}\n")
