@@ -13,7 +13,7 @@ mode = None  # 'train' or 'val'
 # Patterns
 epoch_pattern = re.compile(r'---(TRAINING|VALIDATION)--- Epoch (\d+)')
 loss_pattern = re.compile(r'Loss (\w+): ([\d.]+)')
-metric_pattern = re.compile(r'(\w+) Metrics --- Accuracy: ([\d.]+), Recall: ([\d.]+), F1: ([\d.]+), AUC-PR: ([\d.]+)')
+metric_pattern = re.compile(r'(\w+) Metrics --- Accuracy: ([\d.]+), Precision: ([\d.]+), Recall: ([\d.]+), F1: ([\d.]+), AUC-PR: ([\d.]+)')
 
 with open(log_path, 'r') as f:
     for line in f:
@@ -35,9 +35,10 @@ with open(log_path, 'r') as f:
 
         metric_match = metric_pattern.match(line)
         if metric_match:
-            model, acc, recall, f1, auc = metric_match.groups()
+            model, acc, pre, recall, f1, auc = metric_match.groups()
             epoch_data[current_epoch]['val'][model] = {
                 'Accuracy': float(acc),
+                'Precision': float(pre),
                 'Recall': float(recall),
                 'F1': float(f1),
                 'AUC-PR': float(auc)
@@ -54,6 +55,7 @@ for epoch in sorted(epoch_data.keys()):
     for model, metrics in epoch_data[epoch]['val'].items():
         print(f"    - {model}: "
               f"Acc={metrics['Accuracy']:.4f}, "
+              f"Pre={metrics['Precision']:.4f}, "
               f"Rec={metrics['Recall']:.4f}, "
               f"F1={metrics['F1']:.4f}, "
               f"AUC-PR={metrics['AUC-PR']:.4f}")

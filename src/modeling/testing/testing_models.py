@@ -28,11 +28,11 @@ else:
 data = EllipticDataset(root=processed_data_path)
 
 data = data[4]
-epochs = 50
+epochs = 10
 
 train_loader = NeighborLoader(
     data,
-    shuffle=False,
+    shuffle=True,
     num_neighbors=[10, 10],
     batch_size=32,
     input_nodes=data.train_mask
@@ -40,7 +40,7 @@ train_loader = NeighborLoader(
 
 val_loader = NeighborLoader(
     data,
-    shuffle=False,
+    shuffle=True,
     num_neighbors=[10, 10],
     batch_size=32,
     input_nodes=data.val_mask
@@ -48,7 +48,7 @@ val_loader = NeighborLoader(
 
 test_loader = NeighborLoader(
     data,
-    shuffle=False,
+    shuffle=True,
     num_neighbors=[10, 10],
     batch_size=32,
     input_nodes=data.test_mask
@@ -88,13 +88,13 @@ if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pt
 
             for name, components in models_to_compare.items():
                 if name == 'framework':
-                    accuracy_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device, True)
+                    accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device, True)
                 else:
-                    accuracy_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device,
+                    accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device,
                                                                             False)
                 # Logging
                 log = (
-                    f"{name} Metrics --- Accuracy: {accuracy_gnn:.4f}, Recall: {recall_gnn:.4f}, "
+                    f"{name} Metrics --- Accuracy: {accuracy_gnn:.4f}, Precision: {precision_gnn:.4f}, Recall: {recall_gnn:.4f}, "
                     f"F1: {f1_gnn:.4f}, AUC-PR: {auc_pr_gnn:.4f}\n"
                 )
                 print(log)
@@ -113,12 +113,13 @@ with open(f"evaluation_performance_metrics_trained.txt", "w") as f:
     f.write("----EVALUATION----\n")
     for name, components in models_to_compare.items():
         if name == 'framework':
-            accuracy, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], test_loader, device, name, True)
+            accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], test_loader, device, name, True)
         else:
-            accuracy, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], test_loader, device,
+            accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], test_loader, device,
                                                                             name, False)
         f.write(f"----{name}----\n")
         f.write(f"Accuracy: {accuracy:.4f}\n")
+        f.write(f"Precision: {precision:.4f}\n")
         f.write(f"Recall: {recall:.4f}\n")
         f.write(f"F1 Score: {f1:.4f}\n")
-        f.write(f"pr_auc Score: {pr_auc:.4f}\n")
+        f.write(f"pr_auc Score (class 0): {pr_auc:.4f}\n")

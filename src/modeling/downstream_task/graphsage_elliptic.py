@@ -1,14 +1,12 @@
 import os
 
-import matplotlib.pyplot as plt
 import torch
 import torch_geometric
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, average_precision_score, f1_score, recall_score
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import GraphSAGE
-from tqdm import tqdm
 
 from src.data_preprocessing.preprocess import EllipticDataset
+from src.modeling.utils.modeling_utils import train, validate, evaluate
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -64,110 +62,35 @@ model = GraphSAGE(
 optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
 criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
-# Training loop
-def train(train_loader):
-    model.train()
-    total_loss = 0
-    total_examples = 0
-
-    for batch in tqdm(train_loader, desc="training"):
-        batch = batch.to(device)
-        optimizer.zero_grad()
-
-        # Forward pass
-        out = model(batch.x, batch.edge_index)
-
-        # Only calculate loss for the target (input) nodes, not the neighbors
-        loss = criterion(out[:batch.batch_size], batch.y[:batch.batch_size])
-        loss.backward()
-        optimizer.step()
-
-        total_loss += loss.item() * batch.batch_size
-        total_examples += batch.batch_size
-
-    return  total_loss / total_examples
-
-def validate(val_loader):
-    model.eval()
-    preds = []
-    true = []
-    probs = []
-    with torch.no_grad():
-        for batch in val_loader:
-            batch = batch.to(device)
-            out = model(batch.x, batch.edge_index)
-            prob = torch.softmax(out[:batch.batch_size], dim=1)
-            preds.append(prob.argmax(dim=1).cpu())
-            probs.append(prob.cpu())
-            true.append(batch.y[:batch.batch_size].cpu())
-
-    preds = torch.cat(preds)
-    probs = torch.cat(probs)
-    true_labels = torch.cat(true)
-
-    accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
-    recall = recall_score(true_labels, preds, average='macro')
-    f1 = f1_score(true_labels, preds, average='weighted')
-
-    # AUC-PR
-    probs_class0 = probs[:, 0]
-    auc_pr = average_precision_score(true_labels, probs_class0, average='weighted')
-
-    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score: {f1:.4f}, AUC-PR (macro): {auc_pr:.4f}")
-    return accuracy, recall, f1, auc_pr
-
-
-
 #Run training and validation
-with open("training_log_losses_per_epoch.txt", "w") as file:
+with open("graphsage_training_log_losses_per_epoch.txt", "w") as file:
     for epoch in range(epochs):
-        loss = train(train_loader)
+        loss = train(train_loader, model, optimizer, device,
+                                     criterion, False)
         log = f"Epoch {epoch+1:02d}, Loss: {loss:.6f}\n"
         print(log)
         file.write(log)
-        validate(val_loader)
+        accuracy, precision, recall, f1, auc_pr = validate(val_loader, model, device, False)
 
+        # Logging
+        log = (
+            f"graphsage Metrics --- Accuracy: {accuracy:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}, "
+            f"F1: {f1:.4f}, AUC-PR: {auc_pr:.4f}\n"
+        )
+        print(log)
+        file.write(log)
 
 
 torch.save(model.state_dict(), os.path.join(trained_model_path, 'modeling_graphsage_trained.pth'))
 
 print("\n----EVALUATION----\n")
-# Inference
-model.eval()
-preds = []
-true = []
-
-with torch.no_grad():
-    for batch in tqdm(test_loader, desc='Testing'):
-        batch = batch.to(device)
-        out = model(batch.x, batch.edge_index)
-        preds.append(out[:batch.batch_size].argmax(dim=1).cpu())
-        true.append(batch.y[:batch.batch_size].cpu())
-
-preds = torch.cat(preds)
-true_labels = torch.cat(true)
-accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
-recall = recall_score(true_labels, preds, average='macro')
-f1 = f1_score(true_labels, preds, average='weighted')
-
-print(f"Final Accuracy: {accuracy:.4f}\n")
-print(f"Recall (macro): {recall:.4f}\n")
-print(f"F1 Score: {f1:.4f}\n")
-print('Confusion matrix')
-
-with open("performance_metrics_graphsage_trained.txt", "w") as f:
-    f.write(f"Final Accuracy: {accuracy:.4f}\n")
-    f.write(f"Recall (macro): {recall:.4f}\n")
-    f.write(f"F1 Score (macro): {f1:.4f}\n")
-
-true_labels = true_labels.numpy()
-predicted_labels = preds.numpy()
-
-cm = confusion_matrix(true_labels, preds)
-disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-disp.plot()
-plt.title('Confusion Matrix')
-plt.savefig('confusion_matrix_plot.png')
-print(cm)
-
-plt.show()
+with open(f"evaluation_performance_metrics_graphsage_trained.txt", "w") as f:
+    f.write("----EVALUATION----\n")
+    accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(model, test_loader, device,
+                                                                            'graphsage', False)
+    f.write("----{graphsage}----\n")
+    f.write(f"Accuracy: {accuracy:.4f}\n")
+    f.write(f"Precision: {precision:.4f}\n")
+    f.write(f"Recall: {recall:.4f}\n")
+    f.write(f"F1 Score: {f1:.4f}\n")
+    f.write(f"pr_auc Score: {pr_auc:.4f}\n")

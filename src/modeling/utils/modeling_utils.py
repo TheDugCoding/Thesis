@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import torch
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, average_precision_score, \
-    precision_recall_curve
+    precision_recall_curve, precision_score
 from tqdm import tqdm
 
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
@@ -82,14 +82,15 @@ def validate(val_loader, model, device, framework=False):
     true_labels = torch.cat(true)
 
     accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
-    recall = recall_score(true_labels, preds, average='macro')
-    f1 = f1_score(true_labels, preds, average='weighted')
+    precision = precision_score(true_labels, preds, average='binary', pos_label=0)
+    recall = recall_score(true_labels, preds, average='binary', pos_label=0)
+    f1 = f1_score(true_labels, preds, average='binary', pos_label=0)
 
     # PR-AUC
     probs_class0 = probs[:, 0]
     pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
 
-    return accuracy, recall, f1, pr_auc
+    return accuracy, precision, recall, f1, pr_auc
 
 
 def evaluate(model, test_loader, device, name, framework=False):
@@ -115,25 +116,14 @@ def evaluate(model, test_loader, device, name, framework=False):
     true_labels = torch.cat(true)
 
     accuracy = (preds == true_labels).sum().item() / true_labels.size(0)
-    recall = recall_score(true_labels, preds, average='macro')
-    f1 = f1_score(true_labels, preds, average='weighted')
+    precision = precision_score(true_labels, preds, average='binary', pos_label=0)
+    recall = recall_score(true_labels, preds, average='binary', pos_label=0)
+    f1 = f1_score(true_labels, preds, average='binary', pos_label=0)
 
     # PR-AUC
     probs_class0 = probs[:, 0]
     pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
-    precision, recall_vals, pr_thresholds = precision_recall_curve(true_labels, probs_class0, pos_label=0)
-
-    """
-    print(f"Final Accuracy: {accuracy:.4f}\n")
-    print(f"Recall (macro): {recall:.4f}\n")
-    print(f"F1 Score: {f1:.4f}\n")
-    print('Confusion matrix')
-
-    with open(f"performance_metrics_{name}_trained.txt", "w") as f:
-        f.write(f"Final Accuracy: {accuracy:.4f}\n")
-        f.write(f"Recall (macro): {recall:.4f}\n")
-        f.write(f"F1 Score (macro): {f1:.4f}\n")
-    """
+    precision_plot, recall_vals, pr_thresholds = precision_recall_curve(true_labels, probs_class0, pos_label=0)
 
     true_labels = true_labels.numpy()
 
@@ -146,7 +136,7 @@ def evaluate(model, test_loader, device, name, framework=False):
     plt.show()
 
     plt.figure(figsize=(8, 6))
-    plt.plot(recall_vals, precision, label=f'PR-AUC = {pr_auc:.4f}', color='blue')
+    plt.plot(recall_vals, precision_plot, label=f'PR-AUC = {pr_auc:.4f}', color='blue')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.title(f'Precision-Recall Curve - {name}')
@@ -156,4 +146,4 @@ def evaluate(model, test_loader, device, name, framework=False):
     plt.tight_layout()
     plt.show()
 
-    return accuracy, recall, f1, pr_auc, confusion_matrix_model, (precision, recall_vals, pr_thresholds)
+    return accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, (precision, recall_vals, pr_thresholds)
