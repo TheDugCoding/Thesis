@@ -161,6 +161,4 @@ def evaluate(model, test_loader, device, name, framework=False):
     plt.tight_layout()
     plt.show()
 
-
-
     return accuracy, recall, f1, pr_auc, confusion_matrix_model, (precision, recall_vals, pr_thresholds)
