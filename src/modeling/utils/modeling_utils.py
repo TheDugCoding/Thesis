@@ -1,16 +1,9 @@
-import os
-
 import matplotlib.pyplot as plt
 import torch
-import torch_geometric
-from torch_geometric.loader import NeighborLoader
-from torch_geometric.nn import SAGEConv
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, average_precision_score, \
+    precision_recall_curve
 from tqdm import tqdm
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, recall_score, average_precision_score, precision_recall_curve
 
-from src.data_preprocessing.preprocess import EllipticDataset
-from torch_geometric.nn import GraphSAGE
-from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomax, Encoder
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -20,6 +13,7 @@ relative_path_trained_dgi = 'modeling/pre_training/topological_pre_training/trai
 processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_model_path = get_src_sub_folder(relative_path_trained_model)
 trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
+
 
 # Training loop
 def train(train_loader, model, optimizer, device, criterion, framework=False):
@@ -35,7 +29,6 @@ def train(train_loader, model, optimizer, device, criterion, framework=False):
     model.train()
     total_loss = 0
     total_examples = 0
-
 
     for batch in tqdm(train_loader, desc="training"):
         batch = batch.to(device)
@@ -55,7 +48,8 @@ def train(train_loader, model, optimizer, device, criterion, framework=False):
         total_loss += loss.item() * batch.batch_size
         total_examples += batch.batch_size
 
-    return  total_loss / total_examples
+    return total_loss / total_examples
+
 
 def validate(val_loader, model, device, framework=False):
     """
@@ -96,6 +90,7 @@ def validate(val_loader, model, device, framework=False):
     pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
 
     return accuracy, recall, f1, pr_auc
+
 
 def evaluate(model, test_loader, device, name, framework=False):
     model.eval()
