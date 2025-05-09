@@ -315,11 +315,26 @@ def objective_gin(trial):
 
     pr_auc = test_once()
     return pr_auc
+#
+# with open("graphsage_finetuning.txt", "w") as file:
+#     # run Optuna study
+#     study = optuna.create_study(direction="maximize")
+#     study.optimize(objective_graphsage, n_trials=30, show_progress_bar=True)
+#
+#     # print and save the best trial
+#     file.write("Best trial:\n")
+#     trial = study.best_trial
+#     file.write(f"  PR-AUC Score: {trial.value}\n")
+#     file.write("  Best hyperparameters:\n")
+#
+#     for key, value in trial.params.items():
+#         file.write(f"    {key}: {value}\n")
 
-with open("graphsage_finetuning.txt", "w") as file:
+
+with open("gat_finetuning.txt", "w") as file:
     # run Optuna study
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective_graphsage, n_trials=30, show_progress_bar=True)
+    study.optimize(objective_gat, n_trials=30, show_progress_bar=True)
 
     # print and save the best trial
     file.write("Best trial:\n")
@@ -330,31 +345,16 @@ with open("graphsage_finetuning.txt", "w") as file:
     for key, value in trial.params.items():
         file.write(f"    {key}: {value}\n")
 
-#
-# with open("gat_finetuning.txt", "w") as file:
-#     # run Optuna study
-#     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_gat, n_trials=30, show_progress_bar=True)
-#
-#     # print and save the best trial
-#     file.write("Best trial:\n")
-#     trial = study.best_trial
-#     file.write(f"  PR-AUC Score: {trial.value}\n")
-#     file.write("  Best hyperparameters:\n")
-#
-#     for key, value in trial.params.items():
-#         file.write(f"    {key}: {value}\n")
-#
-# with open("gin_finetuning.txt", "w") as file:
-#     # run Optuna study
-#     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_gin, n_trials=30, show_progress_bar=True)
-#
-#     # print and save the best trial
-#     file.write("Best trial:\n")
-#     trial = study.best_trial
-#     file.write(f"  PR-AUC Score: {trial.value}\n")
-#     file.write("  Best hyperparameters:\n")
-#
-#     for key, value in trial.params.items():
-#         file.write(f"    {key}: {value}\n")
+with open("gin_finetuning.txt", "w") as file:
+    # run Optuna study
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective_gin, n_trials=30, show_progress_bar=True)
+
+    # print and save the best trial
+    file.write("Best trial:\n")
+    trial = study.best_trial
+    file.write(f"  PR-AUC Score: {trial.value}\n")
+    file.write("  Best hyperparameters:\n")
+
+    for key, value in trial.params.items():
+        file.write(f"    {key}: {value}\n")
