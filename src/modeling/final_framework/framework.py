@@ -10,7 +10,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, r
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from torch_geometric.nn import GraphSAGE
-from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomax, Encoder
+from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomaxFlippingLayer, EncoderFlippingLayer
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 from src.modeling.utils.modeling_utils import train, validate
 
@@ -29,16 +29,21 @@ def corruption(x, edge_index, batch_size):
 
 
 class DGIPlusGNN(torch.nn.Module):
-    def __init__(self, dgi, classifier):
+    def __init__(self, dgi, classifier, flipping_layer):
         super().__init__()
         self.dgi = dgi
         self.classifier = classifier
+        self.flipping_layer = flipping_layer
 
     def forward(self, batch):
         # it refers to the DGI model and the special "flipping layer"
         x = batch.x
-        topological_latent_representation = self.dgi(batch.topological_features, batch.edge_index,
-                                          batch.batch_size, framework=True, layer=0)
+        if self.flipping_layer:
+            topological_latent_representation = self.dgi(batch.topological_features, batch.edge_index,
+                                              batch.batch_size, framework=True, layer=0)
+        else:
+            topological_latent_representation = self.dgi(batch.topological_features, batch.edge_index,
+                                                         batch.batch_size, framework=True)
         #the DGI encoder returns three values pos_z, neg_z and summary, the latent representation of the graph is pops_z
         x = torch.cat([x, topological_latent_representation[0]], dim=1)
         x = self.classifier(x,batch.edge_index)
@@ -83,8 +88,8 @@ if __name__ == "__main__":
     )
 
     # define the framework, first DGI and then the GNN used in the downstream task
-    dgi_model = DeepGraphInfomax(
-        hidden_channels=64, encoder=Encoder(64, 64, 2),
+    dgi_model = DeepGraphInfomaxFlippingLayer(
+        hidden_channels=64, encoder=EncoderFlippingLayer(64, 64, 2),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption).to(device)
     # load the pretrained parameters
@@ -109,7 +114,7 @@ if __name__ == "__main__":
         out_channels=2,
     ).to(device)
 
-    model_framework = DGIPlusGNN(dgi_model, gnn_model_downstream).to(device)
+    model_framework = DGIPlusGNN(dgi_model, gnn_model_downstream, True).to(device)
     optimizer = torch.optim.Adam(model_framework.parameters(), lr=0.005, weight_decay=5e-4)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 

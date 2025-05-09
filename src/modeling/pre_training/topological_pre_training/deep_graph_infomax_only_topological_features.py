@@ -36,7 +36,7 @@ test_loader = NeighborLoader(data, num_neighbors=[10, 10, 25], batch_size=256,
 '''
 
 
-class DeepGraphInfomax(torch.nn.Module):
+class DeepGraphInfomaxWithoutFLippingLayer(torch.nn.Module):
     r"""The Deep Graph Infomax model from the
     `"Deep Graph Infomax" <https://arxiv.org/abs/1809.10341>`_
     paper based on user-defined encoder and summary model :math:`\mathcal{E}`
@@ -145,7 +145,7 @@ class DeepGraphInfomax(torch.nn.Module):
         return f'{self.__class__.__name__}({self.hidden_channels})'
 
 
-class Encoder(torch.nn.Module):
+class EncoderWithoutFlippingLayer(torch.nn.Module):
 
     def __init__(self, input_channels, hidden_channels, output_channels):
         super().__init__()
@@ -154,7 +154,6 @@ class Encoder(torch.nn.Module):
         self.conv2 = SAGEConv(hidden_channels, hidden_channels)
         self.conv3 = SAGEConv(hidden_channels, output_channels)
 
-    # framework =  if it is used for training is true, otherwise if it is used outside the framework and for training is False
     def forward(self, x, edge_index, batch_size, framework):
         act = torch.nn.PReLU().to(device)
         x = act(self.conv1(x, edge_index))
@@ -242,8 +241,8 @@ if __name__ == '__main__':
     train_loaders = [train_loader_ethereum, train_loader_rabo]
 
     # define the model, no flipping layer
-    model = DeepGraphInfomax(
-        hidden_channels=64, encoder=Encoder(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64),
+    model = DeepGraphInfomaxWithoutFLippingLayer(
+        hidden_channels=64, encoder=EncoderWithoutFlippingLayer(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption).to(device)
 

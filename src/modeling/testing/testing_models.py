@@ -72,7 +72,7 @@ if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pt
             file.write(log)
             #train the models, framework need a special variable
             for name, components in models_to_compare.items():
-                if name == 'framework':
+                if 'framework' in name:
                     loss_gnn = train(train_loader, components['model'], components['optimizer'], device, components['criterion'], True)
                 else:
                     loss_gnn = train(train_loader, components['model'], components['optimizer'], device,
@@ -87,7 +87,7 @@ if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pt
             file.write(log)
 
             for name, components in models_to_compare.items():
-                if name == 'framework':
+                if 'framework' in name:
                     accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device, True)
                 else:
                     accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device,
@@ -112,7 +112,7 @@ print("\n----EVALUATION----\n")
 with open(f"evaluation_performance_metrics_trained.txt", "w") as f:
     f.write("----EVALUATION----\n")
     for name, components in models_to_compare.items():
-        if name == 'framework':
+        if 'framework' in name:
             accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], test_loader, device, name, True)
         else:
             accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], test_loader, device,

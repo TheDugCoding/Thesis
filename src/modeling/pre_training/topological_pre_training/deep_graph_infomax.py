@@ -35,7 +35,7 @@ test_loader = NeighborLoader(data, num_neighbors=[10, 10, 25], batch_size=256,
 
 '''
 
-class DeepGraphInfomax(torch.nn.Module):
+class DeepGraphInfomaxFlippingLayer(torch.nn.Module):
     r"""The Deep Graph Infomax model from the
     `"Deep Graph Infomax" <https://arxiv.org/abs/1809.10341>`_
     paper based on user-defined encoder and summary model :math:`\mathcal{E}`
@@ -76,7 +76,7 @@ class DeepGraphInfomax(torch.nn.Module):
         corruptions and their summary representation.
         """
         #layer: the first layer of the encoder is different for each dataset
-        #framework: if DGI is part of the framework then True, otherwise False
+        #framework: if DGI is part of the framework then True, otherwise False. In the framework we need all the latent representation of the nodes and neighbours
         pos_z = self.encoder(*args, layer=layer, framework=framework, **kwargs)
 
         cor = self.corruption(*args, **kwargs)
@@ -142,7 +142,7 @@ class DeepGraphInfomax(torch.nn.Module):
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.hidden_channels})'
 
-class Encoder(torch.nn.Module):
+class EncoderFlippingLayer(torch.nn.Module):
     """
     Class used as the encoder, since we are not using PCA or other feature dimensionality reductions techniques
     the first layer of the encoder must be different for each dataset
@@ -162,7 +162,8 @@ class Encoder(torch.nn.Module):
 
 
 
-    # framework =  if it is used for training is true, otherwise if it is used outside the framework and for training is False
+    # framework =  if it is used as part of the Framework is True, otherwise if it is used outside the framework and for training is False
+    # In the framework we need to concatenate all the node and the neighbours in the batch
     def forward(self, x, edge_index, batch_size, framework, layer):
         act = torch.nn.PReLU().to(device)
         x = act(self.dataset_convs[layer](x, edge_index))
@@ -214,7 +215,7 @@ def train(epoch, train_loaders):
         for idx, batch_loop in enumerate(batches):
             optimizer.zero_grad()
             pos_z, neg_z, summary = model(batch_loop.x, batch_loop.edge_index,
-                                          batch_loop.batch_size, framework = False, layer=idx)
+                                          batch_loop.batch_size, training = True, layer=idx)
             loss = model.loss(pos_z, neg_z, summary)
             loss.backward()
             optimizer.step()
@@ -294,8 +295,8 @@ if __name__ == '__main__':
 
     #define the model, the unique layers correspond to the number of "flipping layers", meaning that
     #each dataset has its own layer
-    model = DeepGraphInfomax(
-        hidden_channels=64, encoder=Encoder(64, 64, len(train_loaders)),
+    model = DeepGraphInfomaxFlippingLayer(
+        hidden_channels=64, encoder=EncoderFlippingLayer(64, 64, len(train_loaders)),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption).to(device)
 
