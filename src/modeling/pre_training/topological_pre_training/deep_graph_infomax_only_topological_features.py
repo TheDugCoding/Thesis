@@ -36,7 +36,7 @@ test_loader = NeighborLoader(data, num_neighbors=[10, 10, 25], batch_size=256,
 '''
 
 
-class DeepGraphInfomaxWithoutFLippingLayer(torch.nn.Module):
+class DeepGraphInfomaxWithoutFlexFronts(torch.nn.Module):
     r"""The Deep Graph Infomax model from the
     `"Deep Graph Infomax" <https://arxiv.org/abs/1809.10341>`_
     paper based on user-defined encoder and summary model :math:`\mathcal{E}`
@@ -77,7 +77,6 @@ class DeepGraphInfomaxWithoutFLippingLayer(torch.nn.Module):
         """Returns the latent space for the input arguments, their
         corruptions and their summary representation.
         """
-        # layer: the first layer of the encoder is different for each dataset
         # framework: if DGI is part of the framework then True, otherwise False
         pos_z = self.encoder(*args, framework=framework, **kwargs)
 
@@ -145,7 +144,7 @@ class DeepGraphInfomaxWithoutFLippingLayer(torch.nn.Module):
         return f'{self.__class__.__name__}({self.hidden_channels})'
 
 
-class EncoderWithoutFlippingLayer(torch.nn.Module):
+class EncoderWithoutFlexFrontsGraphsage(torch.nn.Module):
 
     def __init__(self, input_channels, hidden_channels, output_channels):
         super().__init__()
@@ -165,7 +164,7 @@ class EncoderWithoutFlippingLayer(torch.nn.Module):
             return x[:batch_size]
 
 
-def corruption(x, edge_index, batch_size):
+def corruptionwithoutflexfronts(x, edge_index, batch_size):
     return x[torch.randperm(x.size(0))], edge_index, batch_size
 
 
@@ -241,10 +240,10 @@ if __name__ == '__main__':
     train_loaders = [train_loader_ethereum, train_loader_rabo]
 
     # define the model, no flipping layer
-    model = DeepGraphInfomaxWithoutFLippingLayer(
-        hidden_channels=64, encoder=EncoderWithoutFlippingLayer(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64),
+    model = DeepGraphInfomaxWithoutFlexFronts(
+        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
-        corruption=corruption).to(device)
+        corruption=corruptionwithoutflexfronts).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 

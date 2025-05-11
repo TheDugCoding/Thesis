@@ -6,7 +6,7 @@ from torch_geometric.nn import SAGEConv
 
 from src.modeling.final_framework.framework import DGIPlusGNN, corruption
 from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomaxFlippingLayer, EncoderFlippingLayer
-from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import DeepGraphInfomaxWithoutFLippingLayer, EncoderWithoutFlippingLayer
+from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import DeepGraphInfomaxWithoutFlexFronts, EncoderWithoutFlexFrontsGraphsage
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -31,8 +31,8 @@ def model_list(data):
 
     """----FRAMEWORK WITHOUT FLIPPING LAYER----"""
     # define the framework, first DGI and then the GNN used in the downstream task
-    dgi_model_without_flipping_layer = DeepGraphInfomaxWithoutFLippingLayer(
-        hidden_channels=64, encoder=EncoderWithoutFlippingLayer(4,64, 64),
+    dgi_model_without_flipping_layer = DeepGraphInfomaxWithoutFlexFronts(
+        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(4, 64, 64),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption)
     # load the pretrained parameters

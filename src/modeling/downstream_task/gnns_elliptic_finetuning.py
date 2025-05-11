@@ -263,15 +263,12 @@ def objective_gin(trial):
         data,
         shuffle=True,
         batch_size=32,
-        input_nodes=data.train_mask
-
     )
 
     test_loader = DataLoader(
         data,
         shuffle=True,
         batch_size=32,
-        input_nodes=data.test_mask
     )
 
     def train_once():
