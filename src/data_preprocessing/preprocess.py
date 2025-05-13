@@ -9,7 +9,6 @@ from torch_geometric.transforms import RandomNodeSplit
 from torch_geometric.utils import from_networkx, subgraph
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
-import torch_geometric.transforms as T
 
 
 from src.data_preprocessing.utils import get_structural_info
@@ -28,6 +27,7 @@ relative_path_saml_d_raw = 'raw/saml-d/SAML-D.csv'
 relative_path_elliptic_raw_edges = 'raw/elliptic++_dataset/AddrAddr_edgelist.csv'
 relative_path_elliptic_raw_node_features = 'raw/elliptic++_dataset/wallets_features_classes_combined.csv'
 relative_path_ethereum_raw = 'raw/ethereum_phishing/MulDiGraph.pkl'
+relative_path_erc_20_raw = 'raw/ERC20-stablecoins/token_transfers.csv'
 
 '''---aml_sim dataset preprocessing---'''
 
@@ -141,7 +141,17 @@ def pre_process_rabobank():
 
         # Add edges to the graph from the dataset
         for index, row in df_rabobank.iterrows():
-            G_rabobank.add_edge(row['start_id'], row['end_id'],
+            start_id = row['start_id']
+            end_id = row['end_id']
+
+            # Add dummy node feature if node not already present
+            if start_id not in G_rabobank:
+                G_rabobank.add_node(start_id, dummy=[0])
+            if end_id not in G_rabobank:
+                G_rabobank.add_node(end_id, dummy=[0])
+
+            # Add edge with attributes
+            G_rabobank.add_edge(start_id, end_id,
                                 total=row['total'],
                                 count=row['count'],
                                 year_from=row['year_from'],
@@ -279,6 +289,10 @@ def pre_process_ethereum():
         with open(os.path.join(script_dir, relative_path_ethereum_raw), 'rb') as f:
             G = pickle.load(f)
 
+        # Add dummy feature to every node
+        for node in G.nodes:
+            G.nodes[node]['dummy'] = [0]
+
         # Compute additional structural information
         G_ethereum = get_structural_info(G)
 
@@ -289,6 +303,51 @@ def pre_process_ethereum():
         G_ethereum = nx.read_graphml(os.path.join(processed_data_location, 'ethereum.graphml'))
 
     return G_ethereum
+
+
+
+"""---ERC20-stablecoin---"""
+
+def pre_process_erc_20_stablecoin():
+
+    graphml_path = os.path.join(processed_data_location, 'erc_20_stablecoin.graphml')
+    if not os.path.exists(graphml_path):
+        # Load the dataset
+        df_erc20 = pd.read_csv(os.path.join(script_dir,relative_path_erc_20_raw))
+
+        # Initialize a directed graph
+        G = nx.DiGraph()
+
+        # Iterate through the dataset and add edges until 80,000 unique nodes are reached
+        for _, row in df_erc20.iterrows():
+            from_addr = row['from_address']
+            to_addr = row['to_address']
+
+            # Add dummy node feature if node not already present
+            if from_addr not in G:
+                G.add_node(from_addr, dummy=[0])
+            if to_addr not in G:
+                G.add_node(to_addr, dummy=[0])
+
+            G.add_edge(from_addr, to_addr,
+                             value=row['value'],
+                             time_stamp=row['time_stamp'])
+
+
+            # Stop if we've reached at least 80,000 unique nodes
+            if G.number_of_nodes() >= 80000 or G.number_of_edges() >= 250000:
+                break
+
+        # Compute additional structural information
+        G_erc20 = get_structural_info(G)
+        
+        # Save the graph
+        nx.write_graphml(G_erc20, graphml_path)
+    else:
+        # Load the preprocessed graph
+        G_erc20 = nx.read_graphml(graphml_path)
+
+    return G_erc20
 
 
 # Custom PyG dataset class
@@ -562,8 +621,7 @@ class AmlSimDataset(Dataset):
 
 # Custom PyG dataset class
 class RealDataTraining(Dataset):
-    def __init__(self, root, add_topological_features=False, transform=None, pre_transform=None, pre_filter=None):
-        self.add_topological_features = add_topological_features
+    def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
         super().__init__(root, transform, pre_transform, pre_filter)
 
     @property
@@ -572,37 +630,66 @@ class RealDataTraining(Dataset):
 
     @property
     def processed_file_names(self):
-        return ['real_data_training_dataset_0.pt', 'real_data_training_dataset_1.pt']
+        return ['real_data_training_dataset_0.pt', 'real_data_training_dataset_1.pt', 'real_data_training_dataset_2.pt']
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
 
-        if (self.add_topological_features):
-            pyg_aml_rabobank = from_networkx(pre_process_rabobank(),
-                                             group_node_attrs=[
-                                                 "degree", "pagerank_normalized",
-                                                 "eigenvector_centrality_norm", "clustering_coef"
-                                             ],
-                                             group_edge_attrs=["total", "count", "year_from", "year_to"])
-            pyg_ethereum = from_networkx(pre_process_ethereum(),
+        pyg_aml_rabobank = from_networkx(pre_process_rabobank(),
                                          group_node_attrs=[
-                                             "degree", "pagerank_normalized",
+                                             "dummy", "degree", "pagerank_normalized",
                                              "eigenvector_centrality_norm", "clustering_coef"
                                          ],
-                                         group_edge_attrs=["amount", "timestamp"])
-        else:
-            pyg_aml_rabobank = from_networkx(pre_process_rabobank(), group_node_attrs=[
-                "degree"],group_edge_attrs=[
-                "total", "count", "year_from", "year_to"])
-            pyg_ethereum = from_networkx(pre_process_ethereum(),group_node_attrs=[
-                "degree"],group_edge_attrs=["amount", "timestamp"])
+                                         group_edge_attrs=["total", "count", "year_from", "year_to"])
+        pyg_ethereum = from_networkx(pre_process_ethereum(),
+                                     group_node_attrs=[
+                                         "dummy", "degree", "pagerank_normalized",
+                                         "eigenvector_centrality_norm", "clustering_coef"
+                                     ],
+                                     group_edge_attrs=["amount", "timestamp"])
+        pyg_ecr_20 = from_networkx(pre_process_erc_20_stablecoin(),
+                                     group_node_attrs=[
+                                         "dummy", "degree", "pagerank_normalized",
+                                         "eigenvector_centrality_norm", "clustering_coef"
+                                     ],
+                                     group_edge_attrs=["value", "time_stamp"])
 
-        pyg_aml_rabobank.x = pyg_aml_rabobank.x.float()
-        pyg_ethereum.x = pyg_ethereum.x.float()
+        # add a new variable for the topological features
+        topological_features_rabo = pyg_aml_rabobank.x[:, [1, 2, 3, 4]]
+        # store the remaining
+        x_rabo = pyg_aml_rabobank.x[:, [0]]
 
-        # Save as tuple (not dictionary!)
-        torch.save(pyg_aml_rabobank, os.path.join(self.processed_dir, 'real_data_training_dataset_0.pt'))
-        torch.save(pyg_ethereum, os.path.join(self.processed_dir, 'real_data_training_dataset_1.pt'))
+        # Create and save the PyG Data object, in future add the edge features if required
+        data_rabo = Data(x=x_rabo, edge_index=pyg_aml_rabobank.edge_index, edge_attr=pyg_aml_rabobank.edge_attr, topological_features=topological_features_rabo)
+        node_transform = RandomNodeSplit(split="train_rest", num_val=0.1, num_test=0.2)
+        data_rabo = node_transform(data_rabo)
+
+        # add a new variable for the topological features
+        topological_features_ethereum = pyg_ethereum.x[:, [1, 2, 3, 4]]
+        # store the remaining
+        x_ethereum = pyg_ethereum.x[:, [0]]
+
+        # Create and save the PyG Data object, in future add the edge features if required
+        data_ethereum = Data(x=x_ethereum, edge_index=pyg_ethereum.edge_index,
+                         edge_attr=pyg_ethereum.edge_attr, topological_features=topological_features_ethereum)
+        node_transform = RandomNodeSplit(split="train_rest", num_val=0.1, num_test=0.2)
+        data_ethereum = node_transform(data_ethereum)
+
+        # add a new variable for the topological features
+        topological_features_ecr_20 = pyg_ecr_20.x[:, [ 1, 2, 3, 4]]
+        # store the remaining
+        x_ecr_20 = pyg_ecr_20.x[:, [0]]
+
+        # Create and save the PyG Data object, in future add the edge features if required
+        data_ecr_20 = Data(x=x_ecr_20, edge_index=pyg_ecr_20.edge_index,
+                             edge_attr=pyg_ecr_20.edge_attr, topological_features=topological_features_ecr_20)
+        node_transform = RandomNodeSplit(split="train_rest", num_val=0.1, num_test=0.2)
+        data_ecr_20 = node_transform(data_ecr_20)
+
+        # Save
+        torch.save(data_rabo, os.path.join(self.processed_dir, 'real_data_training_dataset_0.pt'))
+        torch.save(data_ethereum, os.path.join(self.processed_dir, 'real_data_training_dataset_1.pt'))
+        torch.save(data_ecr_20, os.path.join(self.processed_dir, 'real_data_training_dataset_2.pt'))
 
     def len(self):
         return len(self.processed_file_names)
@@ -677,10 +764,12 @@ if __name__ == "__main__":
     '''
 
     # dataset = RealDataTraining(root = processed_data_location, add_topological_features=True)
-    # pre_process_ethereum()
+    #pre_process_ethereum()
+    #pre_process_erc_20_stablecoin()
     #pre_process_elliptic()
-    relative_path_processed = 'processed'
+    #relative_path_processed = 'processed'
     processed_data_path = get_data_sub_folder(relative_path_processed)
-    data = EllipticDataset(root=processed_data_path)
+    #data = EllipticDataset(root=processed_data_path)
+    data = RealDataTraining(root=processed_data_path)
 
     #pre_process_ethereum()
