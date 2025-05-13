@@ -146,9 +146,9 @@ def pre_process_rabobank():
 
             # Add dummy node feature if node not already present
             if start_id not in G_rabobank:
-                G_rabobank.add_node(start_id, dummy=[0])
+                G_rabobank.add_node(start_id, dummy=0)
             if end_id not in G_rabobank:
-                G_rabobank.add_node(end_id, dummy=[0])
+                G_rabobank.add_node(end_id, dummy=0)
 
             # Add edge with attributes
             G_rabobank.add_edge(start_id, end_id,
@@ -291,7 +291,7 @@ def pre_process_ethereum():
 
         # Add dummy feature to every node
         for node in G.nodes:
-            G.nodes[node]['dummy'] = [0]
+            G.nodes[node]['dummy'] = 0
 
         # Compute additional structural information
         G_ethereum = get_structural_info(G)
@@ -325,9 +325,9 @@ def pre_process_erc_20_stablecoin():
 
             # Add dummy node feature if node not already present
             if from_addr not in G:
-                G.add_node(from_addr, dummy=[0])
+                G.add_node(from_addr, dummy=0)
             if to_addr not in G:
-                G.add_node(to_addr, dummy=[0])
+                G.add_node(to_addr, dummy=0)
 
             G.add_edge(from_addr, to_addr,
                              value=row['value'],
