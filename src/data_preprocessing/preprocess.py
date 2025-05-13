@@ -335,7 +335,7 @@ def pre_process_erc_20_stablecoin():
 
 
             # Stop if we've reached at least 80,000 unique nodes
-            if G.number_of_nodes() >= 80000 or G.number_of_edges() >= 250000:
+            if G.number_of_nodes() >= 200000 or G.number_of_edges() >= 300000:
                 break
 
         # Compute additional structural information
