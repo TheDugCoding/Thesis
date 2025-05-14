@@ -335,7 +335,7 @@ def pre_process_erc_20_stablecoin():
 
 
             # Stop if we've reached at least 80,000 unique nodes
-            if G.number_of_nodes() >= 200000 or G.number_of_edges() >= 300000:
+            if G.number_of_nodes() >= 600000 or G.number_of_edges() >= 1200000:
                 break
 
         # Compute additional structural information
@@ -431,7 +431,7 @@ class EllipticDataset(Dataset):
             "blocks_btwn_output_txs_total", "blocks_btwn_output_txs_min", "blocks_btwn_output_txs_max",
             "blocks_btwn_output_txs_mean", "blocks_btwn_output_txs_median", "num_addr_transacted_multiple",
             "transacted_w_address_total", "transacted_w_address_min", "transacted_w_address_max",
-            "transacted_w_address_mean", "transacted_w_address_median"
+            "transacted_w_address_mean", "transacted_w_address_median", "Time step"
         ])
 
         # add a new variable for the topological features
@@ -448,10 +448,12 @@ class EllipticDataset(Dataset):
                               ]]
         y = (pyg_elliptic.x[:, 4] - 1).long()
 
+        time_step = pyg_elliptic.x[:, 60]
+
         #pyg_elliptic.x = pyg_elliptic.x.float()
 
         # Create and save the PyG Data object, in future add the edge features if required
-        data = Data(x=x, edge_index=pyg_elliptic.edge_index, topological_features = topological_features, y=y)
+        data = Data(x=x, edge_index=pyg_elliptic.edge_index, topological_features = topological_features, y=y, time_step=time_step)
         node_transform = RandomNodeSplit(split="train_rest",num_val=0.1,num_test=0.2)
         data_original = node_transform(data)
         # the Elliptic dataset is very unbalanced so we create a balanced version
