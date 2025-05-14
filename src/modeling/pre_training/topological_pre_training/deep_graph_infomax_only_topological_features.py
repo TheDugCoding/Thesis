@@ -6,9 +6,10 @@ import torch
 from torch import Tensor
 from torch.nn import Module, Parameter
 from torch_geometric.loader import NeighborLoader
-from torch_geometric.nn import SAGEConv
+from torch_geometric.nn import SAGEConv, GATConv
 from torch_geometric.nn.inits import reset, uniform
 from tqdm import tqdm
+from torch import nn
 
 from src.data_preprocessing.preprocess import RealDataTraining, AmlTestDataset, EllipticDataset, \
     EllipticDatasetWithoutFeatures
@@ -144,39 +145,79 @@ class DeepGraphInfomaxWithoutFlexFronts(torch.nn.Module):
         return f'{self.__class__.__name__}({self.hidden_channels})'
 
 
-class EncoderWithoutFlexFrontsGraphsage(torch.nn.Module):
-
-    def __init__(self, input_channels, hidden_channels, output_channels):
+class EncoderWithoutFlexFrontsGraphsage(nn.Module):
+    def __init__(self, input_channels, hidden_channels, output_channels, layers, activation_fn=nn.ReLU):
         super().__init__()
 
-        self.conv1 = SAGEConv(input_channels, hidden_channels)
-        self.conv2 = SAGEConv(hidden_channels, hidden_channels)
-        self.conv3 = SAGEConv(hidden_channels, output_channels)
+        self.layers = nn.ModuleList()
+        self.activations = nn.ModuleList()
+
+        # First layer
+        self.layers.append(SAGEConv(input_channels, hidden_channels))
+        self.activations.append(activation_fn())
+
+        # Hidden layers
+        for _ in range(layers - 2):
+            self.layers.append(SAGEConv(hidden_channels, hidden_channels))
+            self.activations.append(activation_fn())
+
+        # Final layer
+        self.layers.append(SAGEConv(hidden_channels, output_channels))
+        self.activations.append(activation_fn())  # Optional: apply activation to output layer
 
     def forward(self, x, edge_index, batch_size, framework):
-        act = torch.nn.PReLU().to(device)
-        x = act(self.conv1(x, edge_index))
-        x = act(self.conv2(x, edge_index))
-        x = act(self.conv3(x, edge_index))
+        for conv, act in zip(self.layers, self.activations):
+            x = act(conv(x, edge_index))
+
         if framework:
             return x
         else:
             return x[:batch_size]
 
+class EncoderWithoutFlexFrontsGAT(nn.Module):
+    def __init__(self, input_channels, hidden_channels, output_channels, layers, activation_fn=nn.ReLU):
+        super().__init__()
+
+        self.layers = nn.ModuleList()
+        self.activations = nn.ModuleList()
+
+        # First layer
+        self.layers.append(GATConv(input_channels, hidden_channels))
+        self.activations.append(activation_fn())
+
+        # Hidden layers
+        for _ in range(layers - 2):
+            self.layers.append(GATConv(hidden_channels, hidden_channels))
+            self.activations.append(activation_fn())
+
+        # Final layer
+        self.layers.append(GATConv(hidden_channels, output_channels))
+        self.activations.append(activation_fn())
+
+    def forward(self, x, edge_index, batch_size, framework):
+        for conv, act in zip(self.layers, self.activations):
+            x = act(conv(x, edge_index))
+
+        if framework:
+            return x
+        else:
+            return x[:batch_size]
 
 def corruptionwithoutflexfronts(x, edge_index, batch_size):
     return x[torch.randperm(x.size(0))], edge_index, batch_size
 
 
-def train(epoch, train_loaders):
+def train(epoch, train_loaders, model, optimizer):
     '''
     :param epoch: for how many epochs we should train the model
     :param train_loaders: the train loaders of the different datasets to use, the biggest trainloader should be in first position
     :return: loss
     '''
+    #order the loaders from biggest to smallest
+    train_loaders = sorted(train_loaders, key=len, reverse=True)
     model.train()
     batch_counts = [len(loader) for loader in train_loaders]
-    max_batches = batch_counts[0]  # assuming the list is already sorted from largest to smallest
+    max_batches = batch_counts[0]
 
     # handle multi-loader case
     if len(train_loaders) > 1:
@@ -217,31 +258,44 @@ def train(epoch, train_loaders):
 
 if __name__ == '__main__':
 
-    dataset = RealDataTraining(root = processed_data_path, add_topological_features = True)
+    dataset = RealDataTraining(root = processed_data_path)
 
     data_rabo = dataset[0]
     data_ethereum = dataset[1]
+    data_stable_20 = dataset[2]
+
+    # x contains a dummy feature, replace it with only topological features
+    data_rabo.x = data_rabo.topological_features
+    data_ethereum.x = data_ethereum.topological_features
+    data_stable_20.x = data_stable_20.topological_features
 
     train_loader_rabo = NeighborLoader(
         data_rabo,
         batch_size=256,
         shuffle=True,
-        num_neighbors=[10, 10, 25],
+        num_neighbors=[10, 10, 25]
     )
 
     train_loader_ethereum = NeighborLoader(
         data_ethereum,
         batch_size=256,
         shuffle=True,
+        num_neighbors=[10, 10, 25]
+    )
+
+    train_loader_stable_20 = NeighborLoader(
+        data_stable_20,
+        batch_size=256,
+        shuffle=True,
         num_neighbors=[10, 10, 25],
     )
 
     # set the train loader from the biggest to the smallest, otherwise it won't work
-    train_loaders = [train_loader_ethereum, train_loader_rabo]
+    train_loaders = [train_loader_ethereum, train_loader_stable_20, train_loader_rabo]
 
-    # define the model, no flipping layer
+    # define the model, no flexfront
     model = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64),
+        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64, layers=3),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruptionwithoutflexfronts).to(device)
 
@@ -249,13 +303,13 @@ if __name__ == '__main__':
 
     with open("training_log_elliptic_with_features_topo_false.txt", "w") as file:
         for epoch in range(1, 30):
-            loss = train(epoch, train_loaders)
+            loss = train(epoch, train_loaders, model, optimizer)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)
 
     torch.save(model.state_dict(),
-               os.path.join(trained_model_path, 'modeling_dgi_no_flipping_layer_only_topo_rabo_ethereum.pth'))
+               os.path.join(trained_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')

@@ -35,7 +35,7 @@ test_loader = NeighborLoader(data, num_neighbors=[10, 10, 25], batch_size=256,
 
 '''
 
-class DeepGraphInfomaxFlippingLayer(torch.nn.Module):
+class DeepGraphInfomaxFlexFronts(torch.nn.Module):
     r"""The Deep Graph Infomax model from the
     `"Deep Graph Infomax" <https://arxiv.org/abs/1809.10341>`_
     paper based on user-defined encoder and summary model :math:`\mathcal{E}`
@@ -142,7 +142,7 @@ class DeepGraphInfomaxFlippingLayer(torch.nn.Module):
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.hidden_channels})'
 
-class EncoderFlippingLayer(torch.nn.Module):
+class EncoderFlexFronts(torch.nn.Module):
     """
     Class used as the encoder, since we are not using PCA or other feature dimensionality reductions techniques
     the first layer of the encoder must be different for each dataset
@@ -184,6 +184,8 @@ def train(epoch, train_loaders):
     :param train_loaders: the train loaders of the different datasets to use, the biggest trainloader should be in first position
     :return: loss
     '''
+    # order the loaders from biggest to smallest
+    train_loaders = sorted(train_loaders, key=len, reverse=True)
     model.train()
     batch_counts = [len(loader) for loader in train_loaders]
     max_batches = batch_counts[0]  # assuming the list is already sorted from largest to smallest
@@ -293,10 +295,10 @@ if __name__ == '__main__':
     #set the train loader from the biggest to the smallest, otherwise it won't work
     train_loaders = [train_loader_elliptic]
 
-    #define the model, the unique layers correspond to the number of "flipping layers", meaning that
+    #define the model, the unique layers correspond to the number of "flex fronts", meaning that
     #each dataset has its own layer
-    model = DeepGraphInfomaxFlippingLayer(
-        hidden_channels=64, encoder=EncoderFlippingLayer(64, 64, len(train_loaders)),
+    model = DeepGraphInfomaxFlexFronts(
+        hidden_channels=64, encoder=EncoderFlexFronts(64, 64, len(train_loaders)),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption).to(device)
 
