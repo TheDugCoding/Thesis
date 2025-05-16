@@ -334,7 +334,7 @@ def pre_process_erc_20_stablecoin():
                              time_stamp=row['time_stamp'])
 
 
-            # Stop if we've reached at least 80,000 unique nodes
+            # Stop if we've reached at least 600000 unique nodes or 1,200,000 edges
             if G.number_of_nodes() >= 600000 or G.number_of_edges() >= 1200000:
                 break
 
@@ -402,7 +402,7 @@ class EllipticDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        return ['ellipticdataset_0.pt', 'ellipticdataset_1.pt', 'ellipticdataset_2.pt', 'ellipticdataset_3.pt', 'ellipticdataset_4.pt']
+        return ['ellipticdataset_0.pt', 'ellipticdataset_1.pt', 'ellipticdataset_2.pt']
 
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
@@ -431,7 +431,7 @@ class EllipticDataset(Dataset):
             "blocks_btwn_output_txs_total", "blocks_btwn_output_txs_min", "blocks_btwn_output_txs_max",
             "blocks_btwn_output_txs_mean", "blocks_btwn_output_txs_median", "num_addr_transacted_multiple",
             "transacted_w_address_total", "transacted_w_address_min", "transacted_w_address_max",
-            "transacted_w_address_mean", "transacted_w_address_median", "Time step"
+            "transacted_w_address_mean", "transacted_w_address_median", "timestep"
         ])
 
         # add a new variable for the topological features
@@ -454,61 +454,100 @@ class EllipticDataset(Dataset):
 
         # Create and save the PyG Data object, in future add the edge features if required
         data = Data(x=x, edge_index=pyg_elliptic.edge_index, topological_features = topological_features, y=y, time_step=time_step)
-        node_transform = RandomNodeSplit(split="train_rest",num_val=0.1,num_test=0.2)
-        data_original = node_transform(data)
-        # the Elliptic dataset is very unbalanced so we create a balanced version
-        data_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
+        # node_transform = RandomNodeSplit(split="train_rest",num_val=0.1,num_test=0.2)
+        # data_original = node_transform(data)
+        # # the Elliptic dataset is very unbalanced so we create a balanced version
+        # data_balanced = RandomNodeSplit(split='random', num_train_per_class=14266, num_val=0.1, num_test=0.2)(data)
+        #
+        # """
+        # x_2class = x[mask_2class]
+        # topo_2class = topological_features[mask_2class]
+        # y_2class = y[mask_2class].long()
+        # edge_index_2class, _ = subgraph(mask_2class, pyg_elliptic.edge_index, relabel_nodes=True)
+        # """
+        # # creating a third version, this version only contain illicit '0' and licit '1' labels
+        # # Filter to keep only class 0 and class 1 (exclude class 2)
+        # mask_2class = y < 2  # keeping only class 0 and 1
+        #
+        # #keeping the dataset but only use licit and illicit nodes for training
+        # # create new Data object with filtered nodes
+        # data_2class = Data(x=x, edge_index=pyg_elliptic.edge_index,
+        #                    topological_features=topological_features, y=y)
+        #
+        # num_known_nodes = mask_2class.sum().item()
+        # permutations = torch.randperm(num_known_nodes)
+        # train_size = int(0.8 * num_known_nodes)
+        # val_size = int(0.1 * num_known_nodes)
+        # test_size = num_known_nodes - train_size - val_size
+        # data_2class.train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+        # data_2class.val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+        # data_2class.test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+        # train_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[:train_size]]
+        # val_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[train_size:train_size + val_size]]
+        # test_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[train_size + val_size:]]
+        #
+        #
+        # data_2class.train_mask[train_indices] = True
+        # data_2class.val_mask[val_indices] = True
+        # data_2class.test_mask[test_indices] = True
+        #
+        """version 5"""
+        # #creating a fourth class this version only contain illicit '0' and licit '1' labels,
+        # # and they have the same number of samples
 
-        """
-        x_2class = x[mask_2class]
-        topo_2class = topological_features[mask_2class]
-        y_2class = y[mask_2class].long()
-        edge_index_2class, _ = subgraph(mask_2class, pyg_elliptic.edge_index, relabel_nodes=True)
-        """
-        # creating a third version, this version only contain illicit '0' and licit '1' labels
-        # Filter to keep only class 0 and class 1 (exclude class 2)
-        mask_2class = y < 2  # keeping only class 0 and 1
-
-        #keeping the dataset but only use licit and illicit nodes for training
-        # create new Data object with filtered nodes
-        data_2class = Data(x=x, edge_index=pyg_elliptic.edge_index,
-                           topological_features=topological_features, y=y)
-
-        num_known_nodes = mask_2class.sum().item()
-        permutations = torch.randperm(num_known_nodes)
-        train_size = int(0.8 * num_known_nodes)
-        val_size = int(0.1 * num_known_nodes)
-        test_size = num_known_nodes - train_size - val_size
-        data_2class.train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-        data_2class.val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-        data_2class.test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-        train_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[:train_size]]
-        val_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[train_size:train_size + val_size]]
-        test_indices = mask_2class.nonzero(as_tuple=True)[0][permutations[train_size + val_size:]]
-
-
-        data_2class.train_mask[train_indices] = True
-        data_2class.val_mask[val_indices] = True
-        data_2class.test_mask[test_indices] = True
-
-        #creating a fourth class this version only contain illicit '0' and licit '1' labels,
-        # and they have the same number of samples
-
-        data_2class_balanced = data
+        data_5_version_2class_balanced = data
         #replace class 2with -1, to unlabel them
-        data_2class_balanced.y[data_2class_balanced.y == 2] = -1
-        data_2class_balanced = RandomNodeSplit(split='random', num_train_per_class=11000, num_val=0.1, num_test=0.2)(data_2class_balanced)
-        #data_2class_balanced = T.RemoveTrainingClasses([2])(data_2class_balanced)
+        data_5_version_2class_balanced.y[data_5_version_2class_balanced.y == 2] = -1
+        data_5_version_2class_balanced = RandomNodeSplit(split='random', num_train_per_class=11000, num_val=0.1, num_test=0.2)(data_5_version_2class_balanced)
+        #data_5_version_2class_balanced = T.RemoveTrainingClasses([2])(data_5_version_2class_balanced)
         # unlabel class 2
-        class_2_nodes = data_2class_balanced.y == -1
-        data_2class_balanced.val_mask[class_2_nodes] = False
-        data_2class_balanced.test_mask[class_2_nodes] = False
+        class_2_nodes = data_5_version_2class_balanced.y == -1
+        data_5_version_2class_balanced.val_mask[class_2_nodes] = False
+        data_5_version_2class_balanced.test_mask[class_2_nodes] = False
+
+        """version 6"""
+        # divide the training set, val set and test set per time step. From 1 to 34 is the training set from 35 to 39 is the val set from
+        # 40 to 49 is th etest set
+        data_6_version_2class_balanced_with_time_steps = data
+        # replace class 2with -1, to unlabel them
+        data_6_version_2class_balanced_with_time_steps.y[data_6_version_2class_balanced_with_time_steps.y == 2] = -1
+        #for the training set we need to do undersampling so we needto take only class 0 and 1
+        # Create a node mask for timesteps 1 to 34 (inclusive)
+        mask_training = (data.time_step >= 1) & (data.time_step <= 34)
+        # Get the node indices that match the mask
+        node_indices = mask_training.nonzero(as_tuple=True)[0]
+        # Extract the subgraph containing only those nodes
+        edge_index, _ = subgraph(node_indices, data.edge_index, relabel_nodes=True)
+        # Filter x, y, time_step, and topological_features accordingly
+        sub_data_training = Data(
+            x=data.x[node_indices],
+            y=data.y[node_indices],
+            time_step=data.time_step[node_indices],
+            topological_features=data.topological_features[node_indices],
+            edge_index=edge_index
+        )
+
+        sub_data_training = RandomNodeSplit(split='random',num_train_per_class=(sub_data_training.y == 0).sum().item(), num_val=0,num_test=0)(sub_data_training)
+        data_6_version_2class_balanced_with_time_steps.train_mask = sub_data_training.train_mask
+
+        # unlabel class 2
+        class_2_nodes = data_5_version_2class_balanced.y == -1
+        #creating validation set
+        mask_val = (data.time_step >= 35) & (data.time_step <= 39)
+        data_6_version_2class_balanced_with_time_steps.val_mask = mask_val
+        data_6_version_2class_balanced_with_time_steps.val_mask[class_2_nodes] = False
+        #creating test set
+        test_mask = (data.time_step >= 40) & (data.time_step <= 49)
+        data_6_version_2class_balanced_with_time_steps.test_mask = test_mask
+        data_6_version_2class_balanced_with_time_steps.test_mask[class_2_nodes] = False
+
 
         torch.save(data, self.processed_paths[0])
-        torch.save(data_original, self.processed_paths[1])
-        torch.save(data_balanced, self.processed_paths[2])
-        torch.save(data_2class, self.processed_paths[3])
-        torch.save(data_2class_balanced, self.processed_paths[4])
+        #torch.save(data_original, self.processed_paths[1])
+        #torch.save(data_balanced, self.processed_paths[2])
+        #torch.save(data_2class, self.processed_paths[3])
+        torch.save(data_5_version_2class_balanced, self.processed_paths[1])
+        torch.save(data_6_version_2class_balanced_with_time_steps, self.processed_paths[2])
 
     def len(self):
         return len(self.processed_file_names)
@@ -771,7 +810,7 @@ if __name__ == "__main__":
     #pre_process_elliptic()
     #relative_path_processed = 'processed'
     processed_data_path = get_data_sub_folder(relative_path_processed)
-    #data = EllipticDataset(root=processed_data_path)
-    data = RealDataTraining(root=processed_data_path)
+    data = EllipticDataset(root=processed_data_path)
+    #data = RealDataTraining(root=processed_data_path)
 
     #pre_process_ethereum()
