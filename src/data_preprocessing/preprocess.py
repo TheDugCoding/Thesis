@@ -318,26 +318,37 @@ def pre_process_erc_20_stablecoin():
         # Initialize a directed graph
         G = nx.DiGraph()
 
-        # Iterate through the dataset and add edges until 80,000 unique nodes are reached
-        for _, row in df_erc20.iterrows():
+        node_count = 0
+        edge_count = 0
+
+        # Iterate through the dataset and add edges until 600,000 unique nodes are reached
+        for i, (_, row) in enumerate(tqdm(df_erc20.iterrows(), total=len(df_erc20))):
+
+            node_count += 1
+            edge_count += 1
+
             from_addr = row['from_address']
             to_addr = row['to_address']
-
-            # Add dummy node feature if node not already present
-            if from_addr not in G:
-                G.add_node(from_addr, dummy=0)
-            if to_addr not in G:
-                G.add_node(to_addr, dummy=0)
 
             G.add_edge(from_addr, to_addr,
                              value=row['value'],
                              time_stamp=row['time_stamp'])
 
 
-            # Stop if we've reached at least 600000 unique nodes or 1,200,000 edges
-            if G.number_of_nodes() >= 600000 or G.number_of_edges() >= 1200000:
-                break
 
+            # Stop if we've reached at least 600000 unique nodes or 1,200,000 edges
+            if i + 1 < len(df_erc20):  # Make sure next row exists
+                current_timestep = row['time_stamp']
+                next_timestep = df_erc20.iloc[i + 1]['time_stamp']
+
+                if (node_count >= 600000 or edge_count >= 12000000) and current_timestep != next_timestep:
+                    print("Stopping condition met.")
+                    break
+
+        for node in G.nodes:
+            G.nodes[node]['dummy'] = 0
+
+        print("calculating structural information")
         # Compute additional structural information
         G_erc20 = get_structural_info(G)
         
@@ -810,7 +821,7 @@ if __name__ == "__main__":
     #pre_process_elliptic()
     #relative_path_processed = 'processed'
     processed_data_path = get_data_sub_folder(relative_path_processed)
-    data = EllipticDataset(root=processed_data_path)
-    #data = RealDataTraining(root=processed_data_path)
+    #data = EllipticDataset(root=processed_data_path)
+    data = RealDataTraining(root=processed_data_path)
 
     #pre_process_ethereum()
