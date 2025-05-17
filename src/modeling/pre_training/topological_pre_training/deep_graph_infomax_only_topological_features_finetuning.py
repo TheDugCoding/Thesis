@@ -23,6 +23,7 @@ def objective(trial):
     num_layers = trial.suggest_int("num_layers", 2, 4)
     act_name = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical('hidden_channels', [32, 64, 128])
+    output_channels = trial.suggest_categorical('hidden_channels', [32, 64, 128])
     lr = trial.suggest_float('lr', 1e-5, 1e-2, log=True)
     batch_size = trial.suggest_categorical('batch_size', [128, 256, 512])
     neighbours_size = trial.suggest_categorical("neighbours_size", [
@@ -68,7 +69,7 @@ def objective(trial):
         hidden_channels=hidden_channels,
         encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features,
                                                   hidden_channels=hidden_channels,
-                                                  output_channels=64,
+                                                  output_channels=output_channels,
                                                   layers=num_layers,
                                                   activation_fn=activation_fn
                                                   ),
@@ -92,3 +93,17 @@ if __name__ == '__main__':
     print("  Params: ")
     for key, value in trial.params.items():
         print(f"    {key}: {value}")
+
+    with open("deep_graph_infomax_without_topological_features_finetuning.txt", "w") as file:
+        # run Optuna study
+        study = optuna.create_study(direction='minimize')
+        study.optimize(objective, n_trials=40)
+
+        # print and save the best trial
+        file.write("Best trial:\n")
+        trial = study.best_trial
+        file.write(f"  PR-AUC Score: {trial.value}\n")
+        file.write("  Best hyperparameters:\n")
+
+        for key, value in trial.params.items():
+            file.write(f"    {key}: {value}\n")

@@ -4,15 +4,15 @@ from typing import Callable, Tuple
 
 import torch
 from torch import Tensor
+from torch import nn
 from torch.nn import Module, Parameter
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import SAGEConv, GATConv
 from torch_geometric.nn.inits import reset, uniform
+from torch_geometric.utils import erdos_renyi_graph
 from tqdm import tqdm
-from torch import nn
 
-from src.data_preprocessing.preprocess import RealDataTraining, AmlTestDataset, EllipticDataset, \
-    EllipticDatasetWithoutFeatures
+from src.data_preprocessing.preprocess import RealDataTraining
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 EPS = 1e-15
@@ -147,6 +147,13 @@ class DeepGraphInfomaxWithoutFlexFronts(torch.nn.Module):
 
 class EncoderWithoutFlexFrontsGraphsage(nn.Module):
     def __init__(self, input_channels, hidden_channels, output_channels, layers, activation_fn=nn.ReLU):
+        """
+        :param input_channels: (int) Number of input features per node.
+        :param hidden_channels: (int) Number of hidden units in each GAT layer (except the final layer).
+        :param output_channels: (int) Number of output features per node from the final GAT layer.
+        :param n_layers: (int) Total number of Graphsage layers in the encoder. Must be >= 2.
+        :param activation_fn: (Callable) Activation function class to apply after each Graphsage layer (e.g., nn.ReLU, nn.LeakyReLU).
+        """
         super().__init__()
 
         self.layers = nn.ModuleList()
@@ -175,7 +182,14 @@ class EncoderWithoutFlexFrontsGraphsage(nn.Module):
             return x[:batch_size]
 
 class EncoderWithoutFlexFrontsGAT(nn.Module):
-    def __init__(self, input_channels, hidden_channels, output_channels, layers, activation_fn=nn.ReLU):
+    def __init__(self, input_channels, hidden_channels, output_channels, n_layers, activation_fn=nn.ReLU):
+        """
+        :param input_channels: (int) Number of input features per node.
+        :param hidden_channels: (int) Number of hidden units in each GAT layer (except the final layer).
+        :param output_channels: (int) Number of output features per node from the final GAT layer.
+        :param n_layers: (int) Total number of GAT layers in the encoder. Must be >= 2.
+        :param activation_fn: (Callable) Activation function class to apply after each GAT layer (e.g., nn.ReLU, nn.LeakyReLU).
+        """
         super().__init__()
 
         self.layers = nn.ModuleList()
@@ -186,7 +200,7 @@ class EncoderWithoutFlexFrontsGAT(nn.Module):
         self.activations.append(activation_fn())
 
         # Hidden layers
-        for _ in range(layers - 2):
+        for _ in range(n_layers - 2):
             self.layers.append(GATConv(hidden_channels, hidden_channels))
             self.activations.append(activation_fn())
 
@@ -205,6 +219,31 @@ class EncoderWithoutFlexFrontsGAT(nn.Module):
 
 def corruptionwithoutflexfronts(x, edge_index, batch_size):
     return x[torch.randperm(x.size(0))], edge_index, batch_size
+
+def corruption_without_flex_fronts_random_graph_corruptor(x, edge_index, batch_size=None, edge_prob=0.1):
+    """
+    Creates a random graph using Erdos-Renyi model as a corrupted view for DGI.
+
+    Args:
+        x (Tensor): Original node features [N, F]
+        edge_index (LongTensor): Original edge index [2, E] (not used here)
+        batch_size: Optional, returned unchanged
+        edge_prob (float): Probability of edge creation between nodes
+
+    Returns:
+        x_corrupt (Tensor): Randomly permuted node features [N, F]
+        edge_index_random (LongTensor): Random edge index [2, E']
+        batch_size (unchanged)
+    """
+    num_nodes = x.size(0)
+
+    # Optionally, randomly shuffle node features
+    x_corrupt = x[torch.randperm(num_nodes)]
+
+    # Generate random edges (Erdős-Rényi graph)
+    edge_index_random = erdos_renyi_graph(num_nodes, edge_prob)
+
+    return x_corrupt, edge_index_random, batch_size
 
 
 def train(epoch, train_loaders, model, optimizer):
