@@ -78,32 +78,24 @@ def objective(trial):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    for epoch in range(20):
+    for epoch in range(5):
         loss = train(epoch, train_loaders, model, optimizer)
 
     return loss
 
 if __name__ == '__main__':
-    study = optuna.create_study(direction='minimize')
-    study.optimize(objective, n_trials=40)
-
-    print("Best trial:")
-    trial = study.best_trial
-    print(f"  Loss: {trial.value}")
-    print("  Params: ")
-    for key, value in trial.params.items():
-        print(f"    {key}: {value}")
 
     with open("deep_graph_infomax_without_topological_features_finetuning.txt", "w") as file:
         # run Optuna study
         study = optuna.create_study(direction='minimize')
-        study.optimize(objective, n_trials=40)
+        study.optimize(objective, n_trials=30)
 
         # print and save the best trial
         file.write("Best trial:\n")
         trial = study.best_trial
-        file.write(f"  PR-AUC Score: {trial.value}\n")
+        print("Best trial:")
+        print(f"  Loss: {trial.value}")
+        file.write(f"  Loss: {trial.value}\n")
         file.write("  Best hyperparameters:\n")
-
         for key, value in trial.params.items():
             file.write(f"    {key}: {value}\n")

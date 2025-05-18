@@ -348,7 +348,7 @@ if __name__ == '__main__':
             file.write(log)
 
     torch.save(model.state_dict(),
-               os.path.join(trained_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum.pth'))
+               os.path.join(trained_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')
