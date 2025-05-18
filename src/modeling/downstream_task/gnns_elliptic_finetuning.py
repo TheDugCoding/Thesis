@@ -4,9 +4,10 @@ import optuna
 import torch
 import torch_geometric
 from sklearn.metrics import average_precision_score
-from torch_geometric.loader import NeighborLoader, DataLoader
-from torch_geometric.nn import GraphSAGE,GAT, GIN
+from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import BatchNorm, LayerNorm, GraphNorm
+from torch_geometric.nn import GraphSAGE, GAT, GIN
+from tqdm import tqdm
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
@@ -290,7 +291,7 @@ def objective_gin(trial):
         model.train()
         total_loss = 0
         total_examples = 0
-        for batch in train_loader:
+        for batch in tqdm(train_loader, desc="Training"):
             batch = batch.to(device)
             optimizer.zero_grad()
             out = model(batch.x, batch.edge_index)
