@@ -442,7 +442,7 @@ class EllipticDataset(Dataset):
             "blocks_btwn_output_txs_total", "blocks_btwn_output_txs_min", "blocks_btwn_output_txs_max",
             "blocks_btwn_output_txs_mean", "blocks_btwn_output_txs_median", "num_addr_transacted_multiple",
             "transacted_w_address_total", "transacted_w_address_min", "transacted_w_address_max",
-            "transacted_w_address_mean", "transacted_w_address_median", "timestep"
+            "transacted_w_address_mean", "transacted_w_address_median", "Time step"
         ])
 
         # add a new variable for the topological features
