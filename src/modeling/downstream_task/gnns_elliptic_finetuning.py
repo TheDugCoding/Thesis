@@ -303,6 +303,9 @@ def objective_gin(trial):
 
     def test_once():
         model.eval()
+        preds = []
+        true = []
+        probs = []
         with torch.no_grad():
             for batch in test_loader:
                 batch = batch.to(device)
@@ -312,7 +315,9 @@ def objective_gin(trial):
                 probs.append(prob.cpu())
                 true.append(batch.y[:batch.batch_size].cpu())
 
+        true_labels = torch.cat(true)
         # PR-AUC
+        probs = torch.cat(probs, dim=0)
         probs_class0 = probs[:, 0]
         pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
         return pr_auc
