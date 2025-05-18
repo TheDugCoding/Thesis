@@ -267,7 +267,9 @@ def train(epoch, train_loaders, model, optimizer):
         iter_list = []
 
     total_loss = total_examples = 0
-    for batch_idx, batch in enumerate(tqdm(train_loaders[0], desc=f'Epoch {epoch:02d}')):
+    for batch_idx, batch in enumerate(
+            tqdm(train_loaders[0], desc=f'Epoch {epoch:02d}', mininterval=20.0)
+    ):
 
         batches = []
 
