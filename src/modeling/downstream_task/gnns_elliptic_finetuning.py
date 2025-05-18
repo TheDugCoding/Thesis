@@ -243,6 +243,16 @@ def objective_gin(trial):
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
+    neighbours_size = trial.suggest_categorical("neighbours_size", [
+        "[10, 10]",
+        "[20, 20]",
+        "[15, 30]",
+        "[30, 50]",
+        "[5, 5, 10]",
+        "[10, 10, 25]",
+        "[10, 20, 40]",
+        "[10, 20, 30, 40]"
+    ])
 
     norm_layer = get_norm(norm_choice, hidden_channels)
 
@@ -259,16 +269,21 @@ def objective_gin(trial):
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
-    train_loader = DataLoader(
+    train_loader = NeighborLoader(
         data,
         shuffle=True,
+        num_neighbors=ast.literal_eval(neighbours_size),
         batch_size=32,
+        input_nodes=data.train_mask
+
     )
 
-    test_loader = DataLoader(
+    test_loader = NeighborLoader(
         data,
         shuffle=True,
+        num_neighbors=ast.literal_eval(neighbours_size),
         batch_size=32,
+        input_nodes=data.test_mask
     )
 
     def train_once():
@@ -288,9 +303,6 @@ def objective_gin(trial):
 
     def test_once():
         model.eval()
-        preds = []
-        true = []
-        probs = []
         with torch.no_grad():
             for batch in test_loader:
                 batch = batch.to(device)
@@ -300,9 +312,7 @@ def objective_gin(trial):
                 probs.append(prob.cpu())
                 true.append(batch.y[:batch.batch_size].cpu())
 
-        true_labels = torch.cat(true)
         # PR-AUC
-        probs = torch.cat(probs, dim=0)
         probs_class0 = probs[:, 0]
         pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
         return pr_auc
