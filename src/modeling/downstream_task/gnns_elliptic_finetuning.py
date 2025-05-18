@@ -26,7 +26,6 @@ else:
 
 # set dataset to use, hyperparameters and epochs
 data = EllipticDataset(root=processed_data_path)
-print(len(data))
 data = data[1]
 
 def get_norm(norm_type, hidden_channels):
