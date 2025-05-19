@@ -5,7 +5,7 @@ import torch_geometric
 from torch_geometric.loader import NeighborLoader
 
 from src.data_preprocessing.preprocess import EllipticDataset
-from src.modeling.testing.models_to_test import model_list
+from src.modeling.testing.models_to_test_rq1_ex1 import model_list
 from src.modeling.utils.modeling_utils import train, validate, evaluate
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
@@ -26,34 +26,10 @@ else:
 
 # Load your dataset
 data = EllipticDataset(root=processed_data_path)
+data = data[1]
 
-data = data[4]
+# define the epochs for training
 epochs = 10
-
-train_loader = NeighborLoader(
-    data,
-    shuffle=True,
-    num_neighbors=[10, 10],
-    batch_size=32,
-    input_nodes=data.train_mask
-)
-
-val_loader = NeighborLoader(
-    data,
-    shuffle=True,
-    num_neighbors=[10, 10],
-    batch_size=32,
-    input_nodes=data.val_mask
-)
-
-test_loader = NeighborLoader(
-    data,
-    shuffle=True,
-    num_neighbors=[10, 10],
-    batch_size=32,
-    input_nodes=data.test_mask
-)
-
 
 
 #model to test set the device
@@ -73,9 +49,9 @@ if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pt
             #train the models, framework need a special variable
             for name, components in models_to_compare.items():
                 if 'framework' in name:
-                    loss_gnn = train(train_loader, components['model'], components['optimizer'], device, components['criterion'], True)
+                    loss_gnn = train(components['train_set'], components['model'], components['optimizer'], device, components['criterion'], True)
                 else:
-                    loss_gnn = train(train_loader, components['model'], components['optimizer'], device,
+                    loss_gnn = train(components['train_set'], components['model'], components['optimizer'], device,
                                      components['criterion'], False)
                 log = (f"Loss {name}: {loss_gnn:.6f}\n")
                 print(log)
@@ -88,9 +64,9 @@ if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pt
 
             for name, components in models_to_compare.items():
                 if 'framework' in name:
-                    accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device, True)
+                    accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_set'], components['model'], device, True)
                 else:
-                    accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(val_loader, components['model'], device,
+                    accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_set'], components['model'], device,
                                                                             False)
                 # Logging
                 log = (
@@ -113,9 +89,9 @@ with open(f"evaluation_performance_metrics_trained.txt", "w") as f:
     f.write("----EVALUATION----\n")
     for name, components in models_to_compare.items():
         if 'framework' in name:
-            accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], test_loader, device, name, True)
+            accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], components['test_set'], device, name, True)
         else:
-            accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], test_loader, device,
+            accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], components['test_set'], device,
                                                                             name, False)
         f.write(f"----{name}----\n")
         f.write(f"Accuracy: {accuracy:.4f}\n")

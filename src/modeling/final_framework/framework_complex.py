@@ -10,7 +10,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, r
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from torch_geometric.nn import GraphSAGE
-from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomaxFlippingLayer, EncoderFlippingLayer
+from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomaxFlexFronts, EncoderFlexFronts, corruptionflexfronts
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 from src.modeling.utils.modeling_utils import train, validate
 
@@ -24,15 +24,12 @@ trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
 
 EPS = 1e-15
 
-def corruption(x, edge_index, batch_size):
-    return x[torch.randperm(x.size(0))], edge_index, batch_size
-
 
 class DGIPlusGNN(torch.nn.Module):
-    def __init__(self, dgi, classifier, flipping_layer):
+    def __init__(self, dgi, downstream_gnn, flipping_layer):
         super().__init__()
         self.dgi = dgi
-        self.classifier = classifier
+        self.downstream_gnn = downstream_gnn
         self.flipping_layer = flipping_layer
 
     def forward(self, batch):
@@ -46,7 +43,7 @@ class DGIPlusGNN(torch.nn.Module):
                                                          batch.batch_size, framework=True)
         #the DGI encoder returns three values pos_z, neg_z and summary, the latent representation of the graph is pops_z
         x = torch.cat([x, topological_latent_representation[0]], dim=1)
-        x = self.classifier(x,batch.edge_index)
+        x = self.downstream_gnn(x, batch.edge_index)
 
         return x
 
@@ -88,10 +85,10 @@ if __name__ == "__main__":
     )
 
     # define the framework, first DGI and then the GNN used in the downstream task
-    dgi_model = DeepGraphInfomaxFlippingLayer(
-        hidden_channels=64, encoder=EncoderFlippingLayer(64, 64, 2),
+    dgi_model = DeepGraphInfomaxFlexFronts(
+        hidden_channels=64, encoder=EncoderFlexFronts(64, 64, 2),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
-        corruption=corruption).to(device)
+        corruption=corruptionflexfronts).to(device)
     # load the pretrained parameters
     dgi_model.load_state_dict(torch.load(os.path.join(trained_dgi_model_path, 'modeling_graphsage_unsup_trained.pth')))
     # reset first layer, be sure that the hidden channels are the same in DGI

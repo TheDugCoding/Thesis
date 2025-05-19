@@ -7,7 +7,7 @@ from torch import nn
 
 from src.data_preprocessing.preprocess import RealDataTraining
 from src.utils import get_data_folder, get_data_sub_folder
-from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import DeepGraphInfomaxWithoutFlexFronts, EncoderWithoutFlexFrontsGraphsage, corruptionwithoutflexfronts, train
+from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import DeepGraphInfomaxWithoutFlexFronts, EncoderWithoutFlexFrontsGraphsage, corruption_without_flex_fronts, train
 
 script_dir = get_data_folder()
 relative_path_processed = 'processed'
@@ -74,7 +74,7 @@ def objective(trial):
                                                   activation_fn=activation_fn
                                                   ),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
-        corruption=corruptionwithoutflexfronts).to(device)
+        corruption=corruption_without_flex_fronts).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 

@@ -175,7 +175,7 @@ class EncoderFlexFronts(torch.nn.Module):
             return x[:batch_size]
 
 
-def corruption(x, edge_index, batch_size):
+def corruptionflexfronts(x, edge_index, batch_size):
     return x[torch.randperm(x.size(0))], edge_index, batch_size
 
 def train(epoch, train_loaders):

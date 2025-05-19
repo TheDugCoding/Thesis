@@ -217,7 +217,7 @@ class EncoderWithoutFlexFrontsGAT(nn.Module):
         else:
             return x[:batch_size]
 
-def corruptionwithoutflexfronts(x, edge_index, batch_size):
+def corruption_without_flex_fronts(x, edge_index, batch_size):
     return x[torch.randperm(x.size(0))], edge_index, batch_size
 
 def corruption_without_flex_fronts_random_graph_corruptor(x, edge_index, batch_size=None, edge_prob=0.1):
@@ -338,7 +338,7 @@ if __name__ == '__main__':
     model = DeepGraphInfomaxWithoutFlexFronts(
         hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64, layers=3),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
-        corruption=corruptionwithoutflexfronts).to(device)
+        corruption=corruption_without_flex_fronts).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 

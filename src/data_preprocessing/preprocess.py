@@ -9,6 +9,7 @@ from torch_geometric.transforms import RandomNodeSplit
 from torch_geometric.utils import from_networkx, subgraph
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
+import copy
 
 
 from src.data_preprocessing.utils import get_structural_info
@@ -506,7 +507,7 @@ class EllipticDataset(Dataset):
         # #creating a fourth class this version only contain illicit '0' and licit '1' labels,
         # # and they have the same number of samples
 
-        data_5_version_2class_balanced = data
+        data_5_version_2class_balanced = copy.deepcopy(data)
         #replace class 2with -1, to unlabel them
         data_5_version_2class_balanced.y[data_5_version_2class_balanced.y == 2] = -1
         data_5_version_2class_balanced = RandomNodeSplit(split='random', num_train_per_class=11000, num_val=0.1, num_test=0.2)(data_5_version_2class_balanced)
@@ -519,7 +520,7 @@ class EllipticDataset(Dataset):
         """version 6"""
         # divide the training set, val set and test set per time step. From 1 to 34 is the training set from 35 to 39 is the val set from
         # 40 to 49 is th etest set
-        data_6_version_2class_balanced_with_time_steps = data
+        data_6_version_2class_balanced_with_time_steps = copy.deepcopy(data)
         # replace class 2with -1, to unlabel them
         data_6_version_2class_balanced_with_time_steps.y[data_6_version_2class_balanced_with_time_steps.y == 2] = -1
         #for the training set we need to do undersampling so we needto take only class 0 and 1
@@ -821,7 +822,7 @@ if __name__ == "__main__":
     #pre_process_elliptic()
     #relative_path_processed = 'processed'
     processed_data_path = get_data_sub_folder(relative_path_processed)
-    #data = EllipticDataset(root=processed_data_path)
+    data = EllipticDataset(root=processed_data_path)
     data = RealDataTraining(root=processed_data_path)
 
     #pre_process_ethereum()
