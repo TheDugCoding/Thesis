@@ -17,7 +17,6 @@ processed_data_path = get_data_sub_folder(relative_path_processed)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-
 def objective(trial):
     # Suggest hyperparameters
     num_layers = trial.suggest_int("num_layers", 2, 4)

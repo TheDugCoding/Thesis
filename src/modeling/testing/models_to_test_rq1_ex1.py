@@ -169,7 +169,7 @@ def model_list(data):
     train_loader_gnn_all_features_graphsage = NeighborLoader(
         data_all_features,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=[15, 30],
         batch_size=32,
         input_nodes=data_all_features.train_mask
     )
@@ -177,7 +177,7 @@ def model_list(data):
     val_loader_gnn_all_features_graphsage = NeighborLoader(
         data_all_features,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=[15, 30],
         batch_size=32,
         input_nodes=data_all_features.val_mask
     )
@@ -185,18 +185,21 @@ def model_list(data):
     test_loader_gnn_all_features_graphsage = NeighborLoader(
         data_all_features,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=[15, 30],
         batch_size=32,
         input_nodes=data_all_features.test_mask
     )
 
     gnn_model_all_features_graphsage = GraphSAGE(
         in_channels=data_all_features.num_features,
-        hidden_channels=256,
+        hidden_channels=128,
         num_layers=3,
         out_channels=2,
+        dropout=0.305092490983976,
+        aggr='mean',
+        act='gelu'
     )
-    optimizer_gnn_all_features_graphsage = torch.optim.Adam(gnn_model_all_features_graphsage.parameters(), lr=0.005, weight_decay=5e-4)
+    optimizer_gnn_all_features_graphsage = torch.optim.Adam(gnn_model_all_features_graphsage.parameters(), lr=0.0028090781886872776, weight_decay=7.190743274035764e-06)
     criterion_gnn_all_features_graphsage = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 
