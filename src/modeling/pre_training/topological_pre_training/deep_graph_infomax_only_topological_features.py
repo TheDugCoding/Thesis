@@ -312,23 +312,23 @@ if __name__ == '__main__':
 
     train_loader_rabo = NeighborLoader(
         data_rabo,
-        batch_size=256,
+        batch_size=512,
         shuffle=True,
-        num_neighbors=[10, 10, 25]
+        num_neighbors=[10, 20, 40]
     )
 
     train_loader_ethereum = NeighborLoader(
         data_ethereum,
-        batch_size=256,
+        batch_size=512,
         shuffle=True,
-        num_neighbors=[10, 10, 25]
+        num_neighbors=[10, 20, 40]
     )
 
     train_loader_stable_20 = NeighborLoader(
         data_stable_20,
-        batch_size=256,
+        batch_size=512,
         shuffle=True,
-        num_neighbors=[10, 10, 25],
+        num_neighbors=[10, 20, 40]
     )
 
     # set the train loader from the biggest to the smallest, otherwise it won't work
@@ -336,11 +336,11 @@ if __name__ == '__main__':
 
     # define the model, no flexfront
     model = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64, layers=3),
+        hidden_channels=128, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=128, output_channels=64, layers=4, activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts).to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0002627223325154975)
 
     with open("training_log_elliptic_with_features_topo_false.txt", "w") as file:
         for epoch in range(1, 30):

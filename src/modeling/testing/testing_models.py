@@ -37,6 +37,13 @@ models_to_compare = model_list(data)
 for name, components in models_to_compare.items():
     components['model'] = components['model'].to(device)
 
+#e arly stopping logic
+patience = 5
+best_auc_pr = {name: 0 for name in models_to_compare}
+epochs_no_improve = {name: 0 for name in models_to_compare}
+early_stop_flags = {name: False for name in models_to_compare}
+min_delta = 0.005
+
 if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pth')):
     # Run training
     with open("training_log_per_epoch.txt", "w") as file:
@@ -48,6 +55,10 @@ if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pt
             file.write(log)
             #train the models, framework need a special variable
             for name, components in models_to_compare.items():
+                # Skip training if early stopped
+                if early_stop_flags[name]:
+                    continue
+
                 if 'framework' in name:
                     loss_gnn = train(components['train_set'], components['model'], components['optimizer'], device, components['criterion'], True)
                 else:
@@ -63,6 +74,10 @@ if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pt
             file.write(log)
 
             for name, components in models_to_compare.items():
+                # Skip validation if early stopped
+                if early_stop_flags[name]:
+                    continue
+
                 if 'framework' in name:
                     accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_set'], components['model'], device, True)
                 else:
@@ -75,6 +90,18 @@ if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pt
                 )
                 print(log)
                 file.write(log)
+
+                # Early stopping logic
+                if auc_pr_gnn > best_auc_pr[name] + min_delta:
+                    best_auc_pr[name] = auc_pr_gnn
+                    epochs_no_improve[name] = 0
+                else:
+                    epochs_no_improve[name] += 1
+                    if epochs_no_improve[name] >= patience:
+                        log = f"Early stopping {name} at epoch {epoch + 1}\n"
+                        print(log)
+                        file.write(log)
+                        early_stop_flags[name] = True
 
     for name, components in models_to_compare.items():
         torch.save(components['model'].state_dict(), os.path.join(trained_model_path, f'{name}_gnn_trained.pth'))
