@@ -336,7 +336,7 @@ if __name__ == '__main__':
 
     # define the model, no flexfront
     model = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=128, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=128, output_channels=64, layers=4, activation_fn=torch.nn.ELU),
+        hidden_channels=128, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=128, output_channels=128, layers=4, activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts).to(device)
 
