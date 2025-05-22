@@ -240,10 +240,7 @@ def model_list(data):
     dgi_model_without_flipping_layer.load_state_dict(
         torch.load(os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
 
-    for i, layer in enumerate(dgi_model_dgi_and_mlp.encoder.layers):
-        if i == 0:
-            # Don't freeze the first layer
-            continue
+    for layer in dgi_model_without_flipping_layer.encoder.layers:
         for param in layer.parameters():
             param.requires_grad = False
 
