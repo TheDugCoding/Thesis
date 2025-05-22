@@ -13,6 +13,8 @@ from src.modeling.final_framework.framework_complex import DGIPlusGNN
 from src.modeling.final_framework.framework_simple import DGIAndGNN
 from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import \
     DeepGraphInfomaxWithoutFlexFronts, EncoderWithoutFlexFrontsGraphsage, corruption_without_flex_fronts
+from src.modeling.downstream_task.graphsage_and_mlp import GraphsageWithMLP
+from src.modeling.downstream_task.dgi_and_mlp import DGIWithMLP
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -24,16 +26,119 @@ trained_model_path = get_src_sub_folder(relative_path_trained_model)
 trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
 
 
-#define here the models to test against the framework
+
+
+
+    #define here the models to test against the framework
 
 def model_list(data):
     """
-
     :param data: the dataset that is used
     :return: a dict containing all the gnns to test against the framework
     """
 
+    # list of models to test
+    """----Graphsage and MLP----"""
+    train_loader_gnn_model_graphsage_and_mlp = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[15, 30],
+        batch_size=32,
+        input_nodes=data.train_mask
+    )
+
+    val_loader_gnn_model_graphsage_and_mlp = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[15, 30],
+        batch_size=32,
+        input_nodes=data.val_mask
+    )
+
+    test_loader_gnn_model_graphsage_and_mlp = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[15, 30],
+        batch_size=32,
+        input_nodes=data.test_mask
+    )
+
+    gnn_model_graphsage_and_mlp = GraphSAGE(
+        in_channels=data.num_features,
+        hidden_channels=64,
+        num_layers=3,
+        out_channels=64,
+        norm=LayerNorm(64),
+        dropout= 0.24535711905702512,
+        aggr='max',
+        act='gelu'
+    )
+
+    # Define MLP layers for classification
+    mlp = nn.Sequential(
+        nn.Linear(64, 64),
+        nn.ReLU(),
+        nn.Linear(64, 2),
+    )
+
+    gnn_model_graphsage_and_mlp = GraphsageWithMLP(gnn_model_graphsage_and_mlp, mlp)
+    optimizer_gnn_model_graphsage_and_mlp = torch.optim.Adam(
+        gnn_model_graphsage_and_mlp.parameters(),
+        lr= 0.002562231015359896, weight_decay=1.0133062540360388e-06)
+    criterion_gnn_model_graphsage_and_mlp = torch.nn.CrossEntropyLoss(ignore_index=-1)
+    
     # list of models  to test
+    """----DGI and MLP----"""
+    train_loader_gnn_model_dgi_and_mlp = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[10, 10],
+        batch_size=32,
+        input_nodes=data.train_mask
+    )
+
+    val_loader_gnn_model_dgi_and_mlp = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[10, 10],
+        batch_size=32,
+        input_nodes=data.val_mask
+    )
+
+    test_loader_gnn_model_dgi_and_mlp = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[10, 10],
+        batch_size=32,
+        input_nodes=data.test_mask
+    )
+
+    # define the framework, first DGI and then the GNN used in the downstream task
+    dgi_model_dgi_and_mlp = DeepGraphInfomaxWithoutFlexFronts(
+        hidden_channels=128, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data.topological_features.shape[1], hidden_channels=128, output_channels=128, layers=4, activation_fn=torch.nn.ELU),
+        summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
+        corruption=corruption_without_flex_fronts)
+    # load the pretrained parameters
+    dgi_model_dgi_and_mlp.load_state_dict(torch.load(
+        os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
+
+    for layer in dgi_model_dgi_and_mlp.encoder.layers:
+        for param in layer.parameters():
+            param.requires_grad = False
+
+    # Define MLP layers for classification
+    mlp = nn.Sequential(
+        nn.Linear(128, 64),
+        nn.ReLU(),
+        nn.Linear(64, 2),
+    )
+
+    gnn_model_model_dgi_and_mlp = DGIWithMLP(dgi_model_dgi_and_mlp, mlp)
+    optimizer_gnn_model_dgi_and_mlp = torch.optim.Adam(
+        gnn_model_model_dgi_and_mlp.parameters(),
+        lr=0.005, weight_decay=5e-4)
+    criterion_gnn_model_dgi_and_mlp = torch.nn.CrossEntropyLoss(ignore_index=-1)
+
     """----SIMPLE FRAMEWORK DGI, GRAPHSAGE and MLP----"""
 
     train_loader_gnn_model_simple_framework_without_front_flex = NeighborLoader(
@@ -62,22 +167,18 @@ def model_list(data):
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_simple_framework = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(64, 64, 2, 3),
+        hidden_channels=128,
+        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data.topological_features.shape[1],
+                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
-    dgi_model_simple_framework.load_state_dict(torch.load(os.path.join(trained_dgi_model_path, 'modeling_graphsage_unsup_trained.pth')))
-    # reset first layer, be sure that the hidden channels are the same in DGI
-    dgi_model_simple_framework.encoder.dataset_convs[0] = SAGEConv(4, 64)
-    # freeze layers 2 and 3
-    for param in dgi_model_simple_framework.encoder.conv2.parameters():
-        param.requires_grad = False
-    for param in dgi_model_simple_framework.encoder.conv3.parameters():
-        param.requires_grad = False
+    dgi_model_simple_framework.load_state_dict(torch.load(os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
 
-        # define the downstream GNN, it is the same as graphsage elliptic++. However the input is different according to the framework architecture
-        # gnn_model = GAT(data.num_features + 64, 64, 3,
-        #            8).to(device)
+    for layer in dgi_model_simple_framework.encoder.layers:
+        for param in layer.parameters():
+            param.requires_grad = False
 
     # same model as in garphsage_elliptic
     gnn_model_downstream_simple_framework = GraphSAGE(
@@ -89,19 +190,19 @@ def model_list(data):
 
     # Define MLP layers for classification
     mlp = nn.Sequential(
-        nn.Linear(128, 64),  # Adjust hidden_size as needed
+        nn.Linear(192, 128),  # Adjust hidden_size as needed
         nn.ReLU(),
-        nn.Linear(64, 1),  # Output layer for binary classification
+        nn.Linear(128, 2),  # Output layer for binary classification
         nn.Sigmoid()  # Sigmoid activation for binary classification
     )
 
-    gnn_model_simple_framework_without_front_flex = DGIAndGNN(dgi_model_simple_framework, dgi_model_simple_framework, mlp, False)
+    gnn_model_simple_framework_without_front_flex = DGIAndGNN(dgi_model_simple_framework, gnn_model_downstream_simple_framework, mlp, False)
     optimizer_gnn_simple_framework_without_front_flex = torch.optim.Adam(
         gnn_model_simple_framework_without_front_flex.parameters(),
         lr=0.005, weight_decay=5e-4)
     criterion_gnn_simple_framework_without_front_flex = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
-    """----FRAMEWORK WITHOUT FLEX FRONTS----"""
+    """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS----"""
 
     train_loader_gnn_model_complex_framework_without_front_flex = NeighborLoader(
         data,
@@ -129,25 +230,26 @@ def model_list(data):
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_without_flipping_layer = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(4, 64, 64, 3),
+        hidden_channels=128,
+        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data.topological_features.shape[1],
+                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
     dgi_model_without_flipping_layer.load_state_dict(
-        torch.load(os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flipping_layer_only_topo_rabo_ethereum.pth')))
-    # freeze layers 2 and 3
-    for param in dgi_model_without_flipping_layer.encoder.conv2.parameters():
-        param.requires_grad = False
-    for param in dgi_model_without_flipping_layer.encoder.conv3.parameters():
-        param.requires_grad = False
+        torch.load(os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
 
-        # define the downstream GNN, it is the same as graphsage elliptic++. However the input is different according to the framework architecture
-        # gnn_model = GAT(data.num_features + 64, 64, 3,
-        #            8).to(device)
+    for i, layer in enumerate(dgi_model_dgi_and_mlp.encoder.layers):
+        if i == 0:
+            # Don't freeze the first layer
+            continue
+        for param in layer.parameters():
+            param.requires_grad = False
 
     # same model as in graphsage_elliptic, used in the framework
     gnn_model_downstream_framework_without_flipping_layer = GraphSAGE(
-        in_channels=data.num_features + 64,
+        in_channels=data.num_features + 128,
         hidden_channels=256,
         num_layers=3,
         out_channels=2,
@@ -326,6 +428,24 @@ def model_list(data):
     """---------------------------------------------"""
     # Store all in a nested dict, all the models above must be in this dict
     model_dict = {
+
+        'graphsage_and_mlp': {
+            'model': gnn_model_graphsage_and_mlp,
+            'optimizer': optimizer_gnn_model_graphsage_and_mlp,
+            'criterion': criterion_gnn_model_graphsage_and_mlp,
+            'train_set': train_loader_gnn_model_graphsage_and_mlp,
+            'val_set': val_loader_gnn_model_graphsage_and_mlp,
+            'test_set': test_loader_gnn_model_graphsage_and_mlp,
+        },
+
+        'framework_dgi_and_mlp': {
+            'model': gnn_model_model_dgi_and_mlp,
+            'optimizer': optimizer_gnn_model_dgi_and_mlp,
+            'criterion': criterion_gnn_model_dgi_and_mlp,
+            'train_set': train_loader_gnn_model_dgi_and_mlp,
+            'val_set': val_loader_gnn_model_dgi_and_mlp,
+            'test_set': test_loader_gnn_model_dgi_and_mlp
+        },
 
         'simple_framework_without_flex_fronts': {
             'model': gnn_model_simple_framework_without_front_flex,

@@ -41,7 +41,7 @@ class DGIPlusGNN(torch.nn.Module):
         else:
             topological_latent_representation = self.dgi(batch.topological_features, batch.edge_index,
                                                          batch.batch_size, framework=True)
-        #the DGI encoder returns three values pos_z, neg_z and summary, the latent representation of the graph is pops_z
+        #the DGI encoder returns three values pos_z, neg_z and summary, the latent representation of the graph is pos_z
         x = torch.cat([x, topological_latent_representation[0]], dim=1)
         x = self.downstream_gnn(x, batch.edge_index)
 

@@ -47,12 +47,9 @@ class DGIAndGNN(torch.nn.Module):
         # the gnn produces latent representations
         x = self.downstream_gnn(x, batch.edge_index)
         # the DGI encoder returns three values pos_z, neg_z and summary, the latent representation of the graph is pops_z
-        x = torch.cat([x, topological_latent_representation[0]], dim=1)
+        concatenated_features = torch.cat([x, topological_latent_representation[0]], dim=1)
         # combine the latent representations from both the gnn and DGI to the final classifier
-        x = self.downstream_gnn(x, batch.edge_index)
-        x = self.mlp(x)
-
-        return x
+        return self.mlp(concatenated_features)
 
 
 if __name__ == "__main__":
@@ -66,7 +63,7 @@ if __name__ == "__main__":
     # Load your dataset
     data = EllipticDataset(root=processed_data_path)
 
-    data = data[4]
+    data = data[1]
 
     train_loader = NeighborLoader(
         data,
@@ -94,9 +91,9 @@ if __name__ == "__main__":
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(64, 64, 2),
+        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(64, 64, 64, 3),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
-        corruption=corruption_without_flex_fronts()).to(device)
+        corruption=corruption_without_flex_fronts).to(device)
     # load the pretrained parameters
     dgi_model.load_state_dict(torch.load(os.path.join(trained_dgi_model_path, 'modeling_graphsage_unsup_trained.pth')))
     # reset first layer, be sure that the hidden channels are the same in DGI

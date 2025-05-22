@@ -220,7 +220,7 @@ class EncoderWithoutFlexFrontsGAT(nn.Module):
 def corruption_without_flex_fronts(x, edge_index, batch_size):
     return x[torch.randperm(x.size(0))], edge_index, batch_size
 
-def corruption_without_flex_fronts_random_graph_corruptor(x, edge_index, batch_size=None, edge_prob=0.1):
+def corruption_without_flex_fronts_random_graph_corruptor(x, edge_index, batch_size=None, edge_prob=0.01):
     """
     Creates a random graph using Erdos-Renyi model as a corrupted view for DGI.
 
@@ -236,12 +236,14 @@ def corruption_without_flex_fronts_random_graph_corruptor(x, edge_index, batch_s
         batch_size (unchanged)
     """
     num_nodes = x.size(0)
+    device = x.device
 
     # Optionally, randomly shuffle node features
-    x_corrupt = x[torch.randperm(num_nodes)]
+    x_corrupt = x[torch.randperm(x.size(0))]
 
     # Generate random edges (Erdős-Rényi graph)
     edge_index_random = erdos_renyi_graph(num_nodes, edge_prob)
+    edge_index_random = edge_index_random.to(x.device)
 
     return x_corrupt, edge_index_random, batch_size
 
@@ -350,7 +352,7 @@ if __name__ == '__main__':
             file.write(log)
 
     torch.save(model.state_dict(),
-               os.path.join(trained_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth'))
+               os.path.join(trained_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20_corrupt_random_edges.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')

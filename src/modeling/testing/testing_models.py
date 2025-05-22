@@ -32,19 +32,20 @@ data = data[1]
 epochs = 10
 
 
+
 #model to test set the device
 models_to_compare = model_list(data)
 for name, components in models_to_compare.items():
     components['model'] = components['model'].to(device)
 
-#e arly stopping logic
+#early stopping logic
 patience = 5
 best_auc_pr = {name: 0 for name in models_to_compare}
 epochs_no_improve = {name: 0 for name in models_to_compare}
 early_stop_flags = {name: False for name in models_to_compare}
 min_delta = 0.005
 
-if not os.path.exists(os.path.join(trained_model_path, 'framework_gnn_trained.pth')):
+if not os.path.exists(os.path.join(trained_model_path, 'complex_framework_without_flex_fronts_gnn_trained.pth')):
     # Run training
     with open("training_log_per_epoch.txt", "w") as file:
         for epoch in range(epochs):
