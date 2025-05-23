@@ -334,7 +334,7 @@ if __name__ == '__main__':
     )
 
     # set the train loader from the biggest to the smallest, otherwise it won't work
-    train_loaders = [train_loader_ethereum, train_loader_stable_20, train_loader_rabo]
+    train_loaders = [train_loader_rabo]
 
     # define the model, no flexfront
     model = DeepGraphInfomaxWithoutFlexFronts(
@@ -344,7 +344,7 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0002627223325154975)
 
-    with open("training_log_elliptic_with_features_topo_false.txt", "w") as file:
+    with open("training_log_elliptic_no_flex_front_only_topo_rabo.txt", "w") as file:
         for epoch in range(1, 30):
             loss = train(epoch, train_loaders, model, optimizer)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
@@ -352,7 +352,7 @@ if __name__ == '__main__':
             file.write(log)
 
     torch.save(model.state_dict(),
-               os.path.join(trained_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20_corrupt_random_edges.pth'))
+               os.path.join(trained_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')
