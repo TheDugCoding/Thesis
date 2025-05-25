@@ -61,7 +61,7 @@ def objective(trial):
     train_loader_stable_20 = NeighborLoader(data_stable_20, batch_size=batch_size, shuffle=True,
                                             num_neighbors=ast.literal_eval(neighbours_size))
 
-    train_loaders = [train_loader_ethereum, train_loader_rabo, train_loader_stable_20]
+    train_loaders = [train_loader_rabo]
 
     # Define model and optimizer
     model = DeepGraphInfomaxWithoutFlexFronts(
@@ -84,7 +84,7 @@ def objective(trial):
 
 if __name__ == '__main__':
 
-    with open("deep_graph_infomax_without_topological_features_finetuning.txt", "w") as file:
+    with open("deep_graph_infomax_without_topological_features_only_rabo_finetuning.txt", "w") as file:
         # run Optuna study
         study = optuna.create_study(direction='minimize')
         study.optimize(objective, n_trials=30)
