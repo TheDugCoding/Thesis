@@ -24,7 +24,6 @@ def objective(trial):
     hidden_channels = trial.suggest_categorical('hidden_channels', [32, 64, 128])
     output_channels = trial.suggest_categorical('hidden_channels', [32, 64, 128])
     lr = trial.suggest_float('lr', 1e-5, 1e-2, log=True)
-    batch_size = trial.suggest_categorical('batch_size', [128, 256, 512])
     neighbours_size = trial.suggest_categorical("neighbours_size", [
         "[10, 10]",
         "[20, 20]",
@@ -33,7 +32,6 @@ def objective(trial):
         "[5, 5, 10]",
         "[10, 10, 25]",
         "[10, 20, 40]",
-        "[10, 20, 30, 40]"
     ])
 
     activation_map = {
@@ -55,10 +53,10 @@ def objective(trial):
     data_stable_20.x = data_stable_20.topological_features
 
     # Set up loaders
-    train_loader_rabo = NeighborLoader(data_rabo, batch_size=batch_size, shuffle=True, num_neighbors=ast.literal_eval(neighbours_size))
-    train_loader_ethereum = NeighborLoader(data_ethereum, batch_size=batch_size, shuffle=True,
+    train_loader_rabo = NeighborLoader(data_rabo, batch_size=64, shuffle=True, num_neighbors=ast.literal_eval(neighbours_size))
+    train_loader_ethereum = NeighborLoader(data_ethereum, batch_size=64, shuffle=True,
                                            num_neighbors=ast.literal_eval(neighbours_size))
-    train_loader_stable_20 = NeighborLoader(data_stable_20, batch_size=batch_size, shuffle=True,
+    train_loader_stable_20 = NeighborLoader(data_stable_20, batch_size=64, shuffle=True,
                                             num_neighbors=ast.literal_eval(neighbours_size))
 
     train_loaders = [train_loader_rabo]
