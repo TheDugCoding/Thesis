@@ -283,7 +283,7 @@ def train(epoch, train_loaders, model, optimizer):
                 try:
                     batches.append(next(iter_list[ratio_idx]).to(device))  # Try getting the next batch
                 except StopIteration:
-                    iter_list[ratio_idx] = iter(train_loaders[ratio_idx + 1])  # Reset iterator when exhausted
+                    iter_list[ratio_idx] = iter(train_loaders[ratio_idx + 1])  # Reset iterator when exhausted, we use +1 because the ratio_idx range from 0 to len(train_loaders)-1
                     batches.append(next(iter_list[ratio_idx]).to(device))  # Get next batch
 
         for idx, batch_loop in enumerate(batches):
@@ -314,23 +314,23 @@ if __name__ == '__main__':
 
     train_loader_rabo = NeighborLoader(
         data_rabo,
-        batch_size=512,
+        batch_size=64,
         shuffle=True,
-        num_neighbors=[10, 20, 40]
+        num_neighbors=[10, 10, 25]
     )
 
     train_loader_ethereum = NeighborLoader(
         data_ethereum,
-        batch_size=512,
+        batch_size=64,
         shuffle=True,
-        num_neighbors=[10, 20, 40]
+        num_neighbors=[10, 10, 25]
     )
 
     train_loader_stable_20 = NeighborLoader(
         data_stable_20,
-        batch_size=512,
+        batch_size=64,
         shuffle=True,
-        num_neighbors=[10, 20, 40]
+        num_neighbors=[10, 10, 25]
     )
 
     # set the train loader from the biggest to the smallest, otherwise it won't work
@@ -338,11 +338,11 @@ if __name__ == '__main__':
 
     # define the model, no flexfront
     model = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=128, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=128, output_channels=128, layers=4, activation_fn=torch.nn.ELU),
+        hidden_channels=32, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=32, output_channels=32, layers=4, activation_fn=torch.nn.LeakyReLU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts).to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0002627223325154975)
+    optimizer = torch.optim.Adam(model.parameters(), lr= 0.0005272511832859479)
 
     with open("training_log_elliptic_no_flex_front_only_topo_rabo.txt", "w") as file:
         for epoch in range(1, 30):
