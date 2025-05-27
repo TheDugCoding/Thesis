@@ -68,7 +68,8 @@ def objective_framework_complex(trial):
         "[10, 10, 25]",
         "[10, 20, 40]",
         "[10, 20, 30, 40]"
-    ]),
+    ])
+
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
 
@@ -93,7 +94,7 @@ def objective_framework_complex(trial):
 
     # Define model
     graphsage = GraphSAGE(
-        in_channels=data.num_features,
+        in_channels=data.num_features + 128,
         hidden_channels=hidden_channels,
         num_layers=num_layers,
         out_channels=2,
@@ -102,7 +103,7 @@ def objective_framework_complex(trial):
         aggr=aggr,
         norm=norm_layer).to(device)
 
-    model = DGIPlusGNN(dgi_model_without_flipping_layer, graphsage, False)
+    model = DGIPlusGNN(dgi_model_without_flipping_layer, graphsage, False).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
@@ -171,11 +172,14 @@ def objective_framework_simple(trial):
     norm_choice = trial.suggest_categorical("norm", ["batch", "layer", "graph", None])
     aggr = trial.suggest_categorical("aggr", ["mean", "sum", "max"])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
-    act_mlp = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
+    act_mlp = trial.suggest_categorical("act_mlp", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
+    output_channels = trial.suggest_categorical("output_channels", [128, 256, 512])
     num_layers = trial.suggest_int("num_layers", 2, 4)
-    num_mlp_layers = trial.suggest_int("num_layers", 2, 4)
+    hidden_channels_mlp = trial.suggest_categorical("hidden_channels_mlp", [64, 128, 256])
+    num_mlp_layers = trial.suggest_int("num_layers_mlp", 2, 4)
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
+    dropout_mlp = trial.suggest_float("dropout_mlp", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
@@ -188,7 +192,7 @@ def objective_framework_simple(trial):
         "[10, 10, 25]",
         "[10, 20, 40]",
         "[10, 20, 30, 40]"
-    ]),
+    ])
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
     activation_map = {
@@ -223,7 +227,7 @@ def objective_framework_simple(trial):
         in_channels=data.num_features,
         hidden_channels=hidden_channels,
         num_layers=num_layers,
-        out_channels=2,
+        out_channels=output_channels,
         dropout=dropout,
         act=act,
         aggr=aggr,
@@ -232,10 +236,10 @@ def objective_framework_simple(trial):
     activation_fn = activation_map[act_mlp]
 
     # Define MLP layers for classification
-    layer_sizes = [128] + [hidden_channels] * num_mlp_layers + [2]
-    mlp = build_mlp(layer_sizes, activation_fn, dropout)
+    layer_sizes = [128+output_channels] + [hidden_channels_mlp] * num_mlp_layers + [2]
+    mlp = build_mlp(layer_sizes, activation_fn, dropout_mlp)
 
-    model= DGIAndGNN(dgi_model_without_flipping_layer, graphsage, mlp, False)
+    model= DGIAndGNN(dgi_model_without_flipping_layer, graphsage, mlp, False).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
@@ -301,29 +305,29 @@ def objective_framework_simple(trial):
 
 
 
-with open("framework_complex_finetuning.txt", "w") as file:
-    # run Optuna study
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective_framework_complex, n_trials=30, show_progress_bar=True)
-
-    # print and save the best trial
-    file.write("Best trial:\n")
-    trial = study.best_trial
-    file.write(f"  F1 Score: {trial.value}\n")
-    file.write("  Best hyperparameters:\n")
-
-    for key, value in trial.params.items():
-        file.write(f"    {key}: {value}\n")
+# with open("framework_complex_finetuning.txt", "w") as file:
+#     # run Optuna study
+#     study = optuna.create_study(direction="maximize")
+#     study.optimize(objective_framework_complex, n_trials=60, show_progress_bar=True)
+#
+#     # print and save the best trial
+#     file.write("Best trial:\n")
+#     trial = study.best_trial
+#     file.write(f"  PR-AUC Score: {trial.value}\n")
+#     file.write("  Best hyperparameters:\n")
+#
+#     for key, value in trial.params.items():
+#         file.write(f"    {key}: {value}\n")
 
 with open("framework_simple_finetuning.txt", "w") as file:
     # run Optuna study
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective_framework_simple, n_trials=30, show_progress_bar=True)
+    study.optimize(objective_framework_simple, n_trials=60, show_progress_bar=True)
 
     # print and save the best trial
     file.write("Best trial:\n")
     trial = study.best_trial
-    file.write(f"  F1 Score: {trial.value}\n")
+    file.write(f"  PR-AUC Score: {trial.value}\n")
     file.write("  Best hyperparameters:\n")
 
     for key, value in trial.params.items():
