@@ -621,7 +621,7 @@ def objective_gin(trial):
         model.train()
         total_loss = 0
         total_examples = 0
-        for batch in tqdm(train_loader, desc="Training"):
+        for batch in train_loader:
             batch = batch.to(device)
             optimizer.zero_grad()
             out = model(batch.x, batch.edge_index)
@@ -687,7 +687,7 @@ def objective_gin_all_features(trial):
 
     # Define model
     model = GIN(
-        in_channels=data.num_features,
+        in_channels=data_all_features.num_features,
         hidden_channels=hidden_channels,
         num_layers=num_layers,
         out_channels=2,
@@ -719,7 +719,7 @@ def objective_gin_all_features(trial):
         model.train()
         total_loss = 0
         total_examples = 0
-        for batch in tqdm(train_loader, desc="Training"):
+        for batch in train_loader:
             batch = batch.to(device)
             optimizer.zero_grad()
             out = model(batch.x, batch.edge_index)
@@ -845,7 +845,7 @@ def objective_gin_all_features(trial):
 with open("gin_finetuning_all_features.txt", "w") as file:
     # run Optuna study
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective_gin_all_features(), n_trials=30, show_progress_bar=True)
+    study.optimize(objective_gin_all_features, n_trials=30, show_progress_bar=True)
 
     # print and save the best trial
     file.write("Best trial:\n")

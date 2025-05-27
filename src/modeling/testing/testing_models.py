@@ -3,6 +3,8 @@ import os
 import torch
 import torch_geometric
 from torch_geometric.loader import NeighborLoader
+import numpy as np
+import matplotlib.pyplot as plt
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from src.modeling.testing.models_to_test_rq1_ex1 import model_list
@@ -29,101 +31,134 @@ data = EllipticDataset(root=processed_data_path)
 data = data[1]
 
 # define the epochs for training
-epochs = 10
+epochs = 50
 
-
-
-#model to test set the device
-models_to_compare = model_list(data)
-for name, components in models_to_compare.items():
-    components['model'] = components['model'].to(device)
 
 #early stopping logic
 patience = 5
-best_auc_pr = {name: 0 for name in models_to_compare}
-epochs_no_improve = {name: 0 for name in models_to_compare}
-early_stop_flags = {name: False for name in models_to_compare}
+# how much a model should improve for each epoch to consider it an improvement
 min_delta = 0.005
 
-if not os.path.exists(os.path.join(trained_model_path, 'complex_framework_without_flex_fronts_gnn_trained.pth')):
-    # Run training
-    with open("training_log_per_epoch.txt", "w") as file:
-        for epoch in range(epochs):
+# number of times we train and evaluate each model
+n_runs = 10  # Set your N here
+pr_auc_results = {name: [] for name in model_list(data)}  # Accumulate PR AUCs
 
-            #train the framework
-            log = (f"\n\n---TRAINING--- Epoch {epoch + 1:02d}\n")
-            print(log)
-            file.write(log)
-            #train the models, framework need a special variable
-            for name, components in models_to_compare.items():
-                # Skip training if early stopped
-                if early_stop_flags[name]:
-                    continue
+for run in range(n_runs):
+    print(f"\n======== RUN {run + 1}/{n_runs} ========\n")
 
-                if 'framework' in name:
-                    loss_gnn = train(components['train_set'], components['model'], components['optimizer'], device, components['criterion'], True)
-                else:
-                    loss_gnn = train(components['train_set'], components['model'], components['optimizer'], device,
-                                     components['criterion'], False)
-                log = (f"Loss {name}: {loss_gnn:.6f}\n")
+    # model to test set the device
+    models_to_compare = model_list(data)
+    for name, components in models_to_compare.items():
+        components['model'] = components['model'].to(device)
+
+    # setting the early stopping value for each model
+    best_auc_pr = {name: 0 for name in models_to_compare}
+    epochs_no_improve = {name: 0 for name in models_to_compare}
+    early_stop_flags = {name: False for name in models_to_compare}
+
+    if not os.path.exists(os.path.join(trained_model_path, 'mdofy_complex_framework_without_flex_fronts_gnn_trained.pth')):
+        # Run training
+        with open("training_log_per_epoch.txt", "w") as file:
+            for epoch in range(epochs):
+
+                #train the framework
+                log = (f"\n\n---TRAINING--- Epoch {epoch + 1:02d}\n")
                 print(log)
                 file.write(log)
+                #train the models, framework need a special variable
+                for name, components in models_to_compare.items():
+                    # Skip training if early stopped
+                    if early_stop_flags[name]:
+                        continue
 
-            #validation
-            log = (
-                f"---VALIDATION--- Epoch {epoch + 1:02d}\n")
-            file.write(log)
+                    if 'framework' in name:
+                        loss_gnn = train(components['train_set'], components['model'], components['optimizer'], device, components['criterion'], True)
+                    else:
+                        loss_gnn = train(components['train_set'], components['model'], components['optimizer'], device,
+                                         components['criterion'], False)
+                    log = (f"Loss {name}: {loss_gnn:.6f}\n")
+                    print(log)
+                    file.write(log)
 
-            for name, components in models_to_compare.items():
-                # Skip validation if early stopped
-                if early_stop_flags[name]:
-                    continue
-
-                if 'framework' in name:
-                    accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_set'], components['model'], device, True)
-                else:
-                    accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_set'], components['model'], device,
-                                                                            False)
-                # Logging
+                #validation
                 log = (
-                    f"{name} Metrics --- Accuracy: {accuracy_gnn:.4f}, Precision: {precision_gnn:.4f}, Recall: {recall_gnn:.4f}, "
-                    f"F1: {f1_gnn:.4f}, AUC-PR: {auc_pr_gnn:.4f}\n"
-                )
-                print(log)
+                    f"---VALIDATION--- Epoch {epoch + 1:02d}\n")
                 file.write(log)
 
-                # Early stopping logic
-                if auc_pr_gnn > best_auc_pr[name] + min_delta:
-                    best_auc_pr[name] = auc_pr_gnn
-                    epochs_no_improve[name] = 0
-                else:
-                    epochs_no_improve[name] += 1
-                    if epochs_no_improve[name] >= patience:
-                        log = f"Early stopping {name} at epoch {epoch + 1}\n"
-                        print(log)
-                        file.write(log)
-                        early_stop_flags[name] = True
+                for name, components in models_to_compare.items():
+                    # Skip validation if early stopped
+                    if early_stop_flags[name]:
+                        continue
 
-    for name, components in models_to_compare.items():
-        torch.save(components['model'].state_dict(), os.path.join(trained_model_path, f'{name}_gnn_trained.pth'))
-else:
-    for name, components in models_to_compare.items():
-        components['model'].load_state_dict(
-            torch.load(os.path.join(trained_model_path, f'{name}_gnn_trained.pth'), map_location=device))
+                    if 'framework' in name:
+                        accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_set'], components['model'], device, True)
+                    else:
+                        accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_set'], components['model'], device,
+                                                                                False)
+                    # Logging
+                    log = (
+                        f"{name} Metrics --- Accuracy: {accuracy_gnn:.4f}, Precision: {precision_gnn:.4f}, Recall: {recall_gnn:.4f}, "
+                        f"F1: {f1_gnn:.4f}, AUC-PR: {auc_pr_gnn:.4f}\n"
+                    )
+                    print(log)
+                    file.write(log)
 
-# Inference
-print("\n----EVALUATION----\n")
-with open(f"evaluation_performance_metrics_trained.txt", "w") as f:
-    f.write("----EVALUATION----\n")
-    for name, components in models_to_compare.items():
-        if 'framework' in name:
-            accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], components['test_set'], device, name, True)
-        else:
-            accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], components['test_set'], device,
-                                                                            name, False)
-        f.write(f"----{name}----\n")
-        f.write(f"Accuracy: {accuracy:.4f}\n")
-        f.write(f"Precision: {precision:.4f}\n")
-        f.write(f"Recall: {recall:.4f}\n")
-        f.write(f"F1 Score: {f1:.4f}\n")
-        f.write(f"pr_auc Score (class 0): {pr_auc:.4f}\n")
+                    # Early stopping logic
+                    if auc_pr_gnn > best_auc_pr[name] + min_delta:
+                        best_auc_pr[name] = auc_pr_gnn
+                        epochs_no_improve[name] = 0
+                    else:
+                        epochs_no_improve[name] += 1
+                        if epochs_no_improve[name] >= patience:
+                            log = f"Early stopping {name} at epoch {epoch + 1}\n"
+                            print(log)
+                            file.write(log)
+                            early_stop_flags[name] = True
+
+        for name, components in models_to_compare.items():
+            torch.save(components['model'].state_dict(), os.path.join(trained_model_path, f'{name}_gnn_trained.pth'))
+    else:
+        for name, components in models_to_compare.items():
+            components['model'].load_state_dict(
+                torch.load(os.path.join(trained_model_path, f'{name}_gnn_trained.pth'), map_location=device))
+
+    # Inference
+    print("\n----EVALUATION----\n")
+    with open(f"evaluation_performance_metrics_run{run + 1}.txt", "w") as f:
+        f.write("----EVALUATION----\n")
+        for name, components in models_to_compare.items():
+            if 'framework' in name:
+                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], components['test_set'], device, name, True)
+            else:
+                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], components['test_set'], device,
+                                                                                name, False)
+            f.write(f"----{name}----\n")
+            f.write(f"Accuracy: {accuracy:.4f}\n")
+            f.write(f"Precision: {precision:.4f}\n")
+            f.write(f"Recall: {recall:.4f}\n")
+            f.write(f"F1 Score: {f1:.4f}\n")
+            f.write(f"pr_auc Score (class 0): {pr_auc:.4f}\n")
+
+            # Save PR AUC for this run
+            pr_auc_results[name].append(pr_auc)
+
+# Save and plot average + std PR AUC
+with open("pr_auc_summary.txt", "w") as f:
+    for name, scores in pr_auc_results.items():
+        mean_auc = np.mean(scores)
+        std_auc = np.std(scores)
+        f.write(f"{name} - Mean PR AUC: {mean_auc:.4f}, Std: {std_auc:.4f}\n")
+        print(f"{name}: Mean={mean_auc:.4f}, Std={std_auc:.4f}")
+
+# Plotting (horizontal bar chart with lateral names)
+names = list(pr_auc_results.keys())
+means = [np.mean(pr_auc_results[name]) for name in names]
+stds = [np.std(pr_auc_results[name]) for name in names]
+
+plt.figure(figsize=(10, 6))
+plt.barh(names, means, xerr=stds, capsize=5)
+plt.xlabel("PR AUC")
+plt.title(f"Average PR AUC over {n_runs} runs")
+plt.tight_layout()
+plt.savefig("pr_auc_comparison.png")
+plt.show()

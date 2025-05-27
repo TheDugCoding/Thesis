@@ -21,8 +21,8 @@ def objective(trial):
     # Suggest hyperparameters
     num_layers = trial.suggest_int("num_layers", 2, 4)
     act_name = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
-    hidden_channels = trial.suggest_categorical('hidden_channels', [32, 64, 128])
-    output_channels = trial.suggest_categorical('hidden_channels', [32, 64, 128])
+    hidden_channels = trial.suggest_categorical('hidden_channels', [32, 64, 128, 256, 512])
+    output_channels = trial.suggest_categorical('output_channels', [32, 64, 128, 256, 512])
     lr = trial.suggest_float('lr', 1e-5, 1e-2, log=True)
     neighbours_size = trial.suggest_categorical("neighbours_size", [
         "[10, 10]",

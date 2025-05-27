@@ -8,6 +8,7 @@ from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import GraphSAGE, GAT, GIN
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import BatchNorm, LayerNorm, GraphNorm
+from src.modeling.downstream_task.dgi_and_mlp import build_mlp
 
 from src.modeling.final_framework.framework_complex import DGIPlusGNN
 from src.modeling.final_framework.framework_simple import DGIAndGNN
@@ -145,7 +146,7 @@ def model_list(data):
         data,
         shuffle=True,
         num_neighbors=[10, 10],
-        batch_size=32,
+        batch_size=64,
         input_nodes=data.train_mask
     )
 
@@ -153,7 +154,7 @@ def model_list(data):
         data,
         shuffle=True,
         num_neighbors=[10, 10],
-        batch_size=32,
+        batch_size=64,
         input_nodes=data.val_mask
     )
 
@@ -161,7 +162,7 @@ def model_list(data):
         data,
         shuffle=True,
         num_neighbors=[10, 10],
-        batch_size=32,
+        batch_size=64,
         input_nodes=data.test_mask
     )
 
@@ -183,18 +184,16 @@ def model_list(data):
     # same model as in garphsage_elliptic
     gnn_model_downstream_simple_framework = GraphSAGE(
         in_channels=data.num_features,
-        hidden_channels=256,
+        hidden_channels=64,
         num_layers=3,
-        out_channels=64,
+        out_channels=512,
+        dropout=0.39377319491373913,
+        act='relu',
+        aggr='mean'
     )
 
-    # Define MLP layers for classification
-    mlp = nn.Sequential(
-        nn.Linear(192, 128),  # Adjust hidden_size as needed
-        nn.ReLU(),
-        nn.Linear(128, 2),  # Output layer for binary classification
-        nn.Sigmoid()  # Sigmoid activation for binary classification
-    )
+    layer_sizes = [128 + 512] + [128] * 3 + [2]
+    mlp = build_mlp(layer_sizes, nn.ReLU, 0.39377319491373913)
 
     gnn_model_simple_framework_without_front_flex = DGIAndGNN(dgi_model_simple_framework, gnn_model_downstream_simple_framework, mlp, False)
     optimizer_gnn_simple_framework_without_front_flex = torch.optim.Adam(
@@ -207,24 +206,24 @@ def model_list(data):
     train_loader_gnn_model_complex_framework_without_front_flex = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 10],
-        batch_size=32,
+        num_neighbors=[15, 30],
+        batch_size=64,
         input_nodes=data.train_mask
     )
 
     val_loader_gnn_model_complex_framework_without_front_flex = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 10],
-        batch_size=32,
+        num_neighbors=[15, 30],
+        batch_size=64,
         input_nodes=data.val_mask
     )
 
     test_loader_gnn_model_complex_framework_without_front_flex = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 10],
-        batch_size=32,
+        num_neighbors=[15, 30],
+        batch_size=64,
         input_nodes=data.test_mask
     )
 
@@ -247,9 +246,12 @@ def model_list(data):
     # same model as in graphsage_elliptic, used in the framework
     gnn_model_downstream_framework_without_flipping_layer = GraphSAGE(
         in_channels=data.num_features + 128,
-        hidden_channels=256,
+        hidden_channels=64,
         num_layers=3,
         out_channels=2,
+        dropout=0.2599246924621209,
+        act='relu',
+        aggr='mean'
     )
 
     gnn_model_complex_framework_without_front_flex = DGIPlusGNN(dgi_model_without_flipping_layer,
@@ -257,7 +259,7 @@ def model_list(data):
                                                                 False)
     optimizer_gnn_complex_framework_without_front_flex = torch.optim.Adam(
         gnn_model_complex_framework_without_front_flex.parameters(),
-        lr=0.005, weight_decay=5e-4)
+        lr=0.0003481550881584628, weight_decay=2.3566177347305847e-06)
     criterion_gnn_complex_framework_without_front_flex = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----GRAPHSAGE TOPOLOGICAL INPUT + DATA INPUT----"""
@@ -418,8 +420,51 @@ def model_list(data):
     )
 
     optimizer_gnn_simple_gin = torch.optim.Adam(gnn_model_simple_gin.parameters(), lr=0.002608140007550387
-, weight_decay=2.6710002144362644e-06)
+                                                , weight_decay=2.6710002144362644e-06)
     criterion_gnn_simple_gin = torch.nn.CrossEntropyLoss(ignore_index=-1)
+
+    """----GIN TOPOLOGICAL INPUT + DATA INPUT----"""
+
+    data_all_features = copy.deepcopy(data)
+    data_all_features.x = torch.cat([data.x, data.topological_features], dim=1)
+
+    train_loader_gnn_all_features_gin = NeighborLoader(
+        data_all_features,
+        shuffle=True,
+        num_neighbors=[10, 20, 30, 40],
+        batch_size=32,
+        input_nodes=data_all_features.train_mask
+    )
+
+    val_loader_gnn_all_features_gin= NeighborLoader(
+        data_all_features,
+        shuffle=True,
+        num_neighbors=[10, 20, 30, 40],
+        batch_size=32,
+        input_nodes=data_all_features.val_mask
+    )
+
+    test_loader_gnn_all_features_gin = NeighborLoader(
+        data_all_features,
+        shuffle=True,
+        num_neighbors=[10, 20, 30, 40],
+        batch_size=32,
+        input_nodes=data_all_features.test_mask
+    )
+
+    gnn_model_all_features_gin = GIN(
+        in_channels=data_all_features.num_features,
+        hidden_channels=256,
+        num_layers=3,
+        out_channels=2,
+        norm=BatchNorm(256),
+        dropout=0.29595638014601744,
+        act='gelu'
+    )
+
+    optimizer_gnn_all_features_gin = torch.optim.Adam(gnn_model_all_features_gin.parameters(), lr=0.0005248031697306322
+    , weight_decay=1.576197498517137e-05)
+    criterion_gnn_all_features_gin = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 
     """---------------------------------------------"""
@@ -496,6 +541,15 @@ def model_list(data):
             'train_set': train_loader_gnn_simple_gin,
             'val_set': val_loader_gnn_simple_gin,
             'test_set': test_loader_gnn_simple_gin
+        },
+
+        'gin_all_features': {
+            'model': gnn_model_all_features_gin,
+            'optimizer': optimizer_gnn_all_features_gin,
+            'criterion': criterion_gnn_all_features_gin,
+            'train_set': train_loader_gnn_all_features_gin,
+            'val_set': val_loader_gnn_all_features_gin,
+            'test_set': test_loader_gnn_all_features_gin
         }
     }
 
