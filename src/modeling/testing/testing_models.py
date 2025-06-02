@@ -40,7 +40,7 @@ patience = 5
 min_delta = 0.005
 
 # number of times we train and evaluate each model
-n_runs = 10  # Set your N here
+n_runs = 20  # Set your N here
 pr_auc_results = {name: [] for name in model_list(data)}  # Accumulate PR AUCs
 
 for run in range(n_runs):
@@ -141,6 +141,9 @@ for run in range(n_runs):
 
             # Save PR AUC for this run
             pr_auc_results[name].append(pr_auc)
+
+    # make sure that the cache is empty between runs
+    torch.cuda.empty_cache()
 
 # Save and plot average + std PR AUC
 with open("pr_auc_summary.txt", "w") as f:

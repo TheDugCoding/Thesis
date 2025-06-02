@@ -574,19 +574,19 @@ with open("framework_complex_first_layer_unfreeze.txt", "w") as file:
     for key, value in trial.params.items():
         file.write(f"    {key}: {value}\n")
 
-with open("framework_complex_finetuning_only_rabo.txt", "w") as file:
-    # run Optuna study
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective_framework_complex_only_rabo, n_trials=60, show_progress_bar=True)
-
-    # print and save the best trial
-    file.write("Best trial:\n")
-    trial = study.best_trial
-    file.write(f"  PR-AUC Score: {trial.value}\n")
-    file.write("  Best hyperparameters:\n")
-
-    for key, value in trial.params.items():
-        file.write(f"    {key}: {value}\n")
+# with open("framework_complex_finetuning_only_rabo.txt", "w") as file:
+#     # run Optuna study
+#     study = optuna.create_study(direction="maximize")
+#     study.optimize(objective_framework_complex_only_rabo, n_trials=60, show_progress_bar=True)
+#
+#     # print and save the best trial
+#     file.write("Best trial:\n")
+#     trial = study.best_trial
+#     file.write(f"  PR-AUC Score: {trial.value}\n")
+#     file.write("  Best hyperparameters:\n")
+#
+#     for key, value in trial.params.items():
+#         file.write(f"    {key}: {value}\n")
 
 # with open("framework_simple_finetuning.txt", "w") as file:
 #     # run Optuna study
