@@ -6,6 +6,7 @@ from sklearn.metrics import ConfusionMatrixDisplay
 from torch_geometric.loader import NeighborLoader
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from src.modeling.testing.models_to_test_rq1_ex1 import model_list_rq1_ex1
@@ -38,12 +39,12 @@ data = EllipticDataset(root=processed_data_path)
 data = data[1]
 
 # define the epochs for training
-epochs = 1
+epochs = 50
 # define if we want to train or only evaluate
 evaluate_only = False
 
 # number of times we train and evaluate each model
-n_runs = 2  # set your N here
+n_runs = 20  # set your N here
 pr_auc_results = {name: [] for name in model_list_rq1_ex1(data)}  # accumulate PR AUCs
 
 # which rq do we want to answer?
@@ -80,14 +81,14 @@ else:
 
 # remove all entries in the subfolders, it is necessary otherwise we may keep information of previous runs
 for subdir, dirs, files in os.walk(results_path):
-    # we keep the trained models
-    if 'trained_models' in subdir:
+    # we keep the trained models if we are evaluating, otherwise we erase them
+    if 'trained_models' in subdir and evaluate_only:
         continue
     for file in files:
         file_path = os.path.join(subdir, file)
         os.remove(file_path)
 
-for run in range(n_runs):
+for run in tqdm(range(n_runs), desc="Run progress"):
     print(f"\n======== RUN {run + 1}/{n_runs} ========\n")
 
     for name, components in models_to_compare.items():
@@ -177,6 +178,16 @@ for run in range(n_runs):
             else:
                 accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['test_set'], device,
                                                                                 name, False)
+
+            # print the results
+            print(f"----{name}----")
+            print(f"Accuracy: {accuracy:.4f}")
+            print(f"Precision: {precision:.4f}")
+            print(f"Recall: {recall:.4f}")
+            print(f"F1 Score: {f1:.4f}")
+            print(f"pr_auc Score (class 0): {pr_auc:.4f}")
+
+            # save the results of the evaluation for this run
             f.write(f"----{name}----\n")
             f.write(f"Accuracy: {accuracy:.4f}\n")
             f.write(f"Precision: {precision:.4f}\n")

@@ -131,7 +131,6 @@ def evaluate(model, test_loader, device, name, framework=False):
     disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_model)
     disp.plot()
     plt.title(f'Confusion Matrix {name}')
-    print(confusion_matrix_model)
     plt.show()
 
     fig = plt.figure(figsize=(8, 6))

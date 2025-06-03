@@ -10,7 +10,6 @@ from sklearn.metrics import average_precision_score
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import BatchNorm, LayerNorm, GraphNorm
 from torch_geometric.nn import GraphSAGE, GAT, GIN
-from tqdm import tqdm
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from src.modeling.downstream_task.dgi_and_mlp import DGIWithMLP, build_mlp
@@ -25,7 +24,9 @@ relative_path_trained_model = 'modeling/downstream_task/trained_models'
 processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_model_path = get_src_sub_folder(relative_path_trained_model)
 relative_path_trained_dgi = 'modeling/pre_training/topological_pre_training/trained_models'
+relative_path_finetuning_results = 'modeling/downstream_task/finetuning_results'
 trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
+finetuning_results = get_src_sub_folder(relative_path_finetuning_results)
 
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -758,7 +759,7 @@ def objective_gin_all_features(trial):
     return pr_auc
 
 
-# with open("graphsage_and_mlp_finetuning.txt", "w") as file:
+# with open(os.path.join(finetuning_results, "graphsage_and_mlp_finetuning.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
 #     study.optimize(objective_graphsage_and_mlp, n_trials=30, show_progress_bar=True)
@@ -772,7 +773,7 @@ def objective_gin_all_features(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-# with open("dgi_and_mlp_finetuning.txt", "w") as file:
+# with open(os.path.join(finetuning_results, "dgi_and_mlp_finetuning.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
 #     study.optimize(objective_dgi_and_mlp, n_trials=30, show_progress_bar=True)
@@ -786,7 +787,7 @@ def objective_gin_all_features(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-# with open("graphsage_finetuning.txt", "w") as file:
+# with open(os.path.join(finetuning_results, "graphsage_finetuning.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
 #     study.optimize(objective_graphsage, n_trials=30, show_progress_bar=True)
@@ -800,7 +801,7 @@ def objective_gin_all_features(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-# with open("graphsage_all_features_finetuning.txt", "w") as file:
+# with open(os.path.join(finetuning_results, "graphsage_all_features_finetuning.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
 #     study.optimize(objective_graphsage_all_features, n_trials=30, show_progress_bar=True)
@@ -814,7 +815,7 @@ def objective_gin_all_features(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-# with open("gat_finetuning.txt", "w") as file:
+# with open(os.path.join(finetuning_results, "gat_finetuning.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
 #     study.optimize(objective_gat, n_trials=30, show_progress_bar=True)
@@ -828,7 +829,7 @@ def objective_gin_all_features(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-# with open("gin_finetuning.txt", "w") as file:
+# with open(os.path.join(finetuning_results, "gin_finetuning.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
 #     study.optimize(objective_gin, n_trials=30, show_progress_bar=True)
@@ -842,7 +843,7 @@ def objective_gin_all_features(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-with open("gin_finetuning_all_features.txt", "w") as file:
+with open(os.path.join(finetuning_results, "gin_finetuning_all_features.txt"), "w") as file:
     # run Optuna study
     study = optuna.create_study(direction="maximize")
     study.optimize(objective_gin_all_features, n_trials=30, show_progress_bar=True)

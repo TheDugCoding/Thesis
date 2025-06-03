@@ -163,6 +163,70 @@ def model_list_rq2_ex1(data):
     criterion_gnn_complex_framework_without_front_flex_first_layer_not_frozen = torch.nn.CrossEntropyLoss(
         ignore_index=-1)
 
+    """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS LAST LAYER UNFREEZE----"""
+
+    train_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[20, 20],
+        batch_size=64,
+        input_nodes=data.train_mask
+    )
+
+    val_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[20, 20],
+        batch_size=64,
+        input_nodes=data.val_mask
+    )
+
+    test_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[20, 20],
+        batch_size=64,
+        input_nodes=data.test_mask
+    )
+
+    # define the framework, first DGI and then the GNN used in the downstream task
+    dgi_model_without_flipping_layer = DeepGraphInfomaxWithoutFlexFronts(
+        hidden_channels=128,
+        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data.topological_features.shape[1],
+                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  activation_fn=torch.nn.ELU),
+        summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
+        corruption=corruption_without_flex_fronts)
+    # load the pretrained parameters
+    dgi_model_without_flipping_layer.load_state_dict(
+        torch.load(
+            os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
+
+    # freeze all the layers except the last one
+    for idx in range(len(dgi_model_without_flipping_layer.encoder.layers) - 1):
+        for param in dgi_model_without_flipping_layer.encoder.layers[idx].parameters():
+            param.requires_grad = False
+
+    # same model as in graphsage_elliptic, used in the framework
+    gnn_model_downstream_framework_without_flipping_layer = GraphSAGE(
+        in_channels=data.num_features + 128,
+        hidden_channels=256,
+        num_layers=3,
+        out_channels=2,
+        dropout=0.22850289637244808,
+        act='leaky_relu',
+        aggr='sum'
+    )
+
+    gnn_model_complex_framework_without_front_flex_last_layer_not_frozen = DGIPlusGNN(dgi_model_without_flipping_layer,
+                                                                                       gnn_model_downstream_framework_without_flipping_layer,
+                                                                                       False)
+    optimizer_gnn_complex_framework_without_front_flex_last_layer_not_frozen = torch.optim.Adam(
+        gnn_model_complex_framework_without_front_flex_last_layer_not_frozen.parameters(),
+        lr=0.0001556396670559418, weight_decay=5.7752955996249056e-06)
+    criterion_gnn_complex_framework_without_front_flex_last_layer_not_frozen = torch.nn.CrossEntropyLoss(
+        ignore_index=-1)
+    
     """---------------------------------------------"""
     # Store all in a nested dict, all the models above must be in this dict
     model_dict = {
@@ -183,6 +247,15 @@ def model_list_rq2_ex1(data):
             'train_set': train_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
             'val_set': val_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
             'test_set': test_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen
+        },
+
+        'complex_framework_without_flex_fronts_last_layer_not_frozen': {
+            'model': gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
+            'optimizer': optimizer_gnn_complex_framework_without_front_flex_last_layer_not_frozen,
+            'criterion': criterion_gnn_complex_framework_without_front_flex_last_layer_not_frozen,
+            'train_set': train_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
+            'val_set': val_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
+            'test_set': test_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen
         }
     }
 

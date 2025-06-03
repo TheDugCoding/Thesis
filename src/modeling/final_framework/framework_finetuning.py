@@ -22,9 +22,11 @@ script_dir = get_data_folder()
 relative_path_processed = 'processed'
 relative_path_trained_model = 'modeling/downstream_task/trained_models'
 relative_path_trained_dgi = 'modeling/pre_training/topological_pre_training/trained_models'
+relative_path_finetuning_results = 'modeling/final_framework/finetuning_results'
 processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_model_path = get_src_sub_folder(relative_path_trained_model)
 trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
+finetuning_results = get_src_sub_folder(relative_path_finetuning_results)
 
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -665,7 +667,7 @@ def objective_framework_simple(trial):
 
 
 
-# with open("framework_complex_finetuning.txt", "w") as file:
+# with open(os.path.join(finetuning_results, "framework_complex_finetuning.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
 #     study.optimize(objective_framework_complex, n_trials=60, show_progress_bar=True)
@@ -679,7 +681,7 @@ def objective_framework_simple(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-# with open("framework_complex_first_layer_unfreeze.txt", "w") as file:
+# with open(os.path.join(finetuning_results, "framework_complex_first_layer_unfreeze.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
 #     study.optimize(objective_framework_complex_first_layer_unfreeze, n_trials=60, show_progress_bar=True)
@@ -693,7 +695,7 @@ def objective_framework_simple(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-with open("framework_complex_last_layer_unfreeze.txt", "w") as file:
+with open(os.path.join(finetuning_results, "framework_complex_last_layer_unfreeze.txt"), "w") as file:
     # run Optuna study
     study = optuna.create_study(direction="maximize")
     study.optimize(objective_framework_complex_last_layer_unfreeze, n_trials=60, show_progress_bar=True)
@@ -707,7 +709,7 @@ with open("framework_complex_last_layer_unfreeze.txt", "w") as file:
     for key, value in trial.params.items():
         file.write(f"    {key}: {value}\n")
 
-# with open("framework_complex_finetuning_only_rabo.txt", "w") as file:
+# with open(os.path.join(finetuning_results, "framework_complex_finetuning_only_rabo.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
 #     study.optimize(objective_framework_complex_only_rabo, n_trials=60, show_progress_bar=True)
@@ -721,7 +723,7 @@ with open("framework_complex_last_layer_unfreeze.txt", "w") as file:
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-# with open("framework_simple_finetuning.txt", "w") as file:
+#     with open(os.path.join(finetuning_results, "framework_simple_finetuning.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
 #     study.optimize(objective_framework_simple, n_trials=60, show_progress_bar=True)
