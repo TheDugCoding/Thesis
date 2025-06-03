@@ -507,15 +507,6 @@ def model_list_rq1_ex1(data):
             'test_set': test_loader_gnn_model_complex_framework_without_front_flex
         },
 
-        'complex_framework_without_flex_fronts_first_layer_not_frozen': {
-            'model': gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
-            'optimizer': optimizer_gnn_complex_framework_without_front_flex_first_layer_not_frozen,
-            'criterion': criterion_gnn_complex_framework_without_front_flex_first_layer_not_frozen,
-            'train_set': train_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
-            'val_set': val_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
-            'test_set': test_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen
-        },
-
         'graphsage_all_features': {
             'model': gnn_model_all_features_graphsage,
             'optimizer': optimizer_gnn_all_features_graphsage,
