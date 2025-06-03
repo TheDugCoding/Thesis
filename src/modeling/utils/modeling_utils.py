@@ -30,7 +30,7 @@ def train(train_loader, model, optimizer, device, criterion, framework=False):
     total_loss = 0
     total_examples = 0
 
-    for batch in tqdm(train_loader, desc="training"):
+    for batch in train_loader:
         batch = batch.to(device)
         optimizer.zero_grad()
 
@@ -100,7 +100,7 @@ def evaluate(model, test_loader, device, name, framework=False):
     probs = []
 
     with torch.no_grad():
-        for batch in tqdm(test_loader):
+        for batch in test_loader:
             batch = batch.to(device)
             if framework:
                 out = model(batch)
@@ -131,20 +131,18 @@ def evaluate(model, test_loader, device, name, framework=False):
     disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_model)
     disp.plot()
     plt.title(f'Confusion Matrix {name}')
-    plt.savefig(f'confusion_matrix_{name}_plot_.png')
     print(confusion_matrix_model)
     plt.show()
 
-    plt.figure(figsize=(8, 6))
+    fig = plt.figure(figsize=(8, 6))
     plt.plot(recall_vals, precision_plot, label=f'PR-AUC = {pr_auc:.4f}', color='blue')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.title(f'Precision-Recall Curve - {name}')
-    plt.savefig(f'precision_recall_curve_{name}_plot_.png')
     plt.legend(loc='lower left')
     plt.grid(True)
     plt.tight_layout()
     plt.show()
 
 
-    return accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, (precision, recall_vals, pr_thresholds)
+    return accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, (precision, recall_vals, pr_thresholds), fig

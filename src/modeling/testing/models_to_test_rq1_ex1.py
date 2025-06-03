@@ -32,7 +32,7 @@ trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
 
     #define here the models to test against the framework
 
-def model_list(data):
+def model_list_rq1_ex1(data):
     """
     :param data: the dataset that is used
     :return: a dict containing all the gnns to test against the framework

@@ -3,7 +3,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 
 # Path to your log file
-log_path = 'C:/Users/lucad/OneDrive/Desktop/thesis/code/Thesis/src/modeling/testing/training_log_per_epoch.txt'
+log_path = '/src/modeling/testing/rq1_ex1_results/training_log_per_epoch.txt'
 
 # Containers
 epoch_data = defaultdict(lambda: {'train': {}, 'val': {}})

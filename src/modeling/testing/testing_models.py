@@ -2,21 +2,28 @@ import os
 
 import torch
 import torch_geometric
+from sklearn.metrics import ConfusionMatrixDisplay
 from torch_geometric.loader import NeighborLoader
 import numpy as np
 import matplotlib.pyplot as plt
 
 from src.data_preprocessing.preprocess import EllipticDataset
-from src.modeling.testing.models_to_test_rq1_ex1 import model_list
+from src.modeling.testing.models_to_test_rq1_ex1 import model_list_rq1_ex1
+from src.modeling.testing.models_to_test_rq2_ex1 import model_list_rq2_ex1
+from src.modeling.testing.models_to_test_rq3_ex1 import model_list_rq3_ex1
 from src.modeling.utils.modeling_utils import train, validate, evaluate
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
 relative_path_processed = 'processed'
-relative_path_trained_model = 'modeling/testing/trained_models'
+relative_path_trained_model_rq1_ex1 = 'modeling/testing/rq1_ex1_results/trained_models'
+relative_path_trained_model_rq2_ex1 = 'modeling/testing/rq2_ex1_results/trained_models'
+relative_path_trained_model_rq3_ex1 = 'modeling/testing/rq3_ex1_results/trained_models'
 relative_path_trained_dgi = 'modeling/pre_training/topological_pre_training/trained_models'
+relative_path_rq1_ex1_results = 'modeling/testing/rq1_ex1_results'
+relative_path_rq2_ex1_results = 'modeling/testing/rq2_ex1_results'
+relative_path_rq3_ex1_results = 'modeling/testing/rq3_ex1_results'
 processed_data_path = get_data_sub_folder(relative_path_processed)
-trained_model_path = get_src_sub_folder(relative_path_trained_model)
 trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
 
 if torch.cuda.is_available():
@@ -31,23 +38,58 @@ data = EllipticDataset(root=processed_data_path)
 data = data[1]
 
 # define the epochs for training
-epochs = 50
+epochs = 1
+# define if we want to train or only evaluate
+evaluate_only = False
 
+# number of times we train and evaluate each model
+n_runs = 2  # set your N here
+pr_auc_results = {name: [] for name in model_list_rq1_ex1(data)}  # accumulate PR AUCs
+
+# which rq do we want to answer?
+rq_run = 'rq1_ex1'
 
 #early stopping logic
 patience = 5
 # how much a model should improve for each epoch to consider it an improvement
 min_delta = 0.005
 
-# number of times we train and evaluate each model
-n_runs = 20  # Set your N here
-pr_auc_results = {name: [] for name in model_list(data)}  # Accumulate PR AUCs
+if rq_run == 'rq1_ex1':
+    # models to test
+    models_to_compare = model_list_rq1_ex1(data)
+    trained_model_path = get_src_sub_folder(relative_path_trained_model_rq1_ex1)
+    results_path = get_src_sub_folder(relative_path_rq1_ex1_results)
+elif rq_run == 'rq2_ex1':
+    # models to test
+    models_to_compare = model_list_rq2_ex1(data)
+    trained_model_path = get_src_sub_folder(relative_path_trained_model_rq2_ex1)
+    results_path = get_src_sub_folder(relative_path_rq2_ex1_results)
+elif rq_run == 'rq3_ex1':
+    # models to test
+    models_to_compare = model_list_rq3_ex1(data)
+    trained_model_path = get_src_sub_folder(relative_path_trained_model_rq3_ex1)
+    results_path = get_src_sub_folder(relative_path_rq3_ex1_results)
+else:
+    raise ValueError(
+        f"Invalid option for `rq_run`: '{rq_run}'.\n"
+        "Please select one of the following:\n"
+        "- rq1_ex1\n"
+        "- rq2_ex1\n"
+        "- rq3_ex1"
+    )
+
+# remove all entries in the subfolders, it is necessary otherwise we may keep information of previous runs
+for subdir, dirs, files in os.walk(results_path):
+    # we keep the trained models
+    if 'trained_models' in subdir:
+        continue
+    for file in files:
+        file_path = os.path.join(subdir, file)
+        os.remove(file_path)
 
 for run in range(n_runs):
     print(f"\n======== RUN {run + 1}/{n_runs} ========\n")
 
-    # model to test set the device
-    models_to_compare = model_list(data)
     for name, components in models_to_compare.items():
         components['model'] = components['model'].to(device)
 
@@ -56,9 +98,10 @@ for run in range(n_runs):
     epochs_no_improve = {name: 0 for name in models_to_compare}
     early_stop_flags = {name: False for name in models_to_compare}
 
-    if not os.path.exists(os.path.join(trained_model_path, 'mdofy_complex_framework_without_flex_fronts_gnn_trained.pth')):
+    if not evaluate_only:
         # Run training
-        with open("training_log_per_epoch.txt", "w") as file:
+        file_path_training_results = os.path.join(results_path, f"training_log/training_log_per_epoch_run_{run + 1}.txt")
+        with open(file_path_training_results, "w") as file:
             for epoch in range(epochs):
 
                 #train the framework
@@ -124,13 +167,15 @@ for run in range(n_runs):
 
     # Inference
     print("\n----EVALUATION----\n")
-    with open(f"evaluation_performance_metrics_run{run + 1}.txt", "w") as f:
+    file_path_evaluation_results = os.path.join(results_path, f"evaluation/evaluation_performance_metrics_run{run + 1}.txt")
+    file_path_evaluation_results_confusion_matrix = os.path.join(results_path, f"confusion_matrix/evaluation_performance_metrics_run{run + 1}.txt")
+    with open(file_path_evaluation_results, "w") as f:
         f.write("----EVALUATION----\n")
         for name, components in models_to_compare.items():
             if 'framework' in name:
-                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], components['test_set'], device, name, True)
+                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['test_set'], device, name, True)
             else:
-                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve = evaluate(components['model'], components['test_set'], device,
+                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['test_set'], device,
                                                                                 name, False)
             f.write(f"----{name}----\n")
             f.write(f"Accuracy: {accuracy:.4f}\n")
@@ -142,11 +187,22 @@ for run in range(n_runs):
             # Save PR AUC for this run
             pr_auc_results[name].append(pr_auc)
 
+            disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_model)
+            disp.plot()
+            plt.title(f'Confusion Matrix {name}')
+            plt.savefig(os.path.join(results_path, f"confusion_matrix/confusion_matrix_{name}_plot_run{run + 1}.png"))
+            print(confusion_matrix_model)
+
+            fig_pr_curve.savefig(os.path.join(results_path, f"precision_recall_curve/precision_recall_curve_{name}_plot_run{run + 1}.png"))
+
+
+
     # make sure that the cache is empty between runs
     torch.cuda.empty_cache()
 
 # Save and plot average + std PR AUC
-with open("pr_auc_summary.txt", "w") as f:
+file_path_evaluation_over_all_results = os.path.join(results_path, f"pr_auc_summary.txt")
+with open(file_path_evaluation_over_all_results, "w") as f:
     for name, scores in pr_auc_results.items():
         mean_auc = np.mean(scores)
         std_auc = np.std(scores)
@@ -158,10 +214,11 @@ names = list(pr_auc_results.keys())
 means = [np.mean(pr_auc_results[name]) for name in names]
 stds = [np.std(pr_auc_results[name]) for name in names]
 
+file_path_evaluation_pr_auc_comparison = os.path.join(results_path, "pr_auc_comparison.png")
 plt.figure(figsize=(10, 6))
 plt.barh(names, means, xerr=stds, capsize=5)
 plt.xlabel("PR AUC")
 plt.title(f"Average PR AUC over {n_runs} runs")
 plt.tight_layout()
-plt.savefig("pr_auc_comparison.png")
+plt.savefig(file_path_evaluation_pr_auc_comparison)
 plt.show()

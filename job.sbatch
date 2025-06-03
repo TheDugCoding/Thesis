@@ -2,7 +2,7 @@
 #SBATCH --job-name=TESTING_MODELS  # Job name
 #SBATCH --output=pyg-multinode.log        # outputfile
 #SBATCH --error=error.txt             # Standard error file
-#SBATCH --nodes=1                     # Number of nodes
+#SBATCH --nodes=2                     # Number of nodes
 #SBATCH --ntasks-per-node=1           # Number of tasks per node
 #SBATCH --time=72:00:00                # Maximum runtime (D-HH:MM:SS)
 #SBATCH --mail-type=END,FAIL               # Send email at job completion
