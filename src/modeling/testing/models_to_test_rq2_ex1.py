@@ -168,7 +168,7 @@ def model_list_rq2_ex1(data):
     train_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[20, 20],
+        num_neighbors=[10, 10],
         batch_size=64,
         input_nodes=data.train_mask
     )
@@ -176,7 +176,7 @@ def model_list_rq2_ex1(data):
     val_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[20, 20],
+        num_neighbors=[10, 10],
         batch_size=64,
         input_nodes=data.val_mask
     )
@@ -184,7 +184,7 @@ def model_list_rq2_ex1(data):
     test_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[20, 20],
+        num_neighbors=[10, 10],
         batch_size=64,
         input_nodes=data.test_mask
     )
@@ -211,11 +211,12 @@ def model_list_rq2_ex1(data):
     gnn_model_downstream_framework_without_flipping_layer = GraphSAGE(
         in_channels=data.num_features + 128,
         hidden_channels=256,
-        num_layers=3,
+        num_layers=4,
         out_channels=2,
-        dropout=0.22850289637244808,
-        act='leaky_relu',
-        aggr='sum'
+        dropout=0.40460730426191116,
+        act='gelu',
+        aggr='max',
+        norm=BatchNorm(256)
     )
 
     gnn_model_complex_framework_without_front_flex_last_layer_not_frozen = DGIPlusGNN(dgi_model_without_flipping_layer,
@@ -223,7 +224,7 @@ def model_list_rq2_ex1(data):
                                                                                        False)
     optimizer_gnn_complex_framework_without_front_flex_last_layer_not_frozen = torch.optim.Adam(
         gnn_model_complex_framework_without_front_flex_last_layer_not_frozen.parameters(),
-        lr=0.0001556396670559418, weight_decay=5.7752955996249056e-06)
+        lr=0.005370050867649166, weight_decay=2.1789005906367674e-06)
     criterion_gnn_complex_framework_without_front_flex_last_layer_not_frozen = torch.nn.CrossEntropyLoss(
         ignore_index=-1)
     

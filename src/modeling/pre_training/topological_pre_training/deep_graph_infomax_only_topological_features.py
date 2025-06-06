@@ -74,22 +74,50 @@ class DeepGraphInfomaxWithoutFlexFronts(torch.nn.Module):
         reset(self.summary)
         uniform(self.hidden_channels, self.weight)
 
-    def forward(self, *args, framework, **kwargs) -> Tuple[Tensor, Tensor, Tensor]:
-        """Returns the latent space for the input arguments, their
-        corruptions and their summary representation.
+    def forward(self, *args, framework, num_negatives=1, **kwargs) -> Tuple[Tensor, Tensor, Tensor]:
         """
+        Returns the latent space for the input arguments, their
+        corruptions and their summary representation.
+        if used with infonce loss increase the number of num negatives
+        Returns:
+            - pos_z: latent embeddings of input
+            - neg_z: corrupted embeddings (1 or more sets)
+            - summary: summary vector of pos_z
+        """
+        # positive embeddings
         # framework: if DGI is part of the framework then True, otherwise False
         pos_z = self.encoder(*args, framework=framework, **kwargs)
 
-        cor = self.corruption(*args, **kwargs)
-        cor = cor if isinstance(cor, tuple) else (cor,)
-        cor_args = cor[:len(args)]
-        cor_kwargs = copy.copy(kwargs)
-        for key, value in zip(kwargs.keys(), cor[len(args):]):
-            cor_kwargs[key] = value
+        # Compute negatives
+        if num_negatives == 1:
+            # Standard single negative sample
+            cor = self.corruption(*args, **kwargs)
+            cor = cor if isinstance(cor, tuple) else (cor,)
+            cor_args = cor[:len(args)]
+            cor_kwargs = copy.copy(kwargs)
+            for key, value in zip(kwargs.keys(), cor[len(args):]):
+                cor_kwargs[key] = value
 
-        neg_z = self.encoder(*cor_args, framework=framework, **cor_kwargs)
+            neg_z = self.encoder(*cor_args, framework=framework, **cor_kwargs)
 
+        else:
+            # Multiple negative samples
+            neg_z_list = []
+            for _ in range(num_negatives):
+                cor = self.corruption(*args, **kwargs)
+                cor = cor if isinstance(cor, tuple) else (cor,)
+                cor_args = cor[:len(args)]
+                cor_kwargs = copy.copy(kwargs)
+                for key, value in zip(kwargs.keys(), cor[len(args):]):
+                    cor_kwargs[key] = value
+
+                neg = self.encoder(*cor_args, framework=framework, **cor_kwargs)
+                neg_z_list.append(neg)
+
+            # Stack negatives into a single tensor of shape [num_negatives, N, D]
+            neg_z = torch.stack(neg_z_list, dim=0)
+
+        # Summary from positive embeddings
         summary = self.summary(pos_z, *args, **kwargs)
 
         return pos_z, neg_z, summary
@@ -119,6 +147,36 @@ class DeepGraphInfomaxWithoutFlexFronts(torch.nn.Module):
                               EPS).mean()
 
         return pos_loss + neg_loss
+
+    def loss_info_nce(self, pos_z: Tensor, neg_z: Tensor, summary: Tensor, temperature=0.07) -> Tensor:
+        """
+        pos_z: [N, D]  - positive (real) node embeddings
+        neg_z: [N, D]  - negative (corrupted) node embeddings
+        summary: [D] or [1, D] - global summary vector
+        """
+
+        # Positive logits (one per sample)
+        pos_logits = self.discriminate(pos_z, summary, sigmoid=False)
+
+        # Negative logits: each sample's pos summary vs all negative z
+        # summary: [N, D], neg_z: [N, D] → need pairwise score
+        neg_logits = []
+        for k in range(neg_z.size(0)):  # Loop over K
+            logits_k = self.discriminate(neg_z[k], summary, sigmoid=False)  # [N]
+            neg_logits.append(logits_k)
+
+        neg_logits = torch.stack(neg_logits, dim=0)
+
+
+        logits = torch.cat([pos_logits.unsqueeze(1), neg_logits.permute(1, 0)], dim=1)  # [N, 1 + N]
+        logits = logits / temperature
+
+        # labels: 0 is the correct positive index in each row
+        labels = torch.zeros(pos_z.size(0), dtype=torch.long, device=pos_z.device)
+
+        # InfoNCE loss
+        loss = torch.nn.CrossEntropyLoss()
+        return loss(logits, labels)
 
     def test(
             self,
@@ -288,9 +346,11 @@ def train(epoch, train_loaders, model, optimizer):
 
         for idx, batch_loop in enumerate(batches):
             optimizer.zero_grad()
+            #if used in combination with info NCE loss change the number on negatives examples
             pos_z, neg_z, summary = model(batch_loop.x, batch_loop.edge_index,
-                                          batch_loop.batch_size, framework=False)
-            loss = model.loss(pos_z, neg_z, summary)
+                                          batch_loop.batch_size, framework=False, num_negatives=3)
+            #loss = model.loss(pos_z, neg_z, summary)
+            loss = model.loss_info_nce(pos_z, neg_z, summary)
             loss.backward()
             optimizer.step()
             total_loss += float(loss) * pos_z.size(0)
@@ -334,7 +394,7 @@ if __name__ == '__main__':
     )
 
     # set the train loader from the biggest to the smallest, otherwise it won't work
-    train_loaders = [train_loader_rabo]
+    train_loaders = [train_loader_rabo, train_loader_ethereum, train_loader_stable_20]
 
     # define the model, no flexfront
     model = DeepGraphInfomaxWithoutFlexFronts(

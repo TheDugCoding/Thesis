@@ -8,6 +8,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, r
 from torch_geometric.nn import GATConv
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
+from torch_geometric.loader import DataLoader
 
 from src.data_preprocessing.preprocess import EllipticDataset, AmlSimDataset
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
@@ -47,7 +48,8 @@ class GAT(torch.nn.Module):
 #data = EllipticDataset(root=processed_data_path)
 
 data = EllipticDataset(root=processed_data_path)
-data = data[4]
+data = data[1]
+data = data.to(device)
 epochs = 30
 
 train_loader = NeighborLoader(
@@ -74,6 +76,12 @@ test_loader = NeighborLoader(
     batch_size=32,
     input_nodes= data.test_mask
 )
+
+#batch_size = 64
+
+#train_loader = DataLoader(data[data.train_mask], shuffle=True, batch_size=batch_size)
+#val_loader = DataLoader(data[data.val_mask], shuffle=True, batch_size=batch_size)
+#test_loader = DataLoader(data[data.test_mask], shuffle=False, batch_size=batch_size)
 
 # Define model, optimizer, and loss function
 model = GAT(data.num_features, 256, 2,
@@ -104,6 +112,22 @@ def train(train_loader):
 
     return  total_loss / total_examples
 
+# Training loop
+def train_test(data):
+    model.train()
+
+    optimizer.zero_grad()
+
+    # Forward pass
+    out = model(data.x, data.edge_index)
+
+    # Only calculate loss for the target (input) nodes, not the neighbors
+    loss = criterion(out[data.train_mask], data.y[data.train_mask])
+    loss.backward()
+    optimizer.step()
+
+    return  float(loss)
+
 def validate(val_loader):
     model.eval()
     preds = []
@@ -127,11 +151,11 @@ def validate(val_loader):
     f1 = f1_score(true_labels, preds, average='weighted')
 
     # AUC-PR
-    probs_class1 = probs[:, 1]
-    auc_pr = average_precision_score(true_labels, probs_class1)
+    probs_class0 = probs[:, 0]
+    pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
 
-    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score: {f1:.4f}, AUC-PR (macro): {auc_pr:.4f}")
-    return accuracy, recall, f1, auc_pr
+    print(f"Accuracy: {accuracy:.4f}, Recall (macro): {recall:.4f}, F1 Score: {f1:.4f}, AUC-PR (macro): {pr_auc:.4f}")
+    return accuracy, recall, f1, pr_auc
 
 
 #Run training

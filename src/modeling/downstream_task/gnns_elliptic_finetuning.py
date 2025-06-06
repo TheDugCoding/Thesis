@@ -815,19 +815,19 @@ def objective_gin_all_features(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-# with open(os.path.join(finetuning_results, "gat_finetuning.txt"), "w") as file:
-#     # run Optuna study
-#     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_gat, n_trials=30, show_progress_bar=True)
-#
-#     # print and save the best trial
-#     file.write("Best trial:\n")
-#     trial = study.best_trial
-#     file.write(f"  PR-AUC Score: {trial.value}\n")
-#     file.write("  Best hyperparameters:\n")
-#
-#     for key, value in trial.params.items():
-#         file.write(f"    {key}: {value}\n")
+with open(os.path.join(finetuning_results, "gat_finetuning.txt"), "w") as file:
+    # run Optuna study
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective_gat, n_trials=30, show_progress_bar=True)
+
+    # print and save the best trial
+    file.write("Best trial:\n")
+    trial = study.best_trial
+    file.write(f"  PR-AUC Score: {trial.value}\n")
+    file.write("  Best hyperparameters:\n")
+
+    for key, value in trial.params.items():
+        file.write(f"    {key}: {value}\n")
 
 # with open(os.path.join(finetuning_results, "gin_finetuning.txt"), "w") as file:
 #     # run Optuna study
@@ -843,16 +843,16 @@ def objective_gin_all_features(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-with open(os.path.join(finetuning_results, "gin_finetuning_all_features.txt"), "w") as file:
-    # run Optuna study
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective_gin_all_features, n_trials=30, show_progress_bar=True)
-
-    # print and save the best trial
-    file.write("Best trial:\n")
-    trial = study.best_trial
-    file.write(f"  PR-AUC Score: {trial.value}\n")
-    file.write("  Best hyperparameters:\n")
-
-    for key, value in trial.params.items():
-        file.write(f"    {key}: {value}\n")
+# with open(os.path.join(finetuning_results, "gin_finetuning_all_features.txt"), "w") as file:
+#     # run Optuna study
+#     study = optuna.create_study(direction="maximize")
+#     study.optimize(objective_gin_all_features, n_trials=30, show_progress_bar=True)
+#
+#     # print and save the best trial
+#     file.write("Best trial:\n")
+#     trial = study.best_trial
+#     file.write(f"  PR-AUC Score: {trial.value}\n")
+#     file.write("  Best hyperparameters:\n")
+#
+#     for key, value in trial.params.items():
+#         file.write(f"    {key}: {value}\n")

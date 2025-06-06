@@ -380,7 +380,7 @@ def model_list_rq1_ex1(data):
         act='gelu',
         dropout=0.3334679509616918,
     )
-    optimizer_gnn_simple_gat = torch.optim.Adam(gnn_model_simple_graphsage.parameters(), lr=0.0005020332510524006, weight_decay=3.377923626414446e-05)
+    optimizer_gnn_simple_gat = torch.optim.Adam(gnn_model_simple_graphsage.parameters(), lr=0.0015020332510524006, weight_decay=3.377923626414446e-05)
     criterion_gnn_simple_gat = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----GIN----"""
