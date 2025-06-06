@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=TESTING_MODELS  # Job name
+#SBATCH --job-name=DGI_FINETUNING # Job name
 #SBATCH --output=pyg-multinode.log        # outputfile
 #SBATCH --error=error.txt             # Standard error file
 #SBATCH --nodes=2                     # Number of nodes
 #SBATCH --ntasks-per-node=1           # Number of tasks per node
-#SBATCH --time=72:00:00                # Maximum runtime (D-HH:MM:SS)
+#SBATCH --time=96:00:00                # Maximum runtime (D-HH:MM:SS)
 #SBATCH --mail-type=END,FAIL               # Send email at job completion
 #SBATCH --mail-user=lucadughera@gmail.com    # Email address for notifications
 
@@ -17,7 +17,7 @@
 export PROJECT_PATH=/science-nfs-sys/vsm01/users/1738380/Desktop/Thesis
 export PYTHONPATH=$PYTHONPATH:$PROJECT_PATH
 
-srun python $PROJECT_PATH/src/modeling/final_framework/framework_finetuning.py
+srun python $PROJECT_PATH/src/modeling/pre_training/topological_pre_training/deep_graph_infomax_only_topological_features_finetuning.py
 
 
 #Optionally, you can include cleanup commands here (e.g., after the job finishes)
