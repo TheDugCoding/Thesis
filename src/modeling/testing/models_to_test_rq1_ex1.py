@@ -201,6 +201,69 @@ def model_list_rq1_ex1(data):
         lr=0.005, weight_decay=5e-4)
     criterion_gnn_simple_framework_without_front_flex = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
+    """----SIMPLE FRAMEWORK DGI, GIN and MLP----"""
+
+    train_loader_gnn_model_simple_framework_gin_without_front_flex = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[10, 10],
+        batch_size=64,
+        input_nodes=data.train_mask
+    )
+
+    val_loader_gnn_model_simple_framework_gin_without_front_flex = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[10, 10],
+        batch_size=64,
+        input_nodes=data.val_mask
+    )
+
+    test_loader_gnn_model_simple_framework_gin_without_front_flex = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[10, 10],
+        batch_size=64,
+        input_nodes=data.test_mask
+    )
+
+    # define the framework, first DGI and then the GNN used in the downstream task
+    dgi_model_simple_framework_gin = DeepGraphInfomaxWithoutFlexFronts(
+        hidden_channels=128,
+        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data.topological_features.shape[1],
+                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  activation_fn=torch.nn.ELU),
+        summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
+        corruption=corruption_without_flex_fronts)
+    # load the pretrained parameters
+    dgi_model_simple_framework_gin.load_state_dict(torch.load(
+        os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
+
+    for layer in dgi_model_simple_framework_gin.encoder.layers:
+        for param in layer.parameters():
+            param.requires_grad = False
+
+
+    gnn_model_downstream_simple_framework_gin = GIN(
+        in_channels=data.num_features,
+        hidden_channels=256,
+        num_layers=2,
+        out_channels=512,
+        norm=BatchNorm(256),
+        dropout=0.48112201802846727,
+        act='leaky_relu'
+    )
+
+    layer_sizes = [128 + 512] + [128] * 3 + [2]
+    mlp = build_mlp(layer_sizes, nn.ReLU, 0.335153551771848)
+
+    gnn_model_simple_framework_gin_without_front_flex = DGIAndGNN(dgi_model_simple_framework_gin,
+                                                              gnn_model_downstream_simple_framework_gin, mlp, False)
+    optimizer_gnn_simple_framework_gin_without_front_flex = torch.optim.Adam(
+        gnn_model_simple_framework_gin_without_front_flex.parameters(),
+        lr=0.0008339630658237018, weight_decay=7.330899899115081e-06)
+    criterion_gnn_simple_framework_gin_without_front_flex = torch.nn.CrossEntropyLoss(ignore_index=-1)
+    
     """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS----"""
 
     train_loader_gnn_model_complex_framework_without_front_flex = NeighborLoader(
@@ -262,6 +325,68 @@ def model_list_rq1_ex1(data):
         lr=0.0003481550881584628, weight_decay=2.3566177347305847e-06)
     criterion_gnn_complex_framework_without_front_flex = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
+    """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS GIN----"""
+
+    train_loader_gnn_model_complex_framework_gin_without_front_flex = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[10, 10, 25],
+        batch_size=64,
+        input_nodes=data.train_mask
+    )
+
+    val_loader_gnn_model_complex_framework_gin_without_front_flex = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[10, 10, 25],
+        batch_size=64,
+        input_nodes=data.val_mask
+    )
+
+    test_loader_gnn_model_complex_framework_gin_without_front_flex = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[10, 10, 25],
+        batch_size=64,
+        input_nodes=data.test_mask
+    )
+
+    # define the framework, first DGI and then the GNN used in the downstream task
+    dgi_model_without_flipping_layer = DeepGraphInfomaxWithoutFlexFronts(
+        hidden_channels=128,
+        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data.topological_features.shape[1],
+                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  activation_fn=torch.nn.ELU),
+        summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
+        corruption=corruption_without_flex_fronts)
+    # load the pretrained parameters
+    dgi_model_without_flipping_layer.load_state_dict(
+        torch.load(
+            os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
+
+    for layer in dgi_model_without_flipping_layer.encoder.layers:
+        for param in layer.parameters():
+            param.requires_grad = False
+
+    # same model as in graphsage_elliptic, used in the framework
+    gnn_model_downstream_framework_without_flipping_layer =  GIN(
+        in_channels=data.num_features+128,
+        hidden_channels=64,
+        num_layers=3,
+        out_channels=2,
+        norm=BatchNorm(64),
+        dropout=0.30740951784650034,
+        act='relu'
+    )
+
+    gnn_model_complex_framework_gin_without_front_flex = DGIPlusGNN(dgi_model_without_flipping_layer,
+                                                                gnn_model_downstream_framework_without_flipping_layer,
+                                                                False)
+    optimizer_gnn_complex_framework_gin_without_front_flex = torch.optim.Adam(
+        gnn_model_complex_framework_gin_without_front_flex.parameters(),
+        lr=0.004109607017807342, weight_decay=9.859932788621638e-06)
+    criterion_gnn_complex_framework_gin_without_front_flex = torch.nn.CrossEntropyLoss(ignore_index=-1)
+    
     """----GRAPHSAGE TOPOLOGICAL INPUT + DATA INPUT----"""
 
     data_all_features = copy.deepcopy(data)
@@ -380,7 +505,7 @@ def model_list_rq1_ex1(data):
         act='gelu',
         dropout=0.3334679509616918,
     )
-    optimizer_gnn_simple_gat = torch.optim.Adam(gnn_model_simple_graphsage.parameters(), lr=0.0015020332510524006, weight_decay=3.377923626414446e-05)
+    optimizer_gnn_simple_gat = torch.optim.Adam(gnn_model_simple_graphsage.parameters(), lr=0.0055020332510524006, weight_decay=3.377923626414446e-05)
     criterion_gnn_simple_gat = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----GIN----"""
@@ -498,6 +623,15 @@ def model_list_rq1_ex1(data):
             'test_set': test_loader_gnn_model_simple_framework_without_front_flex
         },
 
+        'simple_framework_gin_without_flex_fronts': {
+            'model': gnn_model_simple_framework_gin_without_front_flex,
+            'optimizer': optimizer_gnn_simple_framework_gin_without_front_flex,
+            'criterion': criterion_gnn_simple_framework_gin_without_front_flex,
+            'train_set': train_loader_gnn_model_simple_framework_gin_without_front_flex,
+            'val_set': val_loader_gnn_model_simple_framework_gin_without_front_flex,
+            'test_set': test_loader_gnn_model_simple_framework_gin_without_front_flex
+        },
+
         'complex_framework_without_flex_fronts': {
             'model': gnn_model_complex_framework_without_front_flex,
             'optimizer': optimizer_gnn_complex_framework_without_front_flex,
@@ -505,6 +639,15 @@ def model_list_rq1_ex1(data):
             'train_set': train_loader_gnn_model_complex_framework_without_front_flex,
             'val_set': val_loader_gnn_model_complex_framework_without_front_flex,
             'test_set': test_loader_gnn_model_complex_framework_without_front_flex
+        },
+
+        'complex_framework_gin_without_flex_fronts': {
+            'model': gnn_model_complex_framework_gin_without_front_flex,
+            'optimizer': optimizer_gnn_complex_framework_gin_without_front_flex,
+            'criterion': criterion_gnn_complex_framework_gin_without_front_flex,
+            'train_set': train_loader_gnn_model_complex_framework_gin_without_front_flex,
+            'val_set': val_loader_gnn_model_complex_framework_gin_without_front_flex,
+            'test_set': test_loader_gnn_model_complex_framework_gin_without_front_flex
         },
 
         'graphsage_all_features': {

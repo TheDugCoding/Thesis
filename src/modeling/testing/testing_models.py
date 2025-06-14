@@ -7,6 +7,7 @@ from torch_geometric.loader import NeighborLoader
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import time
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from src.modeling.testing.models_to_test_rq1_ex1 import model_list_rq1_ex1
@@ -45,7 +46,7 @@ evaluate_only = False
 
 # number of times we train and evaluate each model
 n_runs = 20  # set your N here
-pr_auc_results = {name: [] for name in model_list_rq1_ex1(data)}  # accumulate PR AUCs
+
 
 # which rq do we want to answer?
 rq_run = 'rq1_ex1'
@@ -79,6 +80,18 @@ else:
         "- rq3_ex1"
     )
 
+metrics_results = {
+    name: {
+        "pr_auc": [],
+        "accuracy": [],
+        "precision": [],
+        "recall": [],
+        "f1": [],
+        "train_time": []
+    }
+    for name in models_to_compare
+}
+
 # remove all entries in the subfolders, it is necessary otherwise we may keep information of previous runs
 for subdir, dirs, files in os.walk(results_path):
     # we keep the trained models if we are evaluating, otherwise we erase them
@@ -90,6 +103,8 @@ for subdir, dirs, files in os.walk(results_path):
 
 for run in tqdm(range(n_runs), desc="Run progress"):
     print(f"\n======== RUN {run + 1}/{n_runs} ========\n")
+    #save the run for training the model
+    epoch_time_accumulator = {name: 0.0 for name in models_to_compare}
 
     for name, components in models_to_compare.items():
         components['model'] = components['model'].to(device)
@@ -115,6 +130,9 @@ for run in tqdm(range(n_runs), desc="Run progress"):
                     if early_stop_flags[name]:
                         continue
 
+                    # Start timing
+                    start_time = time.time()
+
                     if 'framework' in name:
                         loss_gnn = train(components['train_set'], components['model'], components['optimizer'], device, components['criterion'], True)
                     else:
@@ -123,6 +141,13 @@ for run in tqdm(range(n_runs), desc="Run progress"):
                     log = (f"Loss {name}: {loss_gnn:.6f}\n")
                     print(log)
                     file.write(log)
+
+                    # End timing
+                    end_time = time.time()
+                    train_duration = end_time - start_time
+
+                    # Accumulate training time for this epoch
+                    epoch_time_accumulator[name] += train_duration
 
                 #validation
                 log = (
@@ -165,6 +190,8 @@ for run in tqdm(range(n_runs), desc="Run progress"):
         for name, components in models_to_compare.items():
             components['model'].load_state_dict(
                 torch.load(os.path.join(trained_model_path, f'{name}_gnn_trained.pth'), map_location=device))
+            # save training time per model
+            metrics_results[name]["train_time"].append(epoch_time_accumulator[name])
 
     # Inference
     print("\n----EVALUATION----\n")
@@ -195,8 +222,12 @@ for run in tqdm(range(n_runs), desc="Run progress"):
             f.write(f"F1 Score: {f1:.4f}\n")
             f.write(f"pr_auc Score (class 0): {pr_auc:.4f}\n")
 
-            # Save PR AUC for this run
-            pr_auc_results[name].append(pr_auc)
+            # Save metrics for this run
+            metrics_results[name]["pr_auc"].append(pr_auc)
+            metrics_results[name]["accuracy"].append(accuracy)
+            metrics_results[name]["precision"].append(precision)
+            metrics_results[name]["recall"].append(recall)
+            metrics_results[name]["f1"].append(f1)
 
             disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_model)
             disp.plot()
@@ -211,25 +242,34 @@ for run in tqdm(range(n_runs), desc="Run progress"):
     # make sure that the cache is empty between runs
     torch.cuda.empty_cache()
 
-# Save and plot average + std PR AUC
-file_path_evaluation_over_all_results = os.path.join(results_path, f"pr_auc_summary.txt")
+file_path_evaluation_over_all_results = os.path.join(results_path, "metrics_summary.txt")
+
 with open(file_path_evaluation_over_all_results, "w") as f:
-    for name, scores in pr_auc_results.items():
-        mean_auc = np.mean(scores)
-        std_auc = np.std(scores)
-        f.write(f"{name} - Mean PR AUC: {mean_auc:.4f}, Std: {std_auc:.4f}\n")
-        print(f"{name}: Mean={mean_auc:.4f}, Std={std_auc:.4f}")
+    for name, metrics in metrics_results.items():
+        f.write(f"Model: {name}\n")
+        print(f"Model: {name}")
+        for metric_name, values in metrics.items():
+            mean_val = np.mean(values)
+            std_val = np.std(values)
+            f.write(f"  {metric_name.upper()}: Mean = {mean_val:.4f}, Std = {std_val:.4f}\n")
+            print(f"  {metric_name.upper()}: Mean = {mean_val:.4f}, Std = {std_val:.4f}")
+        f.write("\n")
+        print()
 
-# Plotting (horizontal bar chart with lateral names)
-names = list(pr_auc_results.keys())
-means = [np.mean(pr_auc_results[name]) for name in names]
-stds = [np.std(pr_auc_results[name]) for name in names]
+# Plotting each metric for all models
+for metric_name in ["pr_auc", "accuracy", "precision", "recall", "f1", "train_time"]:
+    names = list(metrics_results.keys())
+    means = [np.mean(metrics_results[name][metric_name]) for name in names]
+    stds = [np.std(metrics_results[name][metric_name]) for name in names]
 
-file_path_evaluation_pr_auc_comparison = os.path.join(results_path, "pr_auc_comparison.png")
-plt.figure(figsize=(10, 6))
-plt.barh(names, means, xerr=stds, capsize=5)
-plt.xlabel("PR AUC")
-plt.title(f"Average PR AUC over {n_runs} runs")
-plt.tight_layout()
-plt.savefig(file_path_evaluation_pr_auc_comparison)
-plt.show()
+    # Define the file path for each metric's plot
+    file_path = os.path.join(results_path, f"{metric_name}_comparison.png")
+
+    # Create and save the plot
+    plt.figure(figsize=(10, 6))
+    plt.barh(names, means, xerr=stds, capsize=5, color='skyblue', edgecolor='black')
+    plt.xlabel(metric_name.upper())
+    plt.title(f"Average {metric_name.upper()} over {n_runs} runs")
+    plt.tight_layout()
+    plt.savefig(file_path)
+    plt.show()
