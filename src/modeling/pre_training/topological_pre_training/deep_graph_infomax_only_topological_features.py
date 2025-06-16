@@ -3,10 +3,12 @@ import os as os
 from typing import Callable, Tuple
 
 import torch
+import torch.nn as nn
 from torch import Tensor
-from torch import nn
 from torch.nn import Module, Parameter
+from torch.nn import Sequential, Linear
 from torch_geometric.loader import NeighborLoader
+from torch_geometric.nn import GINConv
 from torch_geometric.nn import SAGEConv, GATConv
 from torch_geometric.nn.inits import reset, uniform
 from torch_geometric.utils import erdos_renyi_graph
@@ -239,6 +241,57 @@ class EncoderWithoutFlexFrontsGraphsage(nn.Module):
         else:
             return x[:batch_size]
 
+class EncoderWithoutFlexFrontsGIN(nn.Module):
+    def __init__(self, input_channels, hidden_channels, output_channels, layers, activation_fn=nn.ReLU):
+        """
+        :param input_channels: (int) Number of input features per node.
+        :param hidden_channels: (int) Hidden layer size for each MLP inside GINConv.
+        :param output_channels: (int) Final output feature dimension.
+        :param layers: (int) Number of GINConv layers.
+        :param activation_fn: (Callable) Activation function class to use (e.g., nn.ReLU).
+        """
+        super().__init__()
+
+        self.layers = nn.ModuleList()
+        self.activations = nn.ModuleList()
+
+        # First layer
+        mlp = Sequential(
+            Linear(input_channels, hidden_channels),
+            activation_fn(),
+            Linear(hidden_channels, hidden_channels)
+        )
+        self.layers.append(GINConv(mlp))
+        self.activations.append(activation_fn())
+
+        # Hidden layers
+        for _ in range(layers - 2):
+            mlp = Sequential(
+                Linear(hidden_channels, hidden_channels),
+                activation_fn(),
+                Linear(hidden_channels, hidden_channels)
+            )
+            self.layers.append(GINConv(mlp))
+            self.activations.append(activation_fn())
+
+        # Final layer
+        mlp = Sequential(
+            Linear(hidden_channels, output_channels),
+            activation_fn(),
+            Linear(output_channels, output_channels)
+        )
+        self.layers.append(GINConv(mlp))
+        self.activations.append(activation_fn())
+
+    def forward(self, x, edge_index, batch_size, framework):
+        for conv, act in zip(self.layers, self.activations):
+            x = act(conv(x, edge_index))
+
+        if framework:
+            return x
+        else:
+            return x[:batch_size]
+
 class EncoderWithoutFlexFrontsGAT(nn.Module):
     def __init__(self, input_channels, hidden_channels, output_channels, n_layers, activation_fn=nn.ReLU):
         """
@@ -348,9 +401,9 @@ def train(epoch, train_loaders, model, optimizer):
             optimizer.zero_grad()
             #if used in combination with info NCE loss change the number on negatives examples
             pos_z, neg_z, summary = model(batch_loop.x, batch_loop.edge_index,
-                                          batch_loop.batch_size, framework=False, num_negatives=3)
-            #loss = model.loss(pos_z, neg_z, summary)
-            loss = model.loss_info_nce(pos_z, neg_z, summary)
+                                          batch_loop.batch_size, framework=False, num_negatives=1)
+            loss = model.loss(pos_z, neg_z, summary)
+            #loss = model.loss_info_nce(pos_z, neg_z, summary)
             loss.backward()
             optimizer.step()
             total_loss += float(loss) * pos_z.size(0)

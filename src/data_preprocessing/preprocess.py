@@ -516,6 +516,7 @@ class EllipticDataset(Dataset):
         class_2_nodes = data_5_version_2class_balanced.y == -1
         data_5_version_2class_balanced.val_mask[class_2_nodes] = False
         data_5_version_2class_balanced.test_mask[class_2_nodes] = False
+        data_5_version_2class_balanced.time_steps = time_step
 
         """version 6"""
         # divide the training set, val set and test set per time step. From 1 to 34 is the training set from 35 to 39 is the val set from
@@ -566,7 +567,7 @@ class EllipticDataset(Dataset):
 
     def get(self, idx):
         """Loads and returns the graph at the given index."""
-        data = torch.load(os.path.join(self.processed_dir, f'ellipticdataset_{idx}.pt'))
+        data = torch.load(os.path.join(self.processed_dir, f'ellipticdataset_{idx}.pt'), weights_only=False)
         return data
 
 

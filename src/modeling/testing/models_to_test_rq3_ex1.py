@@ -17,14 +17,50 @@ from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_
 from src.modeling.downstream_task.graphsage_and_mlp import GraphsageWithMLP
 from src.modeling.downstream_task.dgi_and_mlp import DGIWithMLP
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
+import ast
 
 script_dir = get_data_folder()
 relative_path_processed = 'processed'
 relative_path_trained_model = 'modeling/testing/trained_models'
 relative_path_trained_dgi = 'modeling/pre_training/topological_pre_training/trained_models'
+relative_path_rq3_finetuning = 'modeling/testing/rq3_ex1_finetuning'
 processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_model_path = get_src_sub_folder(relative_path_trained_model)
 trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
+models_finetuning_path = get_src_sub_folder(relative_path_rq3_finetuning)
+
+def parse_hyperparams(filepath):
+    hyperparams = {}
+    with open(filepath, 'r') as f:
+        lines = f.readlines()
+
+    for line in lines:
+        line = line.strip()
+        if ':' in line:
+            key, val = line.split(':', 1)
+            key = key.strip()
+            val = val.strip()
+
+            # Convert to correct Python type if possible
+            try:
+                val = ast.literal_eval(val)
+            except:
+                pass
+
+            hyperparams[key] = val
+
+    return hyperparams
+
+def get_norm(norm_type, hidden_channels):
+    if norm_type == "batch":
+        return BatchNorm(hidden_channels)
+    elif norm_type == "layer":
+        return LayerNorm(hidden_channels)
+    elif norm_type == "graph":
+        return GraphNorm(hidden_channels)
+    else:
+        return None
+
 
 
 def reduce_train_val_masks(data, n_train, n_val):
@@ -73,24 +109,32 @@ def reduce_train_val_masks(data, n_train, n_val):
 
 # define here the models to test against the framework
 
-def model_list_rq3_ex1(data):
+def model_list_rq3_ex1(data, n_samples_train):
     """
     :param data: the dataset that is used
     :return: a dict containing all the gnns to test against the framework
     """
 
-    n_samples_train = 10
     n_samples_val = 100
 
     train_mask, val_mask = reduce_train_val_masks(data, n_samples_train, n_samples_val)
 
+    activation_map = {
+        "relu": nn.ReLU,
+        "leaky_relu": nn.LeakyReLU,
+        "elu": nn.ELU,
+        "gelu": nn.GELU
+    }
 
     """----SIMPLE FRAMEWORK DGI, GRAPHSAGE and MLP----"""
+
+    filepath = os.path.join(models_finetuning_path, f'framework_simple_finetuning_train_set_size_{n_samples_train}.txt')
+    hyperparams_simple_framework = parse_hyperparams(filepath)
 
     train_loader_gnn_model_simple_framework_without_front_flex = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=hyperparams_simple_framework.get('neighbours_size'),
         batch_size=64,
         input_nodes=train_mask
     )
@@ -98,7 +142,7 @@ def model_list_rq3_ex1(data):
     val_loader_gnn_model_simple_framework_without_front_flex = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=hyperparams_simple_framework.get('neighbours_size'),
         batch_size=64,
         input_nodes=val_mask
     )
@@ -106,7 +150,7 @@ def model_list_rq3_ex1(data):
     test_loader_gnn_model_simple_framework_without_front_flex = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=hyperparams_simple_framework.get('neighbours_size'),
         batch_size=64,
         input_nodes=data.test_mask
     )
@@ -130,30 +174,36 @@ def model_list_rq3_ex1(data):
     # same model as in garphsage_elliptic
     gnn_model_downstream_simple_framework = GraphSAGE(
         in_channels=data.num_features,
-        hidden_channels=64,
-        num_layers=3,
-        out_channels=512,
-        dropout=0.39377319491373913,
-        act='relu',
-        aggr='mean'
+        hidden_channels=hyperparams_simple_framework.get('hidden_channels'),
+        num_layers=hyperparams_simple_framework.get('num_layers'),
+        out_channels=hyperparams_simple_framework.get('output_channels'),
+        dropout=hyperparams_simple_framework.get('dropout'),
+        act=hyperparams_simple_framework.get('act'),
+        aggr=hyperparams_simple_framework.get('aggr'),
+        norm=get_norm(hyperparams_simple_framework.get('norm'), hyperparams_simple_framework.get('hidden_channels'))
     )
 
-    layer_sizes = [128 + 512] + [128] * 3 + [2]
-    mlp = build_mlp(layer_sizes, nn.ReLU, 0.39377319491373913)
+    activation_fn = activation_map[hyperparams_simple_framework.get('act_mlp')]
+
+    layer_sizes = [128 + hyperparams_simple_framework.get('output_channels')] + [hyperparams_simple_framework.get('hidden_channels_mlp')] * hyperparams_simple_framework.get('num_layers_mlp') + [2]
+    mlp = build_mlp(layer_sizes, activation_fn, hyperparams_simple_framework.get('dropout_mlp'))
 
     gnn_model_simple_framework_without_front_flex = DGIAndGNN(dgi_model_simple_framework,
                                                               gnn_model_downstream_simple_framework, mlp, False)
     optimizer_gnn_simple_framework_without_front_flex = torch.optim.Adam(
         gnn_model_simple_framework_without_front_flex.parameters(),
-        lr=0.005, weight_decay=5e-4)
+        lr=hyperparams_simple_framework.get('lr'), weight_decay=hyperparams_simple_framework.get('weight_decay'))
     criterion_gnn_simple_framework_without_front_flex = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS----"""
 
+    filepath = os.path.join(models_finetuning_path, f'framework_complex_finetuning_train_set_size_{n_samples_train}.txt')
+    hyperparams_complex_framework = parse_hyperparams(filepath)
+
     train_loader_gnn_model_complex_framework_without_front_flex = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[15, 30],
+        num_neighbors=hyperparams_complex_framework.get('neighbours_size'),
         batch_size=64,
         input_nodes=train_mask
     )
@@ -161,7 +211,7 @@ def model_list_rq3_ex1(data):
     val_loader_gnn_model_complex_framework_without_front_flex = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[15, 30],
+        num_neighbors=hyperparams_complex_framework.get('neighbours_size'),
         batch_size=64,
         input_nodes=val_mask
     )
@@ -169,7 +219,7 @@ def model_list_rq3_ex1(data):
     test_loader_gnn_model_complex_framework_without_front_flex = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[15, 30],
+        num_neighbors=hyperparams_complex_framework.get('neighbours_size'),
         batch_size=64,
         input_nodes=data.test_mask
     )
@@ -194,12 +244,13 @@ def model_list_rq3_ex1(data):
     # same model as in graphsage_elliptic, used in the framework
     gnn_model_downstream_framework_without_flipping_layer = GraphSAGE(
         in_channels=data.num_features + 128,
-        hidden_channels=64,
-        num_layers=3,
+        hidden_channels=hyperparams_complex_framework.get('hidden_channels'),
+        num_layers=hyperparams_complex_framework.get('num_layers'),
         out_channels=2,
-        dropout=0.2599246924621209,
-        act='relu',
-        aggr='mean'
+        dropout=hyperparams_complex_framework.get('dropout'),
+        act=hyperparams_complex_framework.get('act'),
+        aggr=hyperparams_complex_framework.get('aggr'),
+        norm=get_norm(hyperparams_complex_framework.get('norm'), hyperparams_complex_framework.get('hidden_channels'))
     )
 
     gnn_model_complex_framework_without_front_flex = DGIPlusGNN(dgi_model_without_flipping_layer,
@@ -207,17 +258,21 @@ def model_list_rq3_ex1(data):
                                                                 False)
     optimizer_gnn_complex_framework_without_front_flex = torch.optim.Adam(
         gnn_model_complex_framework_without_front_flex.parameters(),
-        lr=0.0003481550881584628, weight_decay=2.3566177347305847e-06)
+        lr=hyperparams_complex_framework.get('lr'), weight_decay=hyperparams_complex_framework.get('weight_decay'))
     criterion_gnn_complex_framework_without_front_flex = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 
 
     """----GRAPHSAGE----"""
 
+    filepath = os.path.join(models_finetuning_path,
+                            f'graphsage_finetuning_train_set_size_{n_samples_train}.txt')
+    hyperparams_graphsage = parse_hyperparams(filepath)
+
     train_loader_gnn_simple_graphsage = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[5, 5, 10],
+        num_neighbors=hyperparams_graphsage.get('neighbours_size'),
         batch_size=32,
         input_nodes=train_mask
     )
@@ -225,7 +280,7 @@ def model_list_rq3_ex1(data):
     val_loader_gnn_simple_graphsage = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[5, 5, 10],
+        num_neighbors=hyperparams_graphsage.get('neighbours_size'),
         batch_size=32,
         input_nodes=val_mask
     )
@@ -233,31 +288,36 @@ def model_list_rq3_ex1(data):
     test_loader_gnn_simple_graphsage = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[5, 5, 10],
+        num_neighbors=hyperparams_graphsage.get('neighbours_size'),
         batch_size=32,
         input_nodes=data.test_mask
     )
 
     gnn_model_simple_graphsage = GraphSAGE(
         in_channels=data.num_features,
-        hidden_channels=64,
-        num_layers=4,
+        hidden_channels=hyperparams_graphsage.get('hidden_channels'),
+        num_layers=hyperparams_graphsage.get('num_layers'),
         out_channels=2,
-        norm=BatchNorm(64),
-        dropout=0.3345954452426979,
-        aggr='mean',
-        act='gelu'
+        dropout=hyperparams_graphsage.get('dropout'),
+        act=hyperparams_graphsage.get('act'),
+        aggr=hyperparams_graphsage.get('aggr'),
+        norm=get_norm(hyperparams_graphsage.get('norm'), hyperparams_graphsage.get('hidden_channels'))
     )
-    optimizer_gnn_simple_graphsage = torch.optim.Adam(gnn_model_simple_graphsage.parameters(), lr=0.003375390880558204,
-                                                      weight_decay=1.6008081531978712e-05)
+    
+    optimizer_gnn_simple_graphsage = torch.optim.Adam(gnn_model_simple_graphsage.parameters(), lr=hyperparams_graphsage.get('lr'),
+                                                      weight_decay=hyperparams_graphsage.get('weight_decay'))
     criterion_gnn_simple_graphsage = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----GIN----"""
 
+    filepath = os.path.join(models_finetuning_path,
+                            f'gin_finetuning_train_set_size_{n_samples_train}.txt')
+    hyperparams_gin = parse_hyperparams(filepath)
+
     train_loader_gnn_simple_gin = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=hyperparams_gin.get('neighbours_size'),
         batch_size=32,
         input_nodes=train_mask
     )
@@ -265,7 +325,7 @@ def model_list_rq3_ex1(data):
     val_loader_gnn_simple_gin = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=hyperparams_gin.get('neighbours_size'),
         batch_size=32,
         input_nodes=val_mask
     )
@@ -273,23 +333,23 @@ def model_list_rq3_ex1(data):
     test_loader_gnn_simple_gin = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 10],
+        num_neighbors=hyperparams_gin.get('neighbours_size'),
         batch_size=32,
         input_nodes=data.test_mask
     )
 
     gnn_model_simple_gin = GIN(
         in_channels=data.num_features,
-        hidden_channels=256,
-        num_layers=3,
+        hidden_channels=hyperparams_gin.get('hidden_channels'),
+        num_layers=hyperparams_gin.get('num_layers'),
         out_channels=2,
-        norm=BatchNorm(256),
-        dropout=0.5370465660662909,
-        act='gelu'
+        dropout=hyperparams_gin.get('dropout'),
+        act=hyperparams_gin.get('act'),
+        norm=get_norm(hyperparams_gin.get('norm'), hyperparams_gin.get('hidden_channels'))
     )
 
-    optimizer_gnn_simple_gin = torch.optim.Adam(gnn_model_simple_gin.parameters(), lr=0.002608140007550387
-                                                , weight_decay=2.6710002144362644e-06)
+    optimizer_gnn_simple_gin = torch.optim.Adam(gnn_model_simple_gin.parameters(), lr=hyperparams_gin.get('lr')
+                                                , weight_decay=hyperparams_gin.get('weight_decay'))
     criterion_gnn_simple_gin = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 
@@ -298,7 +358,7 @@ def model_list_rq3_ex1(data):
     # Store all in a nested dict, all the models above must be in this dict
     model_dict = {
 
-        'simple_framework_without_flex_fronts': {
+        f'simple_framework_{n_samples_train}': {
             'model': gnn_model_simple_framework_without_front_flex,
             'optimizer': optimizer_gnn_simple_framework_without_front_flex,
             'criterion': criterion_gnn_simple_framework_without_front_flex,
@@ -307,7 +367,7 @@ def model_list_rq3_ex1(data):
             'test_set': test_loader_gnn_model_simple_framework_without_front_flex
         },
 
-        'complex_framework_without_flex_fronts': {
+        f'complex_framework_without_flex_fronts_{n_samples_train}': {
             'model': gnn_model_complex_framework_without_front_flex,
             'optimizer': optimizer_gnn_complex_framework_without_front_flex,
             'criterion': criterion_gnn_complex_framework_without_front_flex,
@@ -316,7 +376,7 @@ def model_list_rq3_ex1(data):
             'test_set': test_loader_gnn_model_complex_framework_without_front_flex
         },
 
-        'graphsage': {
+        f'graphsage_{n_samples_train}': {
             'model': gnn_model_simple_graphsage,
             'optimizer': optimizer_gnn_simple_graphsage,
             'criterion': criterion_gnn_simple_graphsage,
@@ -325,7 +385,7 @@ def model_list_rq3_ex1(data):
             'test_set': test_loader_gnn_simple_graphsage
         },
 
-        'gin': {
+        f'gin_{n_samples_train}': {
             'model': gnn_model_simple_gin,
             'optimizer': optimizer_gnn_simple_gin,
             'criterion': criterion_gnn_simple_gin,

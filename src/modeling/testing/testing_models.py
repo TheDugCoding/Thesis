@@ -68,7 +68,7 @@ elif rq_run == 'rq2_ex1':
     results_path = get_src_sub_folder(relative_path_rq2_ex1_results)
 elif rq_run == 'rq3_ex1':
     # models to test
-    models_to_compare = model_list_rq3_ex1(data)
+    models_to_compare = model_list_rq3_ex1(data, 20)
     trained_model_path = get_src_sub_folder(relative_path_trained_model_rq3_ex1)
     results_path = get_src_sub_folder(relative_path_rq3_ex1_results)
 else:
