@@ -161,7 +161,7 @@ def validate(val_loader):
 #Run training
 with open("training_log_gat_synthetic.txt", "w") as file:
     for epoch in range(epochs):
-        loss = train(train_loader)
+        loss = train_test(data)
         log = f"Epoch {epoch+1:02d}, Loss: {loss:.6f}\n"
         print(log)
         file.write(log)

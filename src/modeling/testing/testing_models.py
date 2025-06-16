@@ -45,11 +45,11 @@ epochs = 50
 evaluate_only = False
 
 # number of times we train and evaluate each model
-n_runs = 20  # set your N here
+n_runs = 2  # set your N here
 
 
 # which rq do we want to answer?
-rq_run = 'rq1_ex1'
+rq_run = 'rq3_ex1'
 
 #early stopping logic
 patience = 5
@@ -270,6 +270,10 @@ for metric_name in ["pr_auc", "accuracy", "precision", "recall", "f1", "train_ti
     plt.barh(names, means, xerr=stds, capsize=5, color='skyblue', edgecolor='black')
     plt.xlabel(metric_name.upper())
     plt.title(f"Average {metric_name.upper()} over {n_runs} runs")
+
+    # Add legend to explain error bars
+    plt.legend(["Error bars show std. dev."], loc='lower right', frameon=True)
+
     plt.tight_layout()
     plt.savefig(file_path)
     plt.show()

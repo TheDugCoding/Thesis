@@ -49,6 +49,49 @@ def get_norm(norm_type, hidden_channels):
     else:
         return None
 
+def reduce_train_val_masks(data, n_train, n_val):
+    """
+    Creates two balanced masks (train and val) from the original train_mask,
+    with no overlap between them.
+
+    Args:
+        data: PyG Data object with .train_mask and .y
+        n_train: total number of training samples to keep
+        n_val: total number of validation samples to keep
+
+    Returns:
+        train_mask_new: Boolean mask with n_train True values, balanced across classes
+        val_mask_new: Boolean mask with n_val True values, balanced across classes
+    """
+    y = data.y
+    train_mask = data.train_mask
+
+    unique_classes = torch.unique(y[train_mask])
+    num_classes = len(unique_classes)
+
+    train_per_class = n_train // num_classes
+    val_per_class = n_val // num_classes
+
+    train_mask_new = torch.zeros_like(train_mask, dtype=torch.bool)
+    val_mask_new = torch.zeros_like(train_mask, dtype=torch.bool)
+
+    for c in unique_classes:
+        # indices of class c in original train_mask
+        idx = (y == c) & train_mask
+        class_indices = idx.nonzero(as_tuple=True)[0]
+
+        # shuffle indices
+        shuffled = class_indices[torch.randperm(len(class_indices))]
+
+        # split into train and val, no overlap
+        train_indices = shuffled[:train_per_class]
+        val_indices = shuffled[train_per_class:train_per_class + val_per_class]
+
+        train_mask_new[train_indices] = True
+        val_mask_new[val_indices] = True
+
+    return train_mask_new, val_mask_new
+
 def objective_dgi_and_mlp(trial):
     # hyper-parameters
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
@@ -815,19 +858,19 @@ def objective_gin_all_features(trial):
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
 
-with open(os.path.join(finetuning_results, "gat_finetuning.txt"), "w") as file:
-    # run Optuna study
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective_gat, n_trials=30, show_progress_bar=True)
-
-    # print and save the best trial
-    file.write("Best trial:\n")
-    trial = study.best_trial
-    file.write(f"  PR-AUC Score: {trial.value}\n")
-    file.write("  Best hyperparameters:\n")
-
-    for key, value in trial.params.items():
-        file.write(f"    {key}: {value}\n")
+# with open(os.path.join(finetuning_results, "gat_finetuning.txt"), "w") as file:
+#     # run Optuna study
+#     study = optuna.create_study(direction="maximize")
+#     study.optimize(objective_gat, n_trials=30, show_progress_bar=True)
+#
+#     # print and save the best trial
+#     file.write("Best trial:\n")
+#     trial = study.best_trial
+#     file.write(f"  PR-AUC Score: {trial.value}\n")
+#     file.write("  Best hyperparameters:\n")
+#
+#     for key, value in trial.params.items():
+#         file.write(f"    {key}: {value}\n")
 
 # with open(os.path.join(finetuning_results, "gin_finetuning.txt"), "w") as file:
 #     # run Optuna study
@@ -856,3 +899,39 @@ with open(os.path.join(finetuning_results, "gat_finetuning.txt"), "w") as file:
 #
 #     for key, value in trial.params.items():
 #         file.write(f"    {key}: {value}\n")
+
+'''-----finetuning for research question 3 ----'''''
+
+train_set_sizes = [20, 100, 500, 1000, 2000 ,5000]
+
+for train_set_size in train_set_sizes:
+    with open(os.path.join(finetuning_results, f"gin_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
+
+        data.train_mask, val_mask = reduce_train_val_masks(data, train_set_size, 300)
+
+        # run Optuna study
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective_gin, n_trials=30, show_progress_bar=True)
+
+        # print and save the best trial
+        file.write("Best trial:\n")
+        trial = study.best_trial
+        file.write(f"  PR-AUC Score: {trial.value}\n")
+        file.write("  Best hyperparameters:\n")
+
+        for key, value in trial.params.items():
+            file.write(f"    {key}: {value}\n")
+
+    with open(os.path.join(finetuning_results,  f"graphsage_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
+        # run Optuna study
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective_graphsage, n_trials=30, show_progress_bar=True)
+
+        # print and save the best trial
+        file.write("Best trial:\n")
+        trial = study.best_trial
+        file.write(f"  PR-AUC Score: {trial.value}\n")
+        file.write("  Best hyperparameters:\n")
+
+        for key, value in trial.params.items():
+            file.write(f"    {key}: {value}\n")

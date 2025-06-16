@@ -566,7 +566,7 @@ class EllipticDataset(Dataset):
 
     def get(self, idx):
         """Loads and returns the graph at the given index."""
-        data = torch.load(os.path.join(self.processed_dir, f'ellipticdataset_{idx}.pt'))
+        data = torch.load(os.path.join(self.processed_dir, f'ellipticdataset_{idx}.pt'), weights_only=False)
         return data
 
 
