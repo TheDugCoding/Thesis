@@ -359,12 +359,14 @@ def corruption_without_flex_fronts_random_graph_corruptor(x, edge_index, batch_s
     return x_corrupt, edge_index_random, batch_size
 
 
-def train(epoch, train_loaders, model, optimizer):
+def train(epoch, train_loaders, model, optimizer, loss_fun_name):
     '''
     :param epoch: for how many epochs we should train the model
     :param train_loaders: the train loaders of the different datasets to use, the biggest trainloader should be in first position
     :return: loss
     '''
+    if loss_fun_name not in ['infoNCE', 'BCEdgi']:
+        raise ValueError(f"Invalid loss function name: {loss_fun_name}. Supported values are 'infoNCE' and 'BCEdgi'.")
     #order the loaders from biggest to smallest
     train_loaders = sorted(train_loaders, key=len, reverse=True)
     model.train()
@@ -400,10 +402,15 @@ def train(epoch, train_loaders, model, optimizer):
         for idx, batch_loop in enumerate(batches):
             optimizer.zero_grad()
             #if used in combination with info NCE loss change the number on negatives examples
-            pos_z, neg_z, summary = model(batch_loop.x, batch_loop.edge_index,
-                                          batch_loop.batch_size, framework=False, num_negatives=3)
-            #loss = model.loss(pos_z, neg_z, summary)
-            loss = model.loss_info_nce(pos_z, neg_z, summary)
+            if loss_fun_name == 'infoNCE':
+                pos_z, neg_z, summary = model(batch_loop.x, batch_loop.edge_index,
+                                              batch_loop.batch_size, framework=False, num_negatives=3)
+                loss = model.loss_info_nce(pos_z, neg_z, summary)
+            else:
+                #dgi loss
+                pos_z, neg_z, summary = model(batch_loop.x, batch_loop.edge_index,
+                                              batch_loop.batch_size, framework=False, num_negatives=1)
+                loss = model.loss(pos_z, neg_z, summary)
             loss.backward()
             optimizer.step()
             total_loss += float(loss) * pos_z.size(0)
@@ -459,7 +466,7 @@ if __name__ == '__main__':
 
     with open("training_log_elliptic_no_flex_front_GIN_only_topo_rabo.txt", "w") as file:
         for epoch in range(1, 30):
-            loss = train(epoch, train_loaders, model, optimizer)
+            loss = train(epoch, train_loaders, model, optimizer, 'BCEdgi')
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)
