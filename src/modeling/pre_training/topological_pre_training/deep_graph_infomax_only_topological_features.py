@@ -401,9 +401,9 @@ def train(epoch, train_loaders, model, optimizer):
             optimizer.zero_grad()
             #if used in combination with info NCE loss change the number on negatives examples
             pos_z, neg_z, summary = model(batch_loop.x, batch_loop.edge_index,
-                                          batch_loop.batch_size, framework=False, num_negatives=1)
-            loss = model.loss(pos_z, neg_z, summary)
-            #loss = model.loss_info_nce(pos_z, neg_z, summary)
+                                          batch_loop.batch_size, framework=False, num_negatives=3)
+            #loss = model.loss(pos_z, neg_z, summary)
+            loss = model.loss_info_nce(pos_z, neg_z, summary)
             loss.backward()
             optimizer.step()
             total_loss += float(loss) * pos_z.size(0)
@@ -446,18 +446,18 @@ if __name__ == '__main__':
         num_neighbors=[10, 10, 25]
     )
 
-    # set the train loader from the biggest to the smallest, otherwise it won't work
+    # set the train loaders
     train_loaders = [train_loader_rabo, train_loader_ethereum, train_loader_stable_20]
 
     # define the model, no flexfront
     model = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=32, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=32, output_channels=32, layers=4, activation_fn=torch.nn.LeakyReLU),
+        hidden_channels=512, encoder=EncoderWithoutFlexFrontsGIN(input_channels=data_rabo.num_features, hidden_channels=128, output_channels=512, layers=4, activation_fn=torch.nn.GELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts).to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr= 0.0005272511832859479)
+    optimizer = torch.optim.Adam(model.parameters(), lr= 6.14765762646808e-05)
 
-    with open("training_log_elliptic_no_flex_front_only_topo_rabo.txt", "w") as file:
+    with open("training_log_elliptic_no_flex_front_GIN_only_topo_rabo.txt", "w") as file:
         for epoch in range(1, 30):
             loss = train(epoch, train_loaders, model, optimizer)
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
@@ -465,7 +465,7 @@ if __name__ == '__main__':
             file.write(log)
 
     torch.save(model.state_dict(),
-               os.path.join(trained_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo.pth'))
+               os.path.join(trained_model_path, 'modeling_dgi_GIN_no_flex_front_only_topo_rabo.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')

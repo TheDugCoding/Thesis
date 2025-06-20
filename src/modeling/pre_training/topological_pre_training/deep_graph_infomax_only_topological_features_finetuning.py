@@ -224,25 +224,10 @@ if __name__ == '__main__':
     #     for key, value in trial.params.items():
     #         file.write(f"    {key}: {value}\n")
 
-    # with open("deep_graph_infomax_with_topological_features_rabo_ethereum_ecr20_infonce.txt", "w") as file:
-    #     # run Optuna study
-    #     study = optuna.create_study(direction='minimize')
-    #     study.optimize(objective_infonce, n_trials=30)
-    #
-    #     # print and save the best trial
-    #     file.write("Best trial:\n")
-    #     trial = study.best_trial
-    #     print("Best trial:")
-    #     print(f"  Loss: {trial.value}")
-    #     file.write(f"  Loss: {trial.value}\n")
-    #     file.write("  Best hyperparameters:\n")
-    #     for key, value in trial.params.items():
-    #         file.write(f"    {key}: {value}\n")
-
-    with open("deep_graph_infomax_gin_with_topological_feature_rabo_ethereum_ecr20_infonce.txt", "w") as file:
+    with open("deep_graph_infomax_with_topological_features_rabo_ethereum_ecr20_infonce.txt", "w") as file:
         # run Optuna study
         study = optuna.create_study(direction='minimize')
-        study.optimize(objective_gin, n_trials=30)
+        study.optimize(objective_infonce, n_trials=30)
 
         # print and save the best trial
         file.write("Best trial:\n")
@@ -253,3 +238,18 @@ if __name__ == '__main__':
         file.write("  Best hyperparameters:\n")
         for key, value in trial.params.items():
             file.write(f"    {key}: {value}\n")
+
+    # with open("deep_graph_infomax_gin_with_topological_feature_rabo_ethereum_ecr20.txt", "w") as file:
+    #     # run Optuna study
+    #     study = optuna.create_study(direction='minimize')
+    #     study.optimize(objective_gin, n_trials=30)
+    #
+    #     # print and save the best trial
+    #     file.write("Best trial:\n")
+    #     trial = study.best_trial
+    #     print("Best trial:")
+    #     print(f"  Loss: {trial.value}")
+    #     file.write(f"  Loss: {trial.value}\n")
+    #     file.write("  Best hyperparameters:\n")
+    #     for key, value in trial.params.items():
+    #         file.write(f"    {key}: {value}\n")

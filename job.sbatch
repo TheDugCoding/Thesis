@@ -17,7 +17,7 @@
 export PROJECT_PATH=/science-nfs-sys/vsm01/users/1738380/Desktop/Thesis
 export PYTHONPATH=$PYTHONPATH:$PROJECT_PATH
 
-srun python $PROJECT_PATH/src/modeling/pre_training/topological_pre_training/deep_graph_infomax_only_topological_features_finetuning.py
+srun python $PROJECT_PATH/src/modeling/pre_training/topological_pre_training/deep_graph_infomax_only_topological_features.py
 
 
 #Optionally, you can include cleanup commands here (e.g., after the job finishes)
