@@ -45,7 +45,7 @@ epochs = 50
 evaluate_only = False
 
 # number of times we train and evaluate each model
-n_runs = 2  # set your N here
+n_runs = 20  # set your N here
 
 
 # which rq do we want to answer?

@@ -436,21 +436,21 @@ if __name__ == '__main__':
         data_rabo,
         batch_size=64,
         shuffle=True,
-        num_neighbors=[10, 10, 25]
+        num_neighbors=[10, 20, 40]
     )
 
     train_loader_ethereum = NeighborLoader(
         data_ethereum,
         batch_size=64,
         shuffle=True,
-        num_neighbors=[10, 10, 25]
+        num_neighbors=[10, 20, 40]
     )
 
     train_loader_stable_20 = NeighborLoader(
         data_stable_20,
         batch_size=64,
         shuffle=True,
-        num_neighbors=[10, 10, 25]
+        num_neighbors=[10, 20, 40]
     )
 
     # set the train loaders
@@ -458,13 +458,13 @@ if __name__ == '__main__':
 
     # define the model, no flexfront
     model = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=512, encoder=EncoderWithoutFlexFrontsGIN(input_channels=data_rabo.num_features, hidden_channels=128, output_channels=512, layers=4, activation_fn=torch.nn.GELU),
+        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64, layers=4, activation_fn=torch.nn.ReLU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts).to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr= 6.14765762646808e-05)
+    optimizer = torch.optim.Adam(model.parameters(), lr= 0.00017257723605796304)
 
-    with open("training_log_elliptic_no_flex_front_GIN_only_topo_rabo.txt", "w") as file:
+    with open("training_log_elliptic_no_flex_front_Graphsage_only_.txt", "w") as file:
         for epoch in range(1, 30):
             loss = train(epoch, train_loaders, model, optimizer, 'BCEdgi')
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
@@ -472,7 +472,7 @@ if __name__ == '__main__':
             file.write(log)
 
     torch.save(model.state_dict(),
-               os.path.join(trained_model_path, 'modeling_dgi_GIN_no_flex_front_only_topo_rabo.pth'))
+               os.path.join(trained_model_path, 'modeling_dgi_GraphSage_no_flex_front_only_topo_rabo_ecr_20_infonce.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')

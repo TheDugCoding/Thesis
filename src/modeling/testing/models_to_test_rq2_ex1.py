@@ -13,7 +13,7 @@ from src.modeling.downstream_task.dgi_and_mlp import build_mlp
 from src.modeling.final_framework.framework_complex import DGIPlusGNN
 from src.modeling.final_framework.framework_simple import DGIAndGNN
 from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import \
-    DeepGraphInfomaxWithoutFlexFronts, EncoderWithoutFlexFrontsGraphsage, corruption_without_flex_fronts
+    DeepGraphInfomaxWithoutFlexFronts, EncoderWithoutFlexFrontsGraphsage, corruption_without_flex_fronts, EncoderWithoutFlexFrontsGIN
 from src.modeling.downstream_task.graphsage_and_mlp import GraphsageWithMLP
 from src.modeling.downstream_task.dgi_and_mlp import DGIWithMLP
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
@@ -227,6 +227,131 @@ def model_list_rq2_ex1(data):
         lr=0.005370050867649166, weight_decay=2.1789005906367674e-06)
     criterion_gnn_complex_framework_without_front_flex_last_layer_not_frozen = torch.nn.CrossEntropyLoss(
         ignore_index=-1)
+
+    """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS GIN ENCODER----"""
+
+    train_loader_gnn_model_complex_framework_without_front_flex_GIN = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[15, 30],
+        batch_size=64,
+        input_nodes=data.train_mask
+    )
+
+    val_loader_gnn_model_complex_framework_without_front_flex_GIN = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[15, 30],
+        batch_size=64,
+        input_nodes=data.val_mask
+    )
+
+    test_loader_gnn_model_complex_framework_without_front_flex_GIN = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[15, 30],
+        batch_size=64,
+        input_nodes=data.test_mask
+    )
+
+    # define the framework, first DGI and then the GNN used in the downstream task
+    dgi_model_without_flipping_layer_GIN = DeepGraphInfomaxWithoutFlexFronts(
+        hidden_channels=128,
+        encoder=EncoderWithoutFlexFrontsGIN(input_channels=data.topological_features.shape[1],
+                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  activation_fn=torch.nn.ELU),
+        summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
+        corruption=corruption_without_flex_fronts)
+    # load the pretrained parameters
+    dgi_model_without_flipping_layer_GIN.load_state_dict(
+        torch.load(
+            os.path.join(trained_dgi_model_path, 'modeling_dgi_GIN_rabo_ethereum_erc_20.pth')))
+
+    for layer in dgi_model_without_flipping_layer_GIN.encoder.layers:
+        for param in layer.parameters():
+            param.requires_grad = False
+
+    # same model as in graphsage_elliptic, used in the framework
+    gnn_model_downstream_framework_without_flipping_layer_GIN = GraphSAGE(
+        in_channels=data.num_features + 128,
+        hidden_channels=64,
+        num_layers=3,
+        out_channels=2,
+        dropout=0.2599246924621209,
+        act='relu',
+        aggr='mean'
+    )
+
+    gnn_model_complex_framework_without_front_flex_GIN = DGIPlusGNN(dgi_model_without_flipping_layer_GIN,
+                                                                gnn_model_downstream_framework_without_flipping_layer_GIN,
+                                                                False)
+    optimizer_gnn_complex_framework_without_front_flex_GIN = torch.optim.Adam(
+        gnn_model_complex_framework_without_front_flex_GIN.parameters(),
+        lr=0.0003481550881584628, weight_decay=2.3566177347305847e-06)
+    criterion_gnn_complex_framework_without_front_flex_GIN = torch.nn.CrossEntropyLoss(ignore_index=-1)
+
+    """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS INFONCE----"""
+
+    train_loader_gnn_model_complex_framework_without_front_flex_INFONCE = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[15, 30],
+        batch_size=64,
+        input_nodes=data.train_mask
+    )
+
+    val_loader_gnn_model_complex_framework_without_front_flex_INFONCE = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[15, 30],
+        batch_size=64,
+        input_nodes=data.val_mask
+    )
+
+    test_loader_gnn_model_complex_framework_without_front_flex_INFONCE = NeighborLoader(
+        data,
+        shuffle=True,
+        num_neighbors=[15, 30],
+        batch_size=64,
+        input_nodes=data.test_mask
+    )
+
+    # define the framework, first DGI and then the GNN used in the downstream task
+    dgi_model_without_flipping_layer_INFONCE = DeepGraphInfomaxWithoutFlexFronts(
+        hidden_channels=128,
+        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data.topological_features.shape[1],
+                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  activation_fn=torch.nn.ELU),
+        summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
+        corruption=corruption_without_flex_fronts)
+    # load the pretrained parameters
+    dgi_model_without_flipping_layer_INFONCE.load_state_dict(
+        torch.load(
+            os.path.join(trained_dgi_model_path, '')))
+
+    for layer in dgi_model_without_flipping_layer_INFONCE.encoder.layers:
+        for param in layer.parameters():
+            param.requires_grad = False
+
+    # same model as in graphsage_elliptic, used in the framework
+    gnn_model_downstream_framework_without_flipping_layer_INFONCE = GraphSAGE(
+        in_channels=data.num_features + 128,
+        hidden_channels=64,
+        num_layers=3,
+        out_channels=2,
+        dropout=0.2599246924621209,
+        act='relu',
+        aggr='mean'
+    )
+
+    gnn_model_complex_framework_without_front_flex_INFONCE = DGIPlusGNN(dgi_model_without_flipping_layer_INFONCE,
+                                                                gnn_model_downstream_framework_without_flipping_layer_INFONCE,
+                                                                False)
+    optimizer_gnn_complex_framework_without_front_flex_INFONCE = torch.optim.Adam(
+        gnn_model_complex_framework_without_front_flex_INFONCE.parameters(),
+        lr=0.0003481550881584628, weight_decay=2.3566177347305847e-06)
+    criterion_gnn_complex_framework_without_front_flex_INFONCE = torch.nn.CrossEntropyLoss(ignore_index=-1)
+    
     
     """---------------------------------------------"""
     # Store all in a nested dict, all the models above must be in this dict
@@ -257,7 +382,28 @@ def model_list_rq2_ex1(data):
             'train_set': train_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
             'val_set': val_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
             'test_set': test_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen
+        },
+
+        'complex_framework_without_flex_fronts_GIN': {
+            'model': gnn_model_complex_framework_without_front_flex_GIN,
+            'optimizer': optimizer_gnn_complex_framework_without_front_flex_GIN,
+            'criterion': criterion_gnn_complex_framework_without_front_flex_GIN,
+            'train_set': train_loader_gnn_model_complex_framework_without_front_flex_GIN,
+            'val_set': val_loader_gnn_model_complex_framework_without_front_flex_GIN,
+            'test_set': test_loader_gnn_model_complex_framework_without_front_flex_GIN
+        },
+
+        'complex_framework_without_flex_fronts_INFONCE': {
+            'model': gnn_model_complex_framework_without_front_flex_INFONCE,
+            'optimizer': optimizer_gnn_complex_framework_without_front_flex_INFONCE,
+            'criterion': criterion_gnn_complex_framework_without_front_flex_INFONCE,
+            'train_set': train_loader_gnn_model_complex_framework_without_front_flex_INFONCE,
+            'val_set': val_loader_gnn_model_complex_framework_without_front_flex_INFONCE,
+            'test_set': test_loader_gnn_model_complex_framework_without_front_flex_INFONCE
         }
+        
+        
+        
     }
 
     return model_dict

@@ -4,6 +4,7 @@ import os
 import optuna
 import torch
 import torch_geometric
+from Demos.FileSecurityTest import permissions_dir_inherit
 from sklearn.metrics import average_precision_score
 from torch_geometric.loader import NeighborLoader
 from torch_geometric.nn import BatchNorm, LayerNorm, GraphNorm
@@ -879,7 +880,7 @@ def objective_framework_simple_gin(trial):
 
 
     # Define model
-    gin = model = GIN(
+    gin = GIN(
         in_channels=data.num_features,
         hidden_channels=hidden_channels,
         num_layers=num_layers,
@@ -963,7 +964,7 @@ def objective_framework_simple_gin(trial):
 # with open(os.path.join(finetuning_results, "framework_complex_finetuning.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_framework_complex, n_trials=60, show_progress_bar=True)
+#     study.optimize(objective_framework_complex, n_trials=30, show_progress_bar=True)
 #
 #     # print and save the best trial
 #     file.write("Best trial:\n")
@@ -977,7 +978,7 @@ def objective_framework_simple_gin(trial):
 # with open(os.path.join(finetuning_results, "framework_complex_first_layer_unfreeze.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_framework_complex_first_layer_unfreeze, n_trials=60, show_progress_bar=True)
+#     study.optimize(objective_framework_complex_first_layer_unfreeze, n_trials=30, show_progress_bar=True)
 #
 #     # print and save the best trial
 #     file.write("Best trial:\n")
@@ -991,7 +992,7 @@ def objective_framework_simple_gin(trial):
 # with open(os.path.join(finetuning_results, "framework_complex_last_layer_unfreeze.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_framework_complex_last_layer_unfreeze, n_trials=60, show_progress_bar=True)
+#     study.optimize(objective_framework_complex_last_layer_unfreeze, n_trials=30, show_progress_bar=True)
 #
 #     # print and save the best trial
 #     file.write("Best trial:\n")
@@ -1005,7 +1006,7 @@ def objective_framework_simple_gin(trial):
 # with open(os.path.join(finetuning_results, "framework_complex_finetuning_only_rabo.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_framework_complex_only_rabo, n_trials=60, show_progress_bar=True)
+#     study.optimize(objective_framework_complex_only_rabo, n_trials=30, show_progress_bar=True)
 #
 #     # print and save the best trial
 #     file.write("Best trial:\n")
@@ -1019,7 +1020,7 @@ def objective_framework_simple_gin(trial):
 #     with open(os.path.join(finetuning_results, "framework_simple_finetuning.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_framework_simple, n_trials=60, show_progress_bar=True)
+#     study.optimize(objective_framework_simple, n_trials=30, show_progress_bar=True)
 #
 #     # print and save the best trial
 #     file.write("Best trial:\n")
@@ -1034,7 +1035,7 @@ def objective_framework_simple_gin(trial):
 # with open(os.path.join(finetuning_results, "framework_complex_finetuning_gin.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_framework_complex_gin, n_trials=60, show_progress_bar=True)
+#     study.optimize(objective_framework_complex_gin, n_trials=30, show_progress_bar=True)
 #
 #     # print and save the best trial
 #     file.write("Best trial:\n")
@@ -1048,7 +1049,7 @@ def objective_framework_simple_gin(trial):
 # with open(os.path.join(finetuning_results, "framework_simple_finetuning_gin.txt"), "w") as file:
 #     # run Optuna study
 #     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_framework_simple_gin, n_trials=60, show_progress_bar=True)
+#     study.optimize(objective_framework_simple_gin, n_trials=30, show_progress_bar=True)
 #
 #     # print and save the best trial
 #     file.write("Best trial:\n")
@@ -1063,10 +1064,16 @@ def objective_framework_simple_gin(trial):
 '''-----answering rq3'''
 
 train_set_sizes = [20, 100, 500, 1000, 2000 ,5000]
+original_train_mask = data.train_mask
 
 for train_set_size in train_set_sizes:
 
+    data.train_mask = original_train_mask
     data.train_mask, val_mask = reduce_train_val_masks(data, train_set_size, 300)
+
+    print('--------------------')
+    print(data.train_mask.sum().item())
+    print('--------------------')
 
     with open(os.path.join(finetuning_results, f"framework_simple_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
         # run Optuna study
@@ -1086,6 +1093,34 @@ for train_set_size in train_set_sizes:
         # run Optuna study
         study = optuna.create_study(direction="maximize")
         study.optimize(objective_framework_complex, n_trials=30, show_progress_bar=True)
+
+        # print and save the best trial
+        file.write("Best trial:\n")
+        trial = study.best_trial
+        file.write(f"  PR-AUC Score: {trial.value}\n")
+        file.write("  Best hyperparameters:\n")
+
+        for key, value in trial.params.items():
+            file.write(f"    {key}: {value}\n")
+
+    with open(os.path.join(finetuning_results, f"framework_complex_finetuning_gin_train_set_size_{train_set_size}.txt"), "w") as file:
+        # run Optuna study
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective_framework_complex_gin, n_trials=30, show_progress_bar=True)
+
+        # print and save the best trial
+        file.write("Best trial:\n")
+        trial = study.best_trial
+        file.write(f"  PR-AUC Score: {trial.value}\n")
+        file.write("  Best hyperparameters:\n")
+
+        for key, value in trial.params.items():
+            file.write(f"    {key}: {value}\n")
+
+    with open(os.path.join(finetuning_results, f"framework_simple_finetuning_gin_train_set_size_{train_set_size}.txt"), "w") as file:
+        # run Optuna study
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective_framework_simple_gin, n_trials=30, show_progress_bar=True)
 
         # print and save the best trial
         file.write("Best trial:\n")
