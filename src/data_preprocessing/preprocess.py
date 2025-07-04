@@ -342,7 +342,7 @@ def pre_process_erc_20_stablecoin():
                 current_timestep = row['time_stamp']
                 next_timestep = df_erc20.iloc[i + 1]['time_stamp']
 
-                if (node_count >= 12000000 or edge_count >= 2500000) and current_timestep != next_timestep:
+                if (node_count >= 1200000 or edge_count >= 2500000) and current_timestep != next_timestep:
                     print("Stopping condition met.")
                     break
 

@@ -427,30 +427,29 @@ if __name__ == '__main__':
     data_ethereum = dataset[1]
     data_stable_20 = dataset[2]
 
-    # x contains a dummy feature, replace it with only topological features
-    data_rabo.x = data_rabo.topological_features
-    data_ethereum.x = data_ethereum.topological_features
-    data_stable_20.x = data_stable_20.topological_features
-
+    # x contains a dummy feature, replace it with only topological features (only degree for this run)
+    data_rabo.x = data_rabo.topological_features[:, 0].unsqueeze(-1)
+    data_ethereum.x = data_ethereum.topological_features[:, 0].unsqueeze(-1)
+    data_stable_20.x = data_stable_20.topological_features[:, 0].unsqueeze(-1)
     train_loader_rabo = NeighborLoader(
         data_rabo,
         batch_size=64,
         shuffle=True,
-        num_neighbors=[10, 20, 40]
+        num_neighbors=[10, 10, 25]
     )
 
     train_loader_ethereum = NeighborLoader(
         data_ethereum,
         batch_size=64,
         shuffle=True,
-        num_neighbors=[10, 20, 40]
+        num_neighbors=[10, 10, 25]
     )
 
     train_loader_stable_20 = NeighborLoader(
         data_stable_20,
         batch_size=64,
         shuffle=True,
-        num_neighbors=[10, 20, 40]
+        num_neighbors=[10, 10, 25]
     )
 
     # set the train loaders
@@ -458,21 +457,21 @@ if __name__ == '__main__':
 
     # define the model, no flexfront
     model = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=64, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=64, layers=4, activation_fn=torch.nn.ReLU),
+        hidden_channels=32, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=32, layers=4, activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts).to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr= 0.00017257723605796304)
+    optimizer = torch.optim.Adam(model.parameters(), lr= 0.0011865761848863178)
 
-    with open("training_log_elliptic_no_flex_front_Graphsage_only_.txt", "w") as file:
-        for epoch in range(1, 30):
+    with open("training_log_elliptic_no_flex_front_Graphsage_only_degree.txt", "w") as file:
+        for epoch in range(1, 5):
             loss = train(epoch, train_loaders, model, optimizer, 'BCEdgi')
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)
 
     torch.save(model.state_dict(),
-               os.path.join(trained_model_path, 'modeling_dgi_GraphSage_no_flex_front_only_topo_rabo_ecr_20_infonce.pth'))
+               os.path.join(trained_model_path, 'modeling_dgi_GraphSage_no_flex_front_only_topo_rabo_ecr_20_only_degree.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')

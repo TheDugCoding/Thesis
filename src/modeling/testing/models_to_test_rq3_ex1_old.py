@@ -484,119 +484,62 @@ def model_list_rq3_ex1(data, n_samples_train):
         weight_decay=hyperparams_simple_framework_gin.get('weight_decay'))
     criterion_gnn_simple_framework_gin_without_front_flex = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
-    """----GRAPHSAGE TOPOLOGICAL INPUT + DATA INPUT----"""
-
-    data_all_features = copy.deepcopy(data)
-    data_all_features.x = torch.cat([data.x, data.topological_features], dim=1)
-
-    filepath = os.path.join(models_finetuning_path,
-                            f'graphsage_finetuning_all_features_train_set_size_{n_samples_train}.txt')
-    hyperparams_simple_framework_graphsage_all_features = parse_hyperparams(filepath)
-
-    train_loader_gnn_all_features_graphsage = NeighborLoader(
-        data_all_features,
-        shuffle=True,
-        num_neighbors=hyperparams_simple_framework_graphsage_all_features.get('neighbours_size'),
-        batch_size=32,
-        input_nodes=data_all_features.train_mask
-    )
-
-    val_loader_gnn_all_features_graphsage = NeighborLoader(
-        data_all_features,
-        shuffle=True,
-        num_neighbors=hyperparams_simple_framework_graphsage_all_features.get('neighbours_size'),
-        batch_size=32,
-        input_nodes=data_all_features.val_mask
-    )
-
-    test_loader_gnn_all_features_graphsage = NeighborLoader(
-        data_all_features,
-        shuffle=True,
-        num_neighbors=hyperparams_simple_framework_graphsage_all_features.get('neighbours_size'),
-        batch_size=32,
-        input_nodes=data_all_features.test_mask
-    )
-
-    gnn_model_all_features_graphsage = GraphSAGE(
-        in_channels=data_all_features.num_features,
-        hidden_channels=hyperparams_simple_framework_graphsage_all_features.get('hidden_channels'),
-        num_layers=hyperparams_simple_framework_graphsage_all_features.get('num_layers'),
-        out_channels=2,
-        dropout=hyperparams_simple_framework_graphsage_all_features.get('dropout'),
-        act=hyperparams_simple_framework_graphsage_all_features.get('act'),
-        aggr=hyperparams_simple_framework_graphsage_all_features.get('aggr'),
-        norm=get_norm(hyperparams_simple_framework_graphsage_all_features.get('norm'), hyperparams_simple_framework_graphsage_all_features.get('hidden_channels'))
-    )
-    optimizer_gnn_all_features_graphsage = torch.optim.Adam(gnn_model_all_features_graphsage.parameters(),
-                                                            lr=hyperparams_simple_framework_graphsage_all_features.get('lr'),
-                                                            weight_decay=hyperparams_simple_framework_graphsage_all_features.get('weight_decay'))
-    criterion_gnn_all_features_graphsage = torch.nn.CrossEntropyLoss(ignore_index=-1)
-
     """---------------------------------------------"""
     # Store all in a nested dict, all the models above must be in this dict
     model_dict = {
 
-        # f'simple_framework_{n_samples_train}': {
-        #     'model': gnn_model_simple_framework_without_front_flex,
-        #     'optimizer': optimizer_gnn_simple_framework_without_front_flex,
-        #     'criterion': criterion_gnn_simple_framework_without_front_flex,
-        #     'train_set': train_loader_gnn_model_simple_framework_without_front_flex,
-        #     'val_set': val_loader_gnn_model_simple_framework_without_front_flex,
-        #     'test_set': test_loader_gnn_model_simple_framework_without_front_flex
-        # },
-        #
-        # f'complex_framework_without_flex_fronts_{n_samples_train}': {
-        #     'model': gnn_model_complex_framework_without_front_flex,
-        #     'optimizer': optimizer_gnn_complex_framework_without_front_flex,
-        #     'criterion': criterion_gnn_complex_framework_without_front_flex,
-        #     'train_set': train_loader_gnn_model_complex_framework_without_front_flex,
-        #     'val_set': val_loader_gnn_model_complex_framework_without_front_flex,
-        #     'test_set': test_loader_gnn_model_complex_framework_without_front_flex
-        # },
-        #
-        # f'graphsage_{n_samples_train}': {
-        #     'model': gnn_model_simple_graphsage,
-        #     'optimizer': optimizer_gnn_simple_graphsage,
-        #     'criterion': criterion_gnn_simple_graphsage,
-        #     'train_set': train_loader_gnn_simple_graphsage,
-        #     'val_set': val_loader_gnn_simple_graphsage,
-        #     'test_set': test_loader_gnn_simple_graphsage
-        # },
-        #
-        # f'gin_{n_samples_train}': {
-        #     'model': gnn_model_simple_gin,
-        #     'optimizer': optimizer_gnn_simple_gin,
-        #     'criterion': criterion_gnn_simple_gin,
-        #     'train_set': train_loader_gnn_simple_gin,
-        #     'val_set': val_loader_gnn_simple_gin,
-        #     'test_set': test_loader_gnn_simple_gin
-        # },
-        #
-        # f'complex_framework_gin_without_flex_fronts_{n_samples_train}': {
-        #     'model': gnn_model_complex_framework_gin_without_front_flex,
-        #     'optimizer': optimizer_gnn_complex_framework_gin_without_front_flex,
-        #     'criterion': criterion_gnn_complex_framework_gin_without_front_flex,
-        #     'train_set': train_loader_gnn_model_complex_framework_gin_without_front_flex,
-        #     'val_set': val_loader_gnn_model_complex_framework_gin_without_front_flex,
-        #     'test_set': test_loader_gnn_model_complex_framework_gin_without_front_flex
-        # },
-        #
-        # f'simple_framework_gin_without_flex_fronts_{n_samples_train}': {
-        #     'model': gnn_model_simple_framework_gin_without_front_flex,
-        #     'optimizer': optimizer_gnn_simple_framework_gin_without_front_flex,
-        #     'criterion': criterion_gnn_simple_framework_gin_without_front_flex,
-        #     'train_set': train_loader_gnn_model_simple_framework_gin_without_front_flex,
-        #     'val_set': val_loader_gnn_model_simple_framework_gin_without_front_flex,
-        #     'test_set': test_loader_gnn_model_simple_framework_gin_without_front_flex
-        # },
+        f'simple_framework_{n_samples_train}': {
+            'model': gnn_model_simple_framework_without_front_flex,
+            'optimizer': optimizer_gnn_simple_framework_without_front_flex,
+            'criterion': criterion_gnn_simple_framework_without_front_flex,
+            'train_set': train_loader_gnn_model_simple_framework_without_front_flex,
+            'val_set': val_loader_gnn_model_simple_framework_without_front_flex,
+            'test_set': test_loader_gnn_model_simple_framework_without_front_flex
+        },
 
-        'graphsage_all_features': {
-            'model': gnn_model_all_features_graphsage,
-            'optimizer': optimizer_gnn_all_features_graphsage,
-            'criterion': criterion_gnn_all_features_graphsage,
-            'train_set': train_loader_gnn_all_features_graphsage,
-            'val_set': val_loader_gnn_all_features_graphsage,
-            'test_set': test_loader_gnn_all_features_graphsage
+        f'complex_framework_without_flex_fronts_{n_samples_train}': {
+            'model': gnn_model_complex_framework_without_front_flex,
+            'optimizer': optimizer_gnn_complex_framework_without_front_flex,
+            'criterion': criterion_gnn_complex_framework_without_front_flex,
+            'train_set': train_loader_gnn_model_complex_framework_without_front_flex,
+            'val_set': val_loader_gnn_model_complex_framework_without_front_flex,
+            'test_set': test_loader_gnn_model_complex_framework_without_front_flex
+        },
+
+        f'graphsage_{n_samples_train}': {
+            'model': gnn_model_simple_graphsage,
+            'optimizer': optimizer_gnn_simple_graphsage,
+            'criterion': criterion_gnn_simple_graphsage,
+            'train_set': train_loader_gnn_simple_graphsage,
+            'val_set': val_loader_gnn_simple_graphsage,
+            'test_set': test_loader_gnn_simple_graphsage
+        },
+
+        f'gin_{n_samples_train}': {
+            'model': gnn_model_simple_gin,
+            'optimizer': optimizer_gnn_simple_gin,
+            'criterion': criterion_gnn_simple_gin,
+            'train_set': train_loader_gnn_simple_gin,
+            'val_set': val_loader_gnn_simple_gin,
+            'test_set': test_loader_gnn_simple_gin
+        },
+
+        f'complex_framework_gin_without_flex_fronts_{n_samples_train}': {
+            'model': gnn_model_complex_framework_gin_without_front_flex,
+            'optimizer': optimizer_gnn_complex_framework_gin_without_front_flex,
+            'criterion': criterion_gnn_complex_framework_gin_without_front_flex,
+            'train_set': train_loader_gnn_model_complex_framework_gin_without_front_flex,
+            'val_set': val_loader_gnn_model_complex_framework_gin_without_front_flex,
+            'test_set': test_loader_gnn_model_complex_framework_gin_without_front_flex
+        },
+
+        f'simple_framework_gin_without_flex_fronts_{n_samples_train}': {
+            'model': gnn_model_simple_framework_gin_without_front_flex,
+            'optimizer': optimizer_gnn_simple_framework_gin_without_front_flex,
+            'criterion': criterion_gnn_simple_framework_gin_without_front_flex,
+            'train_set': train_loader_gnn_model_simple_framework_gin_without_front_flex,
+            'val_set': val_loader_gnn_model_simple_framework_gin_without_front_flex,
+            'test_set': test_loader_gnn_model_simple_framework_gin_without_front_flex
         }
     }
 

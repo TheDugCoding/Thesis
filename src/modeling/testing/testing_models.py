@@ -50,6 +50,7 @@ n_runs = 20  # set your N here
 
 # which rq do we want to answer?
 rq_run = 'rq3_ex1'
+n_samples_rq_3 = 20
 
 #early stopping logic
 patience = 5
@@ -68,7 +69,7 @@ elif rq_run == 'rq2_ex1':
     results_path = get_src_sub_folder(relative_path_rq2_ex1_results)
 elif rq_run == 'rq3_ex1':
     # models to test
-    models_to_compare = model_list_rq3_ex1(data, 20)
+    models_to_compare = model_list_rq3_ex1(data, n_samples_rq_3)
     trained_model_path = get_src_sub_folder(relative_path_trained_model_rq3_ex1)
     results_path = get_src_sub_folder(relative_path_rq3_ex1_results)
 else:
@@ -105,6 +106,9 @@ for run in tqdm(range(n_runs), desc="Run progress"):
     print(f"\n======== RUN {run + 1}/{n_runs} ========\n")
     #save the run for training the model
     epoch_time_accumulator = {name: 0.0 for name in models_to_compare}
+
+    if rq_run == 'rq3_ex1':
+        models_to_compare = model_list_rq3_ex1(data, n_samples_rq_3)
 
     for name, components in models_to_compare.items():
         components['model'] = components['model'].to(device)
@@ -147,7 +151,7 @@ for run in tqdm(range(n_runs), desc="Run progress"):
                     train_duration = end_time - start_time
 
                     # Accumulate training time for this epoch
-                    epoch_time_accumulator[name] += train_duration
+                    #epoch_time_accumulator[name] += train_duration
 
                 #validation
                 log = (
@@ -277,3 +281,5 @@ for metric_name in ["pr_auc", "accuracy", "precision", "recall", "f1", "train_ti
     plt.tight_layout()
     plt.savefig(file_path)
     plt.show()
+
+    #change11

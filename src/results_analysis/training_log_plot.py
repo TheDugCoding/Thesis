@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 epochs = []
 losses = []
 
-with open('C://Users//lucad//OneDrive//Desktop//thesis//training results//training//pre training//training results - DGI framework//code_v2//training_log_only_elliptic_without_features_topo_false.txt', 'r') as f:
+with open('C:/Users/lucad/OneDrive/Desktop/temp/training_log_elliptic_with_features_topo_false.txt', 'r') as f:
     for line in f:
         if "Epoch" in line:
             parts = line.strip().split(',')
@@ -16,12 +16,12 @@ with open('C://Users//lucad//OneDrive//Desktop//thesis//training results//traini
 # Plotting
 plt.figure(figsize=(10, 5))
 plt.plot(epochs, losses, marker='o', linestyle='-', color='royalblue')
-plt.title('Training Loss Over Epochs, only elliptic without features without topological features')
+plt.title('DGI Training Loss Over 30 Epochs, trained on Rabobank, ecr_20 and Elliptic++')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.grid(True)
 plt.tight_layout()
 
-plt.savefig("C://Users//lucad//OneDrive//Desktop//thesis//training results//training//pre training//training results - DGI framework//code_v2//training_log_only_elliptic_without_features_topo_false.png")
+plt.savefig("C:/Users/lucad/OneDrive/Desktop/temp/plot.png")
 
 plt.show()
