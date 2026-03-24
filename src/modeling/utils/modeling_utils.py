@@ -3,8 +3,11 @@ import torch
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, f1_score, recall_score, average_precision_score, \
     precision_recall_curve, precision_score
 from tqdm import tqdm
+from torch_geometric.data import Batch
+
 
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
+from torch_geometric.loader import NeighborLoader
 
 script_dir = get_data_folder()
 relative_path_processed = 'processed'
@@ -16,9 +19,11 @@ trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
 
 
 # Training loop
-def train(train_loader, model, optimizer, device, criterion, framework=False):
+def train(data, num_neighbours, batch_size, model, optimizer, device, criterion, framework=False):
     """
-    :param train_loader:
+    :param data: list of PyG Data objects
+    :param num_neighbours:
+    :param batch_size:
     :param model:
     :param optimizer:
     :param device:
@@ -30,17 +35,25 @@ def train(train_loader, model, optimizer, device, criterion, framework=False):
     total_loss = 0
     total_examples = 0
 
+    batched_data = Batch.from_data_list(data)
+
+    train_loader = NeighborLoader(
+        batched_data,
+        shuffle=True,
+        num_neighbors=num_neighbours,
+        batch_size=batch_size,
+        input_nodes=batched_data.train_mask
+    )
+
     for batch in train_loader:
         batch = batch.to(device)
         optimizer.zero_grad()
 
-        # Forward pass
         if framework:
             out = model(batch)
         else:
             out = model(batch.x, batch.edge_index)
 
-        # Only calculate loss for the target (input) nodes, not the neighbors
         loss = criterion(out[:batch.batch_size], batch.y[:batch.batch_size])
         loss.backward()
         optimizer.step()
@@ -51,9 +64,11 @@ def train(train_loader, model, optimizer, device, criterion, framework=False):
     return total_loss / total_examples
 
 
-def validate(val_loader, model, device, framework=False):
+def validate(data, num_neighbours, batch_size, model, device, framework=False):
     """
-    :param val_loader: val_loader of the dataset
+    :param data: list of PyG Data objects
+    :param num_neighbours:
+    :param batch_size:
     :param model: gnn model to test
     :param device: the device to use
     :param framework: True if the model is the framework
@@ -64,10 +79,19 @@ def validate(val_loader, model, device, framework=False):
     true = []
     probs = []
 
+    batched_data = Batch.from_data_list(data)
+
+    val_loader = NeighborLoader(
+        batched_data,
+        shuffle=True,
+        num_neighbors=num_neighbours,
+        batch_size=batch_size,
+        input_nodes=batched_data.val_mask
+    )
+
     with torch.no_grad():
         for batch in val_loader:
             batch = batch.to(device)
-            # Forward pass
             if framework:
                 out = model(batch)
             else:
@@ -86,18 +110,27 @@ def validate(val_loader, model, device, framework=False):
     recall = recall_score(true_labels, preds, average='binary', pos_label=0)
     f1 = f1_score(true_labels, preds, average='binary', pos_label=0)
 
-    # PR-AUC
     probs_class0 = probs[:, 0]
     pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
 
     return accuracy, precision, recall, f1, pr_auc
 
 
-def evaluate(model, test_loader, device, name, framework=False):
+def evaluate(model, data, num_neighbours, batch_size, device, name, framework=False):
     model.eval()
     preds = []
     true = []
     probs = []
+
+    batched_data = Batch.from_data_list(data)
+
+    test_loader = NeighborLoader(
+        batched_data,
+        shuffle=False,
+        num_neighbors=num_neighbours,
+        batch_size=batch_size,
+        input_nodes=batched_data.test_mask
+    )
 
     with torch.no_grad():
         for batch in test_loader:
@@ -120,7 +153,6 @@ def evaluate(model, test_loader, device, name, framework=False):
     recall = recall_score(true_labels, preds, average='binary', pos_label=0)
     f1 = f1_score(true_labels, preds, average='binary', pos_label=0)
 
-    # PR-AUC
     probs_class0 = probs[:, 0]
     pr_auc = average_precision_score(true_labels, probs_class0, pos_label=0, average='weighted')
     precision_plot, recall_vals, pr_thresholds = precision_recall_curve(true_labels, probs_class0, pos_label=0)
@@ -131,7 +163,7 @@ def evaluate(model, test_loader, device, name, framework=False):
     disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_model)
     disp.plot()
     plt.title(f'Confusion Matrix {name}')
-    plt.show()
+    #plt.show()
 
     fig = plt.figure(figsize=(8, 6))
     plt.plot(recall_vals, precision_plot, label=f'PR-AUC = {pr_auc:.4f}', color='blue')
@@ -141,7 +173,6 @@ def evaluate(model, test_loader, device, name, framework=False):
     plt.legend(loc='lower left')
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
-
+    #plt.show()
 
     return accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, (precision, recall_vals, pr_thresholds), fig

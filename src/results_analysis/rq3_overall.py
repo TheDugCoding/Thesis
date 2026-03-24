@@ -1,16 +1,19 @@
 import matplotlib.pyplot as plt
 import re
 from collections import defaultdict
+import os
+
+OUTPUT = "C:/Users/lucad/OneDrive/Desktop/paper_thesis/new_results/ex3/rq3_summary/"
 
 # Full paths to your files
 files = [
-    ("C:/Users/lucad/OneDrive/Desktop/experiments_results/new_results/rq3_results/rq3_summary/metrics_summary_20.txt", 20),
-    ("C:/Users/lucad/OneDrive/Desktop/experiments_results/new_results/rq3_results/rq3_summary/metrics_summary_100.txt", 100),
-    ("C:/Users/lucad/OneDrive/Desktop/experiments_results/new_results/rq3_results/rq3_summary/metrics_summary_500.txt", 500),
-    ("C:/Users/lucad/OneDrive/Desktop/experiments_results/new_results/rq3_results/rq3_summary/metrics_summary_1000.txt", 1000),
-    ("C:/Users/lucad/OneDrive/Desktop/experiments_results/new_results/rq3_results/rq3_summary/metrics_summary_2000.txt", 2000),
-    ("C:/Users/lucad/OneDrive/Desktop/experiments_results/new_results/rq3_results/rq3_summary/metrics_summary_5000.txt", 5000),
-    ("C:/Users/lucad/OneDrive/Desktop/experiments_results/new_results/rq3_results/rq3_summary/metrics_summary_10000.txt", 10000),
+    ("C:/Users/lucad/OneDrive/Desktop/paper_thesis/new_results/ex3/rq3_summary/metrics_summary_20.txt", 20),
+    ("C:/Users/lucad/OneDrive/Desktop/paper_thesis/new_results/ex3/rq3_summary/metrics_summary_100.txt", 100),
+    ("C:/Users/lucad/OneDrive/Desktop/paper_thesis/new_results/ex3/rq3_summary/metrics_summary_500.txt", 500),
+    ("C:/Users/lucad/OneDrive/Desktop/paper_thesis/new_results/ex3/rq3_summary/metrics_summary_1000.txt", 1000),
+    ("C:/Users/lucad/OneDrive/Desktop/paper_thesis/new_results/ex3/rq3_summary/metrics_summary_2000.txt", 2000),
+    ("C:/Users/lucad/OneDrive/Desktop/paper_thesis/new_results/ex3/rq3_summary/metrics_summary_5000.txt", 5000),
+    ("C:/Users/lucad/OneDrive/Desktop/paper_thesis/new_results/ex3/rq3_summary/metrics_summary_10000.txt", 10000),
 ]
 
 model_name_map = {
@@ -18,8 +21,8 @@ model_name_map = {
     "complex_framework_without_flex_fronts": "SEF",
     "graphsage": "GraphSAGE",
     "gin": "GIN",
-    "complex_framework_gin_without_flex_fronts": "SEF - GIN variation",
-    "simple_framework_gin_without_flex_fronts": "PAF - GIN variation",
+    "complex_framework_gin_without_flex_fronts": "SEF-GIN",
+    "simple_framework_gin_without_flex_fronts": "PAF-GIN",
     "graphsage_all_features": "GraphSAGE - TD",
 }
 
@@ -76,5 +79,5 @@ plt.title("PR-AUC vs Training Sample Size")
 plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15))
 plt.grid(True)
 plt.tight_layout()
-plt.savefig("pr_auc_vs_sample_size_gra_all.jpg", bbox_inches="tight")
+plt.savefig(os.path.join(OUTPUT, "pr_auc_vs_sample_size_gra_all.jpg"), bbox_inches="tight", dpi=300)
 plt.show()

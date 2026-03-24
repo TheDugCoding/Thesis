@@ -25,7 +25,7 @@ relative_path_trained_dgi = 'modeling/pre_training/topological_pre_training/trai
 relative_path_rq1_ex1_results = 'modeling/testing/rq1_ex1_results'
 relative_path_rq2_ex1_results = 'modeling/testing/rq2_ex1_results'
 relative_path_rq3_ex1_results = 'modeling/testing/rq3_ex1_results'
-processed_data_path = get_data_sub_folder(relative_path_processed)
+processed_data_path = "D:/University/thesis_dataset/processed"
 trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
 
 if torch.cuda.is_available():
@@ -37,7 +37,6 @@ else:
 
 # Load your dataset
 data = EllipticDataset(root=processed_data_path)
-data = data[1]
 
 # define the epochs for training
 epochs = 50
@@ -49,8 +48,8 @@ n_runs = 20  # set your N here
 
 
 # which rq do we want to answer?
-rq_run = 'rq3_ex1'
-n_samples_rq_3 = 20
+rq_run = 'rq1_ex1'
+n_samples_rq_3 = 500
 
 #early stopping logic
 patience = 5
@@ -138,9 +137,9 @@ for run in tqdm(range(n_runs), desc="Run progress"):
                     start_time = time.time()
 
                     if 'framework' in name:
-                        loss_gnn = train(components['train_set'], components['model'], components['optimizer'], device, components['criterion'], True)
+                        loss_gnn = train(components['data'][0:29], components['num_neighbours'], components['batch_size'], components['model'], components['optimizer'], device, components['criterion'], True)
                     else:
-                        loss_gnn = train(components['train_set'], components['model'], components['optimizer'], device,
+                        loss_gnn = train(components['data'][0:29], components['num_neighbours'], components['batch_size'], components['model'], components['optimizer'], device,
                                          components['criterion'], False)
                     log = (f"Loss {name}: {loss_gnn:.6f}\n")
                     print(log)
@@ -164,9 +163,9 @@ for run in tqdm(range(n_runs), desc="Run progress"):
                         continue
 
                     if 'framework' in name:
-                        accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_set'], components['model'], device, True)
+                        accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['data'][29:36], components['num_neighbours'], components['batch_size'], components['model'], device, True)
                     else:
-                        accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_set'], components['model'], device,
+                        accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['data'][29:36], components['num_neighbours'], components['batch_size'], components['model'], device,
                                                                                 False)
                     # Logging
                     log = (
@@ -205,9 +204,9 @@ for run in tqdm(range(n_runs), desc="Run progress"):
         f.write("----EVALUATION----\n")
         for name, components in models_to_compare.items():
             if 'framework' in name:
-                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['test_set'], device, name, True)
+                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['data'][36:42], components['num_neighbours'], components['batch_size'], device, name, True)
             else:
-                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['test_set'], device,
+                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['data'][36:42], components['num_neighbours'], components['batch_size'], device,
                                                                                 name, False)
 
             # print the results
@@ -280,6 +279,6 @@ for metric_name in ["pr_auc", "accuracy", "precision", "recall", "f1", "train_ti
 
     plt.tight_layout()
     plt.savefig(file_path)
-    plt.show()
+    #plt.show()
 
     #change11

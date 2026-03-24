@@ -22,7 +22,8 @@ EPS = 1e-15
 script_dir = get_data_folder()
 relative_path_processed = 'processed'
 relative_path_trained_model = 'modeling/pre_training/topological_pre_training/trained_models'
-processed_data_path = get_data_sub_folder(relative_path_processed)
+processed_data_path = 'D:/University/THESIS DATASET/processed'
+#processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_model_path = get_src_sub_folder(relative_path_trained_model)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

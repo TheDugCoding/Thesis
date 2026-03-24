@@ -401,8 +401,8 @@ def objective_graphsage(trial):
     return pr_auc
 
 def objective_graphsage_all_features(trial):
-    # data_all_features = copy.deepcopy(data)
-    # data_all_features.x = torch.cat([data.x, data.topological_features], dim=1)
+    data_all_features = copy.deepcopy(data)
+    data_all_features.x = torch.cat([data.x, data.topological_features], dim=1)
 
     # hyper-parameters
     norm_choice = trial.suggest_categorical("norm", ["batch", "layer", "graph", None])
@@ -792,144 +792,144 @@ def objective_gin_all_features(trial):
     return pr_auc
 
 
-# with open(os.path.join(finetuning_results, "graphsage_and_mlp_finetuning.txt"), "w") as file:
-#     # run Optuna study
-#     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_graphsage_and_mlp, n_trials=60, show_progress_bar=True)
-#
-#     # print and save the best trial
-#     file.write("Best trial:\n")
-#     trial = study.best_trial
-#     file.write(f"  PR-AUC Score: {trial.value}\n")
-#     file.write("  Best hyperparameters:\n")
-#
-#     for key, value in trial.params.items():
-#         file.write(f"    {key}: {value}\n")
+with open(os.path.join(finetuning_results, "graphsage_and_mlp_finetuning.txt"), "w") as file:
+    # run Optuna study
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective_graphsage_and_mlp, n_trials=60, show_progress_bar=True)
 
-# with open(os.path.join(finetuning_results, "dgi_and_mlp_finetuning.txt"), "w") as file:
-#     # run Optuna study
-#     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_dgi_and_mlp, n_trials=60, show_progress_bar=True)
-#
-#     # print and save the best trial
-#     file.write("Best trial:\n")
-#     trial = study.best_trial
-#     file.write(f"  PR-AUC Score: {trial.value}\n")
-#     file.write("  Best hyperparameters:\n")
-#
-#     for key, value in trial.params.items():
-#         file.write(f"    {key}: {value}\n")
+    # print and save the best trial
+    file.write("Best trial:\n")
+    trial = study.best_trial
+    file.write(f"  PR-AUC Score: {trial.value}\n")
+    file.write("  Best hyperparameters:\n")
 
-# with open(os.path.join(finetuning_results, "graphsage_finetuning.txt"), "w") as file:
-#     # run Optuna study
-#     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_graphsage, n_trials=60, show_progress_bar=True)
-#
-#     # print and save the best trial
-#     file.write("Best trial:\n")
-#     trial = study.best_trial
-#     file.write(f"  PR-AUC Score: {trial.value}\n")
-#     file.write("  Best hyperparameters:\n")
-#
-#     for key, value in trial.params.items():
-#         file.write(f"    {key}: {value}\n")
-#
-# with open(os.path.join(finetuning_results, "graphsage_all_features_finetuning.txt"), "w") as file:
-#     # run Optuna study
-#     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_graphsage_all_features, n_trials=60, show_progress_bar=True)
-#
-#     # print and save the best trial
-#     file.write("Best trial:\n")
-#     trial = study.best_trial
-#     file.write(f"  PR-AUC Score: {trial.value}\n")
-#     file.write("  Best hyperparameters:\n")
-#
-#     for key, value in trial.params.items():
-#         file.write(f"    {key}: {value}\n")
-#
-# with open(os.path.join(finetuning_results, "gat_finetuning.txt"), "w") as file:
-#     # run Optuna study
-#     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_gat, n_trials=60, show_progress_bar=True)
-#
-#     # print and save the best trial
-#     file.write("Best trial:\n")
-#     trial = study.best_trial
-#     file.write(f"  PR-AUC Score: {trial.value}\n")
-#     file.write("  Best hyperparameters:\n")
-#
-#     for key, value in trial.params.items():
-#         file.write(f"    {key}: {value}\n")
-#
-# with open(os.path.join(finetuning_results, "gin_finetuning.txt"), "w") as file:
-#     # run Optuna study
-#     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_gin, n_trials=60, show_progress_bar=True)
-#
-#     # print and save the best trial
-#     file.write("Best trial:\n")
-#     trial = study.best_trial
-#     file.write(f"  PR-AUC Score: {trial.value}\n")
-#     file.write("  Best hyperparameters:\n")
-#
-#     for key, value in trial.params.items():
-#         file.write(f"    {key}: {value}\n")
-#
-# with open(os.path.join(finetuning_results, "gin_finetuning_all_features.txt"), "w") as file:
-#     # run Optuna study
-#     study = optuna.create_study(direction="maximize")
-#     study.optimize(objective_gin_all_features, n_trials=60, show_progress_bar=True)
-#
-#     # print and save the best trial
-#     file.write("Best trial:\n")
-#     trial = study.best_trial
-#     file.write(f"  PR-AUC Score: {trial.value}\n")
-#     file.write("  Best hyperparameters:\n")
-#
-#     for key, value in trial.params.items():
-#         file.write(f"    {key}: {value}\n")
-#
-# '''-----finetuning for research question 3 ----'''''
-#
-# train_set_sizes = [20, 100, 500, 1000, 2000, 5000]
-# original_train_mask = data.train_mask
-#
-# for train_set_size in train_set_sizes:
-#
-#     data.train_mask = original_train_mask
-#     data.train_mask, val_mask = reduce_train_val_masks(data, train_set_size, 300)
-#
-#     with open(os.path.join(finetuning_results, f"gin_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
+    for key, value in trial.params.items():
+        file.write(f"    {key}: {value}\n")
+
+with open(os.path.join(finetuning_results, "dgi_and_mlp_finetuning.txt"), "w") as file:
+    # run Optuna study
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective_dgi_and_mlp, n_trials=60, show_progress_bar=True)
+
+    # print and save the best trial
+    file.write("Best trial:\n")
+    trial = study.best_trial
+    file.write(f"  PR-AUC Score: {trial.value}\n")
+    file.write("  Best hyperparameters:\n")
+
+    for key, value in trial.params.items():
+        file.write(f"    {key}: {value}\n")
+
+with open(os.path.join(finetuning_results, "graphsage_finetuning.txt"), "w") as file:
+    # run Optuna study
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective_graphsage, n_trials=60, show_progress_bar=True)
+
+    # print and save the best trial
+    file.write("Best trial:\n")
+    trial = study.best_trial
+    file.write(f"  PR-AUC Score: {trial.value}\n")
+    file.write("  Best hyperparameters:\n")
+
+    for key, value in trial.params.items():
+        file.write(f"    {key}: {value}\n")
+
+with open(os.path.join(finetuning_results, "graphsage_all_features_finetuning.txt"), "w") as file:
+    # run Optuna study
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective_graphsage_all_features, n_trials=60, show_progress_bar=True)
+
+    # print and save the best trial
+    file.write("Best trial:\n")
+    trial = study.best_trial
+    file.write(f"  PR-AUC Score: {trial.value}\n")
+    file.write("  Best hyperparameters:\n")
+
+    for key, value in trial.params.items():
+        file.write(f"    {key}: {value}\n")
+
+with open(os.path.join(finetuning_results, "gat_finetuning.txt"), "w") as file:
+    # run Optuna study
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective_gat, n_trials=60, show_progress_bar=True)
+
+    # print and save the best trial
+    file.write("Best trial:\n")
+    trial = study.best_trial
+    file.write(f"  PR-AUC Score: {trial.value}\n")
+    file.write("  Best hyperparameters:\n")
+
+    for key, value in trial.params.items():
+        file.write(f"    {key}: {value}\n")
+
+with open(os.path.join(finetuning_results, "gin_finetuning.txt"), "w") as file:
+    # run Optuna study
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective_gin, n_trials=60, show_progress_bar=True)
+
+    # print and save the best trial
+    file.write("Best trial:\n")
+    trial = study.best_trial
+    file.write(f"  PR-AUC Score: {trial.value}\n")
+    file.write("  Best hyperparameters:\n")
+
+    for key, value in trial.params.items():
+        file.write(f"    {key}: {value}\n")
+
+with open(os.path.join(finetuning_results, "gin_finetuning_all_features.txt"), "w") as file:
+    # run Optuna study
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective_gin_all_features, n_trials=60, show_progress_bar=True)
+
+    # print and save the best trial
+    file.write("Best trial:\n")
+    trial = study.best_trial
+    file.write(f"  PR-AUC Score: {trial.value}\n")
+    file.write("  Best hyperparameters:\n")
+
+    for key, value in trial.params.items():
+        file.write(f"    {key}: {value}\n")
+
+'''-----finetuning for research question 3 ----'''''
+
+train_set_sizes = [20, 100, 500, 1000, 2000, 5000]
+original_train_mask = data.train_mask
+
+for train_set_size in train_set_sizes:
+
+    data.train_mask = original_train_mask
+    data.train_mask, val_mask = reduce_train_val_masks(data, train_set_size, 300)
+
+    with open(os.path.join(finetuning_results, f"gin_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
 
 
 
-#         # run Optuna study
-#         study = optuna.create_study(direction="maximize")
-#         study.optimize(objective_gin, n_trials=60, show_progress_bar=True)
-#
-#         # print and save the best trial
-#         file.write("Best trial:\n")
-#         trial = study.best_trial
-#         file.write(f"  PR-AUC Score: {trial.value}\n")
-#         file.write("  Best hyperparameters:\n")
-#
-#         for key, value in trial.params.items():
-#             file.write(f"    {key}: {value}\n")
-#
-#     with open(os.path.join(finetuning_results,  f"graphsage_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
-#         # run Optuna study
-#         study = optuna.create_study(direction="maximize")
-#         study.optimize(objective_graphsage, n_trials=60, show_progress_bar=True)
-#
-#         # print and save the best trial
-#         file.write("Best trial:\n")
-#         trial = study.best_trial
-#         file.write(f"  PR-AUC Score: {trial.value}\n")
-#         file.write("  Best hyperparameters:\n")
-#
-#         for key, value in trial.params.items():
-#             file.write(f"    {key}: {value}\n")
+        # run Optuna study
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective_gin, n_trials=60, show_progress_bar=True)
+
+        # print and save the best trial
+        file.write("Best trial:\n")
+        trial = study.best_trial
+        file.write(f"  PR-AUC Score: {trial.value}\n")
+        file.write("  Best hyperparameters:\n")
+
+        for key, value in trial.params.items():
+            file.write(f"    {key}: {value}\n")
+
+    with open(os.path.join(finetuning_results,  f"graphsage_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
+        # run Optuna study
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective_graphsage, n_trials=60, show_progress_bar=True)
+
+        # print and save the best trial
+        file.write("Best trial:\n")
+        trial = study.best_trial
+        file.write(f"  PR-AUC Score: {trial.value}\n")
+        file.write("  Best hyperparameters:\n")
+
+        for key, value in trial.params.items():
+            file.write(f"    {key}: {value}\n")
 
 train_set_sizes = [1000]
 data_all_features = copy.deepcopy(data)

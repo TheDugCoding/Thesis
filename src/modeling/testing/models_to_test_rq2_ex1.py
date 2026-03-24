@@ -40,24 +40,24 @@ def model_list_rq2_ex1(data):
     train_loader_gnn_model_complex_framework = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 20, 40],
-        batch_size=64,
+        num_neighbors=[5, 5, 10],
+        batch_size=128,
         input_nodes=data.train_mask
     )
 
     val_loader_gnn_model_complex_framework = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 20, 40],
-        batch_size=64,
+        num_neighbors=[5, 5, 10],
+        batch_size=128,
         input_nodes=data.val_mask
     )
 
     test_loader_gnn_model_complex_framework = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[10, 20, 40],
-        batch_size=64,
+        num_neighbors=[5, 5, 10],
+        batch_size=128,
         input_nodes=data.test_mask
     )
 
@@ -83,9 +83,10 @@ def model_list_rq2_ex1(data):
         hidden_channels=128,
         num_layers=3,
         out_channels=2,
-        dropout=0.3935595942964136,
-        act='gelu',
-        aggr='max'
+        dropout=0.43960265115841607,
+        act='relu',
+        aggr='mean',
+        norm=BatchNorm(128)
     )
 
     gnn_model_complex_framework = DGIPlusGNN(dgi_model_without_flipping_layer,
@@ -93,7 +94,7 @@ def model_list_rq2_ex1(data):
                                                                 False)
     optimizer_gnn_complex_framework = torch.optim.Adam(
         gnn_model_complex_framework.parameters(),
-        lr=0.001576586258891951, weight_decay=1.2813913397210403e-06)
+        lr=0.0001781660288878494, weight_decay=0.00048693914641231314)
     criterion_gnn_complex_framework = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS FREE neighbors----"""
@@ -101,24 +102,24 @@ def model_list_rq2_ex1(data):
     train_loader_gnn_model_complex_framework_free_neighbours = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[20, 20],
-        batch_size=64,
+        num_neighbors=[5, 5, 10],
+        batch_size=128,
         input_nodes=data.train_mask
     )
 
     val_loader_gnn_model_complex_framework_free_neighbours = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[20, 20],
-        batch_size=64,
+        num_neighbors=[5, 5, 10],
+        batch_size=128,
         input_nodes=data.val_mask
     )
 
     test_loader_gnn_model_complex_framework_free_neighbours = NeighborLoader(
         data,
         shuffle=True,
-        num_neighbors=[20, 20],
-        batch_size=64,
+        num_neighbors=[5, 5, 10],
+        batch_size=128,
         input_nodes=data.test_mask
     )
 
@@ -142,13 +143,13 @@ def model_list_rq2_ex1(data):
     # same model as in graphsage_elliptic, used in the framework
     gnn_model_downstream_framework_without_flipping_layer_free_neighbours = GraphSAGE(
         in_channels=data.num_features + 128,
-        hidden_channels=64,
-        num_layers=2,
+        hidden_channels=128,
+        num_layers=3,
         out_channels=2,
-        dropout=0.29589217532879475,
-        act='leaky_relu',
+        dropout=0.43960265115841607,
+        act='relu',
         aggr='mean',
-        norm=LayerNorm(64)
+        norm=BatchNorm(128)
     )
 
     gnn_model_complex_framework_free_neighbours = DGIPlusGNN(dgi_model_without_flipping_layer_free_neighbours,
@@ -156,7 +157,7 @@ def model_list_rq2_ex1(data):
                                              False)
     optimizer_gnn_complex_framework_free_neighbours = torch.optim.Adam(
         gnn_model_complex_framework_free_neighbours.parameters(),
-        lr=0.0010973471670497812, weight_decay=3.6466598961028814e-06)
+        lr=0.0001781660288878494, weight_decay=0.00048693914641231314)
     criterion_gnn_complex_framework_free_neighbours = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS FIRST LAYER UNFREEZE----"""
@@ -165,7 +166,7 @@ def model_list_rq2_ex1(data):
         data,
         shuffle=True,
         num_neighbors=[10, 20, 40],
-        batch_size=64,
+        batch_size=256,
         input_nodes=data.train_mask
     )
 
@@ -173,7 +174,7 @@ def model_list_rq2_ex1(data):
         data,
         shuffle=True,
         num_neighbors=[10, 20, 40],
-        batch_size=64,
+        batch_size=256,
         input_nodes=data.val_mask
     )
 
@@ -181,7 +182,7 @@ def model_list_rq2_ex1(data):
         data,
         shuffle=True,
         num_neighbors=[10, 20, 40],
-        batch_size=64,
+        batch_size=256,
         input_nodes=data.test_mask
     )
 
@@ -208,13 +209,13 @@ def model_list_rq2_ex1(data):
     # same model as in graphsage_elliptic, used in the framework
     gnn_model_downstream_framework_without_flipping_layer = GraphSAGE(
         in_channels=data.num_features + 128,
-        hidden_channels=128,
+        hidden_channels=256,
         num_layers=3,
         out_channels=2,
-        dropout=0.3924124808373503,
+        dropout=0.45137619957974573,
         act='leaky_relu',
-        aggr='max',
-        norm=LayerNorm(128)
+        aggr='mean',
+        norm=BatchNorm(256)
     )
 
     gnn_model_complex_framework_without_front_flex_first_layer_not_frozen = DGIPlusGNN(dgi_model_without_flipping_layer,
@@ -222,7 +223,7 @@ def model_list_rq2_ex1(data):
                                                                                        False)
     optimizer_gnn_complex_framework_without_front_flex_first_layer_not_frozen = torch.optim.Adam(
         gnn_model_complex_framework_without_front_flex_first_layer_not_frozen.parameters(),
-        lr=0.00028283402560412275, weight_decay=1.0065507645710068e-05)
+        lr=0.0028937590980406764, weight_decay=5.043122266147557e-06)
     criterion_gnn_complex_framework_without_front_flex_first_layer_not_frozen = torch.nn.CrossEntropyLoss(
         ignore_index=-1)
 
@@ -232,7 +233,7 @@ def model_list_rq2_ex1(data):
         data,
         shuffle=True,
         num_neighbors=[10, 20, 40],
-        batch_size=64,
+        batch_size=256,
         input_nodes=data.train_mask
     )
 
@@ -240,7 +241,7 @@ def model_list_rq2_ex1(data):
         data,
         shuffle=True,
         num_neighbors=[10, 20, 40],
-        batch_size=64,
+        batch_size=256,
         input_nodes=data.val_mask
     )
 
@@ -248,7 +249,7 @@ def model_list_rq2_ex1(data):
         data,
         shuffle=True,
         num_neighbors=[10, 20, 40],
-        batch_size=64,
+        batch_size=256,
         input_nodes=data.test_mask
     )
 
@@ -276,10 +277,9 @@ def model_list_rq2_ex1(data):
         hidden_channels=256,
         num_layers=3,
         out_channels=2,
-        dropout=0.3920708559051057,
+        dropout=0.43196895784900224,
         act='leaky_relu',
         aggr='mean',
-        norm=BatchNorm(256)
     )
 
     gnn_model_complex_framework_without_front_flex_last_layer_not_frozen = DGIPlusGNN(dgi_model_without_flipping_layer,
@@ -287,7 +287,7 @@ def model_list_rq2_ex1(data):
                                                                                        False)
     optimizer_gnn_complex_framework_without_front_flex_last_layer_not_frozen = torch.optim.Adam(
         gnn_model_complex_framework_without_front_flex_last_layer_not_frozen.parameters(),
-        lr=0.0014857860641543151, weight_decay=3.89973741459744e-06)
+        lr=0.001853192775495936, weight_decay=1.9638929703388476e-06)
     criterion_gnn_complex_framework_without_front_flex_last_layer_not_frozen = torch.nn.CrossEntropyLoss(
         ignore_index=-1)
 
@@ -297,7 +297,7 @@ def model_list_rq2_ex1(data):
         data,
         shuffle=True,
         num_neighbors=[10, 10, 25],
-        batch_size=64,
+        batch_size=32,
         input_nodes=data.train_mask
     )
 
@@ -305,7 +305,7 @@ def model_list_rq2_ex1(data):
         data,
         shuffle=True,
         num_neighbors=[10, 10, 25],
-        batch_size=64,
+        batch_size=32,
         input_nodes=data.val_mask
     )
 
@@ -313,7 +313,7 @@ def model_list_rq2_ex1(data):
         data,
         shuffle=True,
         num_neighbors=[10, 10, 25],
-        batch_size=64,
+        batch_size=32,
         input_nodes=data.test_mask
     )
 
@@ -339,9 +339,9 @@ def model_list_rq2_ex1(data):
         hidden_channels=256,
         num_layers=3,
         out_channels=2,
-        dropout=  0.3437867344974849,
-        act='relu',
-        aggr='max',
+        dropout=0.26328036840734287,
+        act='leaky_relu',
+        aggr='mean',
     )
 
     gnn_model_complex_framework_without_front_flex_GIN = DGIPlusGNN(dgi_model_without_flipping_layer_GIN,
@@ -349,7 +349,7 @@ def model_list_rq2_ex1(data):
                                                                 False)
     optimizer_gnn_complex_framework_without_front_flex_GIN = torch.optim.Adam(
         gnn_model_complex_framework_without_front_flex_GIN.parameters(),
-        lr=0.0001505497888085146, weight_decay=5.7300964809268546e-05)
+        lr=0.00034112978546607924, weight_decay=0.000385338938483396)
     criterion_gnn_complex_framework_without_front_flex_GIN = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS INFONCE----"""
@@ -398,13 +398,12 @@ def model_list_rq2_ex1(data):
     # same model as in graphsage_elliptic, used in the framework
     gnn_model_downstream_framework_without_flipping_layer_INFONCE = GraphSAGE(
         in_channels=data.num_features + 64,
-        hidden_channels=128,
+        hidden_channels=256,
         num_layers=3,
         out_channels=2,
-        dropout=0.27552420071054384,
-        act='relu',
-        aggr='max',
-        norm=LayerNorm(128)
+        dropout=0.27540325451229625,
+        act='leaky_relu',
+        aggr='mean',
     )
 
     gnn_model_complex_framework_without_front_flex_INFONCE = DGIPlusGNN(dgi_model_without_flipping_layer_INFONCE,
@@ -412,7 +411,7 @@ def model_list_rq2_ex1(data):
                                                                 False)
     optimizer_gnn_complex_framework_without_front_flex_INFONCE = torch.optim.Adam(
         gnn_model_complex_framework_without_front_flex_INFONCE.parameters(),
-        lr=0.0010249822630056136, weight_decay=9.010230354994904e-06)
+        lr=0.0019057881038879742, weight_decay=1.4662850459106738e-05)
     criterion_gnn_complex_framework_without_front_flex_INFONCE = torch.nn.CrossEntropyLoss(ignore_index=-1)
     
     
@@ -420,14 +419,14 @@ def model_list_rq2_ex1(data):
     # Store all in a nested dict, all the models above must be in this dict
     model_dict = {
 
-        # 'complex_framework_without_flex_fronts': {
-        #     'model': gnn_model_complex_framework,
-        #     'optimizer': optimizer_gnn_complex_framework,
-        #     'criterion': criterion_gnn_complex_framework,
-        #     'train_set': train_loader_gnn_model_complex_framework,
-        #     'val_set': val_loader_gnn_model_complex_framework,
-        #     'test_set': test_loader_gnn_model_complex_framework
-        # },
+        'complex_framework_without_flex_fronts': {
+            'model': gnn_model_complex_framework,
+            'optimizer': optimizer_gnn_complex_framework,
+            'criterion': criterion_gnn_complex_framework,
+            'train_set': train_loader_gnn_model_complex_framework,
+            'val_set': val_loader_gnn_model_complex_framework,
+            'test_set': test_loader_gnn_model_complex_framework
+        },
 
         'complex_framework_without_flex_fronts_free_neighbours': {
             'model': gnn_model_complex_framework_free_neighbours,
@@ -438,42 +437,42 @@ def model_list_rq2_ex1(data):
             'test_set': test_loader_gnn_model_complex_framework_free_neighbours
         },
 
-        #
-        # 'complex_framework_without_flex_fronts_first_layer_not_frozen': {
-        #     'model': gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
-        #     'optimizer': optimizer_gnn_complex_framework_without_front_flex_first_layer_not_frozen,
-        #     'criterion': criterion_gnn_complex_framework_without_front_flex_first_layer_not_frozen,
-        #     'train_set': train_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
-        #     'val_set': val_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
-        #     'test_set': test_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen
-        # },
-        #
-        # 'complex_framework_without_flex_fronts_last_layer_not_frozen': {
-        #     'model': gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
-        #     'optimizer': optimizer_gnn_complex_framework_without_front_flex_last_layer_not_frozen,
-        #     'criterion': criterion_gnn_complex_framework_without_front_flex_last_layer_not_frozen,
-        #     'train_set': train_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
-        #     'val_set': val_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
-        #     'test_set': test_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen
-        # },
-        #
-        # 'complex_framework_without_flex_fronts_GIN_encoder': {
-        #     'model': gnn_model_complex_framework_without_front_flex_GIN,
-        #     'optimizer': optimizer_gnn_complex_framework_without_front_flex_GIN,
-        #     'criterion': criterion_gnn_complex_framework_without_front_flex_GIN,
-        #     'train_set': train_loader_gnn_model_complex_framework_without_front_flex_GIN,
-        #     'val_set': val_loader_gnn_model_complex_framework_without_front_flex_GIN,
-        #     'test_set': test_loader_gnn_model_complex_framework_without_front_flex_GIN
-        # },
-        #
-        # 'complex_framework_without_flex_fronts_INFONCE': {
-        #     'model': gnn_model_complex_framework_without_front_flex_INFONCE,
-        #     'optimizer': optimizer_gnn_complex_framework_without_front_flex_INFONCE,
-        #     'criterion': criterion_gnn_complex_framework_without_front_flex_INFONCE,
-        #     'train_set': train_loader_gnn_model_complex_framework_without_front_flex_INFONCE,
-        #     'val_set': val_loader_gnn_model_complex_framework_without_front_flex_INFONCE,
-        #     'test_set': test_loader_gnn_model_complex_framework_without_front_flex_INFONCE
-        # }
+
+        'complex_framework_without_flex_fronts_first_layer_not_frozen': {
+            'model': gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
+            'optimizer': optimizer_gnn_complex_framework_without_front_flex_first_layer_not_frozen,
+            'criterion': criterion_gnn_complex_framework_without_front_flex_first_layer_not_frozen,
+            'train_set': train_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
+            'val_set': val_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen,
+            'test_set': test_loader_gnn_model_complex_framework_without_front_flex_first_layer_not_frozen
+        },
+
+        'complex_framework_without_flex_fronts_last_layer_not_frozen': {
+            'model': gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
+            'optimizer': optimizer_gnn_complex_framework_without_front_flex_last_layer_not_frozen,
+            'criterion': criterion_gnn_complex_framework_without_front_flex_last_layer_not_frozen,
+            'train_set': train_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
+            'val_set': val_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen,
+            'test_set': test_loader_gnn_model_complex_framework_without_front_flex_last_layer_not_frozen
+        },
+
+        'complex_framework_without_flex_fronts_GIN_encoder': {
+            'model': gnn_model_complex_framework_without_front_flex_GIN,
+            'optimizer': optimizer_gnn_complex_framework_without_front_flex_GIN,
+            'criterion': criterion_gnn_complex_framework_without_front_flex_GIN,
+            'train_set': train_loader_gnn_model_complex_framework_without_front_flex_GIN,
+            'val_set': val_loader_gnn_model_complex_framework_without_front_flex_GIN,
+            'test_set': test_loader_gnn_model_complex_framework_without_front_flex_GIN
+        },
+
+        'complex_framework_without_flex_fronts_INFONCE': {
+            'model': gnn_model_complex_framework_without_front_flex_INFONCE,
+            'optimizer': optimizer_gnn_complex_framework_without_front_flex_INFONCE,
+            'criterion': criterion_gnn_complex_framework_without_front_flex_INFONCE,
+            'train_set': train_loader_gnn_model_complex_framework_without_front_flex_INFONCE,
+            'val_set': val_loader_gnn_model_complex_framework_without_front_flex_INFONCE,
+            'test_set': test_loader_gnn_model_complex_framework_without_front_flex_INFONCE
+        }
         
         
         
