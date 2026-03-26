@@ -83,7 +83,7 @@ def validate(data, num_neighbours, batch_size, model, device, framework=False):
 
     val_loader = NeighborLoader(
         batched_data,
-        shuffle=True,
+        shuffle=False,
         num_neighbors=num_neighbours,
         batch_size=batch_size,
         input_nodes=batched_data.val_mask
@@ -175,4 +175,4 @@ def evaluate(model, data, num_neighbours, batch_size, device, name, framework=Fa
     plt.tight_layout()
     #plt.show()
 
-    return accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, (precision, recall_vals, pr_thresholds), fig
+    return accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, (precision_plot, recall_vals, pr_thresholds), fig

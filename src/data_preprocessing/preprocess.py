@@ -894,7 +894,7 @@ def visualize_elliptic_dataset(dataset, save_path=None):
     G = to_networkx(g, to_undirected=True)
 
     # sample a subgraph of max 300 nodes so the layout is readable
-    max_nodes = 300
+    max_nodes = 40000
     if G.number_of_nodes() > max_nodes:
         sampled_nodes = list(G.nodes())[:max_nodes]
         G = G.subgraph(sampled_nodes).copy()

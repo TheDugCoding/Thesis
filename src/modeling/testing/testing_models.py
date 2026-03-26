@@ -103,11 +103,18 @@ for subdir, dirs, files in os.walk(results_path):
 
 for run in tqdm(range(n_runs), desc="Run progress"):
     print(f"\n======== RUN {run + 1}/{n_runs} ========\n")
-    #save the run for training the model
-    epoch_time_accumulator = {name: 0.0 for name in models_to_compare}
 
-    if rq_run == 'rq3_ex1':
+
+    #reset models
+    if rq_run == 'rq1_ex1':
+        models_to_compare = model_list_rq1_ex1(data)
+    elif rq_run == 'rq2_ex1':
+        models_to_compare = model_list_rq2_ex1(data)
+    elif rq_run == 'rq3_ex1':
         models_to_compare = model_list_rq3_ex1(data, n_samples_rq_3)
+
+    # save the run for training the model
+    epoch_time_accumulator = {name: 0.0 for name in models_to_compare}
 
     for name, components in models_to_compare.items():
         components['model'] = components['model'].to(device)
@@ -150,7 +157,7 @@ for run in tqdm(range(n_runs), desc="Run progress"):
                     train_duration = end_time - start_time
 
                     # Accumulate training time for this epoch
-                    #epoch_time_accumulator[name] += train_duration
+                    epoch_time_accumulator[name] += train_duration
 
                 #validation
                 log = (
@@ -176,9 +183,12 @@ for run in tqdm(range(n_runs), desc="Run progress"):
                     file.write(log)
 
                     # Early stopping logic
-                    if auc_pr_gnn > best_auc_pr[name] + min_delta:
+                    if auc_pr_gnn > best_auc_pr[name] + min_delta or epoch == 0:
                         best_auc_pr[name] = auc_pr_gnn
                         epochs_no_improve[name] = 0
+                        #save the best model
+                        torch.save(components['model'].state_dict(),
+                                   os.path.join(trained_model_path, f'{name}_gnn_trained.pth'))
                     else:
                         epochs_no_improve[name] += 1
                         if epochs_no_improve[name] >= patience:
@@ -187,14 +197,12 @@ for run in tqdm(range(n_runs), desc="Run progress"):
                             file.write(log)
                             early_stop_flags[name] = True
 
-        for name, components in models_to_compare.items():
-            torch.save(components['model'].state_dict(), os.path.join(trained_model_path, f'{name}_gnn_trained.pth'))
-    else:
-        for name, components in models_to_compare.items():
-            components['model'].load_state_dict(
-                torch.load(os.path.join(trained_model_path, f'{name}_gnn_trained.pth'), map_location=device))
-            # save training time per model
-            metrics_results[name]["train_time"].append(epoch_time_accumulator[name])
+    #load best model
+    for name, components in models_to_compare.items():
+        best_path = os.path.join(trained_model_path, f'{name}_gnn_trained.pth')
+        components['model'].load_state_dict(
+            torch.load(best_path, map_location=device))
+        metrics_results[name]["train_time"].append(epoch_time_accumulator[name])
 
     # Inference
     print("\n----EVALUATION----\n")
@@ -236,9 +244,11 @@ for run in tqdm(range(n_runs), desc="Run progress"):
             disp.plot()
             plt.title(f'Confusion Matrix {name}')
             plt.savefig(os.path.join(results_path, f"confusion_matrix/confusion_matrix_{name}_plot_run{run + 1}.png"))
+            plt.close()
             print(confusion_matrix_model)
 
             fig_pr_curve.savefig(os.path.join(results_path, f"precision_recall_curve/precision_recall_curve_{name}_plot_run{run + 1}.png"))
+            plt.close(fig_pr_curve)
 
 
 
@@ -281,4 +291,4 @@ for metric_name in ["pr_auc", "accuracy", "precision", "recall", "f1", "train_ti
     plt.savefig(file_path)
     #plt.show()
 
-    #change11
+    #change1
