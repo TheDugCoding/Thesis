@@ -921,111 +921,111 @@ with open(os.path.join(finetuning_results, "framework_simple_finetuning_only_deg
     for key, value in trial.params.items():
         file.write(f"    {key}: {value}\n")
 
-'''------------------answering rq2---------------------'''
-
-"""----GIN ENCODER VARIATION---"""
-with open(os.path.join(finetuning_results, "framework_complex_gin_encoder_finetuning.txt"), "w") as file:
-    # run Optuna study
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective_framework_complex_gin_encoder, n_trials=30, show_progress_bar=True)
-
-    # print and save the best trial
-    file.write("Best trial:\n")
-    trial = study.best_trial
-    file.write(f"  PR-AUC Score: {trial.value}\n")
-    file.write("  Best hyperparameters:\n")
-
-    for key, value in trial.params.items():
-        file.write(f"    {key}: {value}\n")
-
-    '''-----answering rq3'''
-
-"""----INFONCE VARIATION---"""
-
-train_set_sizes = [20, 100, 500, 1000, 2000, 5000]
-
-for train_set_size in train_set_sizes:
-
-    # Create a reduced copy each time — don't overwrite the original `data`
-    data = reduce_train_val_masks(original_data, train_set_size, 300)
-
-    print('--------------------')
-    total_train = sum(data[i].train_mask.sum().item() for i in range(29))
-    print(f"Train set size: {total_train}")
-    print('--------------------')
-
-    #
-    with open(os.path.join(finetuning_results, f"framework_simple_finetuning_train_set_size_{train_set_size}.txt"),
-              "w") as file:
-        # run Optuna study
-        study = optuna.create_study(direction="maximize")
-        study.optimize(objective_framework_simple, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
-
-        # print and save the best trial
-        file.write("Best trial:\n")
-        trial = study.best_trial
-        file.write(f"  PR-AUC Score: {trial.value}\n")
-        file.write("  Best hyperparameters:\n")
-
-        for key, value in trial.params.items():
-            file.write(f"    {key}: {value}\n")
-
-    with open(os.path.join(finetuning_results, f"framework_complex_finetuning_train_set_size_{train_set_size}.txt"),
-              "w") as file:
-        # run Optuna study
-        study = optuna.create_study(direction="maximize")
-        study.optimize(objective_framework_complex, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
-
-        # print and save the best trial
-        file.write("Best trial:\n")
-        trial = study.best_trial
-        file.write(f"  PR-AUC Score: {trial.value}\n")
-        file.write("  Best hyperparameters:\n")
-
-        for key, value in trial.params.items():
-            file.write(f"    {key}: {value}\n")
-
-    with open(os.path.join(finetuning_results, f"framework_complex_finetuning_gin_train_set_size_{train_set_size}.txt"),
-              "w") as file:
-        # run Optuna study
-        study = optuna.create_study(direction="maximize")
-        study.optimize(objective_framework_complex_gin, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
-
-        # print and save the best trial
-        file.write("Best trial:\n")
-        trial = study.best_trial
-        file.write(f"  PR-AUC Score: {trial.value}\n")
-        file.write("  Best hyperparameters:\n")
-
-        for key, value in trial.params.items():
-            file.write(f"    {key}: {value}\n")
-
-    with open(os.path.join(finetuning_results, f"framework_simple_finetuning_gin_train_set_size_{train_set_size}.txt"),
-              "w") as file:
-        # run Optuna study
-        study = optuna.create_study(direction="maximize")
-        study.optimize(objective_framework_simple_gin, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
-
-        # print and save the best trial
-        file.write("Best trial:\n")
-        trial = study.best_trial
-        file.write(f"  PR-AUC Score: {trial.value}\n")
-        file.write("  Best hyperparameters:\n")
-
-        for key, value in trial.params.items():
-            file.write(f"    {key}: {value}\n")
-    with open(os.path.join(finetuning_results, "framework_complex_encoder_finetuning_infonce.txt"), "w") as file:
-        # run Optuna study
-        study = optuna.create_study(direction="maximize")
-        study.optimize(objective_framework_complex_infonce, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
-
-        # print and save the best trial
-        file.write("Best trial:\n")
-        trial = study.best_trial
-        file.write(f"  PR-AUC Score: {trial.value}\n")
-        file.write("  Best hyperparameters:\n")
-
-        for key, value in trial.params.items():
-            file.write(f"    {key}: {value}\n")
-
-# change
+# '''------------------answering rq2---------------------'''
+#
+# """----GIN ENCODER VARIATION---"""
+# with open(os.path.join(finetuning_results, "framework_complex_gin_encoder_finetuning.txt"), "w") as file:
+#     # run Optuna study
+#     study = optuna.create_study(direction="maximize")
+#     study.optimize(objective_framework_complex_gin_encoder, n_trials=30, show_progress_bar=True)
+#
+#     # print and save the best trial
+#     file.write("Best trial:\n")
+#     trial = study.best_trial
+#     file.write(f"  PR-AUC Score: {trial.value}\n")
+#     file.write("  Best hyperparameters:\n")
+#
+#     for key, value in trial.params.items():
+#         file.write(f"    {key}: {value}\n")
+#
+#     '''-----answering rq3'''
+#
+# """----INFONCE VARIATION---"""
+#
+# train_set_sizes = [20, 100, 500, 1000, 2000, 5000]
+#
+# for train_set_size in train_set_sizes:
+#
+#     # Create a reduced copy each time — don't overwrite the original `data`
+#     data = reduce_train_val_masks(original_data, train_set_size, 300)
+#
+#     print('--------------------')
+#     total_train = sum(data[i].train_mask.sum().item() for i in range(29))
+#     print(f"Train set size: {total_train}")
+#     print('--------------------')
+#
+#     #
+#     with open(os.path.join(finetuning_results, f"framework_simple_finetuning_train_set_size_{train_set_size}.txt"),
+#               "w") as file:
+#         # run Optuna study
+#         study = optuna.create_study(direction="maximize")
+#         study.optimize(objective_framework_simple, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
+#
+#         # print and save the best trial
+#         file.write("Best trial:\n")
+#         trial = study.best_trial
+#         file.write(f"  PR-AUC Score: {trial.value}\n")
+#         file.write("  Best hyperparameters:\n")
+#
+#         for key, value in trial.params.items():
+#             file.write(f"    {key}: {value}\n")
+#
+#     with open(os.path.join(finetuning_results, f"framework_complex_finetuning_train_set_size_{train_set_size}.txt"),
+#               "w") as file:
+#         # run Optuna study
+#         study = optuna.create_study(direction="maximize")
+#         study.optimize(objective_framework_complex, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
+#
+#         # print and save the best trial
+#         file.write("Best trial:\n")
+#         trial = study.best_trial
+#         file.write(f"  PR-AUC Score: {trial.value}\n")
+#         file.write("  Best hyperparameters:\n")
+#
+#         for key, value in trial.params.items():
+#             file.write(f"    {key}: {value}\n")
+#
+#     with open(os.path.join(finetuning_results, f"framework_complex_finetuning_gin_train_set_size_{train_set_size}.txt"),
+#               "w") as file:
+#         # run Optuna study
+#         study = optuna.create_study(direction="maximize")
+#         study.optimize(objective_framework_complex_gin, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
+#
+#         # print and save the best trial
+#         file.write("Best trial:\n")
+#         trial = study.best_trial
+#         file.write(f"  PR-AUC Score: {trial.value}\n")
+#         file.write("  Best hyperparameters:\n")
+#
+#         for key, value in trial.params.items():
+#             file.write(f"    {key}: {value}\n")
+#
+#     with open(os.path.join(finetuning_results, f"framework_simple_finetuning_gin_train_set_size_{train_set_size}.txt"),
+#               "w") as file:
+#         # run Optuna study
+#         study = optuna.create_study(direction="maximize")
+#         study.optimize(objective_framework_simple_gin, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
+#
+#         # print and save the best trial
+#         file.write("Best trial:\n")
+#         trial = study.best_trial
+#         file.write(f"  PR-AUC Score: {trial.value}\n")
+#         file.write("  Best hyperparameters:\n")
+#
+#         for key, value in trial.params.items():
+#             file.write(f"    {key}: {value}\n")
+#     with open(os.path.join(finetuning_results, "framework_complex_encoder_finetuning_infonce.txt"), "w") as file:
+#         # run Optuna study
+#         study = optuna.create_study(direction="maximize")
+#         study.optimize(objective_framework_complex_infonce, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
+#
+#         # print and save the best trial
+#         file.write("Best trial:\n")
+#         trial = study.best_trial
+#         file.write(f"  PR-AUC Score: {trial.value}\n")
+#         file.write("  Best hyperparameters:\n")
+#
+#         for key, value in trial.params.items():
+#             file.write(f"    {key}: {value}\n")
+#
+# # change

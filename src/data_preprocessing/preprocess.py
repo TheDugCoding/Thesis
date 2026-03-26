@@ -15,9 +15,10 @@ from src.data_preprocessing.utils import get_structural_info
 from src.utils import get_data_sub_folder, get_data_folder
 
 script_dir = get_data_folder()
-script_dir_pc = "D:/University/thesis_dataset"
+#script_dir = "D:/University/thesis_dataset"
 relative_path_processed = 'processed'
-processed_data_location = "D:/University/thesis_dataset/processed"
+processed_data_location = get_data_sub_folder(relative_path_processed)
+#processed_data_location = "D:/University/thesis_dataset/processed"
 
 # dataset locations
 relative_path_aml_sim_trans = 'raw/aml_sim_banks/transactions.csv'
@@ -223,9 +224,9 @@ def pre_process_elliptic():
 
             #check if the csv are loaded
             if df_edges is None:
-                df_edges = pd.read_csv(os.path.join(script_dir_pc, relative_path_elliptic_raw_edges)).drop_duplicates()
+                df_edges = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_edges)).drop_duplicates()
             if df_features is None:
-                df_features = pd.read_csv(os.path.join(script_dir_pc, relative_path_elliptic_raw_node_features))
+                df_features = pd.read_csv(os.path.join(script_dir, relative_path_elliptic_raw_node_features))
 
             # from the elliptic ++ dataset
             # https://github.com/git-disl/EllipticPlusPlus/blob/main/Actors%20Dataset/Elliptic%2B%2B_Actors_ActorInteraction_Graph_Viz.ipynb
@@ -388,6 +389,17 @@ class EllipticDataset(Dataset):
     def process(self):
         """Processes raw data into PyG data objects and saves them as .pt files."""
         graphs = pre_process_elliptic()
+
+        # Remove from train/val graphs any nodes that appear in test graphs
+        # to prevent data leakage
+        test_node_ids = set()
+        for graph in graphs[36:42]:
+            test_node_ids.update(graph.nodes())
+
+        for i in range(36):
+            overlapping = set(graphs[i].nodes()) & test_node_ids
+            if overlapping:
+                graphs[i].remove_nodes_from(overlapping)
 
         node_attrs = [
             # we do not include address in the features, the values calculated in pre processing matches the one loaded from the pyg neyworkx

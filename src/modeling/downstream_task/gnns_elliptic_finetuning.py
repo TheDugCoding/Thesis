@@ -569,62 +569,57 @@ with open(os.path.join(finetuning_results, "gin_finetuning_all_features.txt"), "
     for key, value in trial.params.items():
         file.write(f"    {key}: {value}\n")
 
-'''-----finetuning for research question 3 ----'''
+# '''-----finetuning for research question 3 ----'''
+#
+# train_set_sizes = [20, 100, 500, 1000, 2000, 5000]
+#
+# for train_set_size in train_set_sizes:
+#
+#     data = reduce_train_val_masks(original_data, train_set_size, 300)
+#
+#     print('--------------------')
+#     total_train = sum(data[i].train_mask.sum().item() for i in range(29))
+#     print(f"Train set size: {total_train}")
+#     print('--------------------')
+#
+#     with open(os.path.join(finetuning_results, f"gin_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
+#
+#         # run Optuna study
+#         study = optuna.create_study(direction="maximize")
+#         study.optimize(objective_gin, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
+#
+#         # print and save the best trial
+#         file.write("Best trial:\n")
+#         trial = study.best_trial
+#         file.write(f"  PR-AUC Score: {trial.value}\n")
+#         file.write("  Best hyperparameters:\n")
+#         for key, value in trial.params.items():
+#             file.write(f"    {key}: {value}\n")
+#
+#     with open(os.path.join(finetuning_results, f"graphsage_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
+#         study = optuna.create_study(direction="maximize")
+#         study.optimize(objective_graphsage, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
+#
+#         file.write("Best trial:\n")
+#         trial = study.best_trial
+#         file.write(f"  PR-AUC Score: {trial.value}\n")
+#         file.write("  Best hyperparameters:\n")
+#         for key, value in trial.params.items():
+#             file.write(f"    {key}: {value}\n")
+#
+#     with open(os.path.join(finetuning_results, f"graphsage_finetuning_all_features_train_set_size_{train_set_size}.txt"),
+#               "w") as file:
+#         # run Optuna study
+#         study = optuna.create_study(direction="maximize")
+#         study.optimize(objective_graphsage_all_features, n_trials=120, show_progress_bar=True)
+#
+#         # print and save the best trial
+#         file.write("Best trial:\n")
+#         trial = study.best_trial
+#         file.write(f"  PR-AUC Score: {trial.value}\n")
+#         file.write("  Best hyperparameters:\n")
+#         for key, value in trial.params.items():
+#             file.write(f"    {key}: {value}\n")
 
-train_set_sizes = [20, 100, 500, 1000, 2000, 5000]
-
-for train_set_size in train_set_sizes:
-
-    data = reduce_train_val_masks(original_data, train_set_size, 300)
-
-    print('--------------------')
-    total_train = sum(data[i].train_mask.sum().item() for i in range(29))
-    print(f"Train set size: {total_train}")
-    print('--------------------')
-
-    with open(os.path.join(finetuning_results, f"gin_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
-
-        # run Optuna study
-        study = optuna.create_study(direction="maximize")
-        study.optimize(objective_gin, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
-
-        # print and save the best trial
-        file.write("Best trial:\n")
-        trial = study.best_trial
-        file.write(f"  PR-AUC Score: {trial.value}\n")
-        file.write("  Best hyperparameters:\n")
-        for key, value in trial.params.items():
-            file.write(f"    {key}: {value}\n")
-
-    with open(os.path.join(finetuning_results, f"graphsage_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
-        study = optuna.create_study(direction="maximize")
-        study.optimize(objective_graphsage, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
-
-        file.write("Best trial:\n")
-        trial = study.best_trial
-        file.write(f"  PR-AUC Score: {trial.value}\n")
-        file.write("  Best hyperparameters:\n")
-        for key, value in trial.params.items():
-            file.write(f"    {key}: {value}\n")
-
-train_set_sizes = [1000]
-
-for train_set_size in train_set_sizes:
-
-    data = reduce_train_val_masks(original_data, train_set_size, 300)
-
-    with open(os.path.join(finetuning_results, f"graphsage_finetuning_all_features_train_set_size_{train_set_size}.txt"),
-              "w") as file:
-        # run Optuna study
-        study = optuna.create_study(direction="maximize")
-        study.optimize(objective_graphsage_all_features, n_trials=120, show_progress_bar=True)
-
-        # print and save the best trial
-        file.write("Best trial:\n")
-        trial = study.best_trial
-        file.write(f"  PR-AUC Score: {trial.value}\n")
-        file.write("  Best hyperparameters:\n")
-        for key, value in trial.params.items():
-            file.write(f"    {key}: {value}\n")
 
 #change3
