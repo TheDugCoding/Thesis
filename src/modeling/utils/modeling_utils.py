@@ -19,7 +19,7 @@ trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
 
 
 # Training loop
-def train(data, num_neighbours, batch_size, model, optimizer, device, criterion, framework=False):
+def train(train_loaders, model, optimizer, device, criterion, framework=False):
     """
     :param data: list of PyG Data objects
     :param num_neighbours:
@@ -35,36 +35,27 @@ def train(data, num_neighbours, batch_size, model, optimizer, device, criterion,
     total_loss = 0
     total_examples = 0
 
-    batched_data = Batch.from_data_list(data)
+    for train_loader in train_loaders:
+        for batch in train_loader:
+            batch = batch.to(device)
+            optimizer.zero_grad()
 
-    train_loader = NeighborLoader(
-        batched_data,
-        shuffle=True,
-        num_neighbors=num_neighbours,
-        batch_size=batch_size,
-        input_nodes=batched_data.train_mask
-    )
+            if framework:
+                out = model(batch)
+            else:
+                out = model(batch.x, batch.edge_index)
 
-    for batch in train_loader:
-        batch = batch.to(device)
-        optimizer.zero_grad()
+            loss = criterion(out[:batch.batch_size], batch.y[:batch.batch_size])
+            loss.backward()
+            optimizer.step()
 
-        if framework:
-            out = model(batch)
-        else:
-            out = model(batch.x, batch.edge_index)
-
-        loss = criterion(out[:batch.batch_size], batch.y[:batch.batch_size])
-        loss.backward()
-        optimizer.step()
-
-        total_loss += loss.item() * batch.batch_size
-        total_examples += batch.batch_size
+            total_loss += loss.item() * batch.batch_size
+            total_examples += batch.batch_size
 
     return total_loss / total_examples
 
 
-def validate(data, num_neighbours, batch_size, model, device, framework=False):
+def validate(val_loaders, model, device, framework=False):
     """
     :param data: list of PyG Data objects
     :param num_neighbours:
@@ -79,27 +70,18 @@ def validate(data, num_neighbours, batch_size, model, device, framework=False):
     true = []
     probs = []
 
-    batched_data = Batch.from_data_list(data)
-
-    val_loader = NeighborLoader(
-        batched_data,
-        shuffle=False,
-        num_neighbors=num_neighbours,
-        batch_size=batch_size,
-        input_nodes=batched_data.val_mask
-    )
-
     with torch.no_grad():
-        for batch in val_loader:
-            batch = batch.to(device)
-            if framework:
-                out = model(batch)
-            else:
-                out = model(batch.x, batch.edge_index)
-            prob = torch.softmax(out[:batch.batch_size], dim=1)
-            preds.append(prob.argmax(dim=1).cpu())
-            probs.append(prob.cpu())
-            true.append(batch.y[:batch.batch_size].cpu())
+        for val_loader in val_loaders:
+            for batch in val_loader:
+                batch = batch.to(device)
+                if framework:
+                    out = model(batch)
+                else:
+                    out = model(batch.x, batch.edge_index)
+                prob = torch.softmax(out[:batch.batch_size], dim=1)
+                preds.append(prob.argmax(dim=1).cpu())
+                probs.append(prob.cpu())
+                true.append(batch.y[:batch.batch_size].cpu())
 
     preds = torch.cat(preds)
     probs = torch.cat(probs)
@@ -116,33 +98,24 @@ def validate(data, num_neighbours, batch_size, model, device, framework=False):
     return accuracy, precision, recall, f1, pr_auc
 
 
-def evaluate(model, data, num_neighbours, batch_size, device, name, framework=False):
+def evaluate(model, test_loaders, device, name, framework=False):
     model.eval()
     preds = []
     true = []
     probs = []
 
-    batched_data = Batch.from_data_list(data)
-
-    test_loader = NeighborLoader(
-        batched_data,
-        shuffle=False,
-        num_neighbors=num_neighbours,
-        batch_size=batch_size,
-        input_nodes=batched_data.test_mask
-    )
-
     with torch.no_grad():
-        for batch in test_loader:
-            batch = batch.to(device)
-            if framework:
-                out = model(batch)
-            else:
-                out = model(batch.x, batch.edge_index)
-            prob = torch.softmax(out[:batch.batch_size], dim=1)
-            preds.append(prob.argmax(dim=1).cpu())
-            probs.append(prob.cpu())
-            true.append(batch.y[:batch.batch_size].cpu())
+        for test_loader in test_loaders:
+            for batch in test_loader:
+                batch = batch.to(device)
+                if framework:
+                    out = model(batch)
+                else:
+                    out = model(batch.x, batch.edge_index)
+                prob = torch.softmax(out[:batch.batch_size], dim=1)
+                preds.append(prob.argmax(dim=1).cpu())
+                probs.append(prob.cpu())
+                true.append(batch.y[:batch.batch_size].cpu())
 
     preds = torch.cat(preds)
     probs = torch.cat(probs)

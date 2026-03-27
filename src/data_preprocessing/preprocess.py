@@ -14,8 +14,8 @@ from tqdm import tqdm
 from src.data_preprocessing.utils import get_structural_info
 from src.utils import get_data_sub_folder, get_data_folder
 
-script_dir = get_data_folder()
-#script_dir = "D:/University/thesis_dataset"
+#script_dir = get_data_folder()
+script_dir = "D:/University/thesis_dataset"
 relative_path_processed = 'processed'
 processed_data_location = get_data_sub_folder(relative_path_processed)
 #processed_data_location = "D:/University/thesis_dataset/processed"
@@ -218,7 +218,7 @@ def pre_process_elliptic():
     # we use the first 42 timestamps because in later timestamps there are disruptions
     for graph_timestep in range(1, 43):
 
-        graphml_path = os.path.join(processed_data_location, f'elliptic_addr_addr_timestep_{graph_timestep}.graphml')
+        graphml_path = os.path.join(processed_data_location, f'elliptic_addr_addr_timestep_{graph_timestep-1}.graphml')
 
         if not os.path.exists(graphml_path):
 
@@ -393,10 +393,10 @@ class EllipticDataset(Dataset):
         # Remove from train/val graphs any nodes that appear in test graphs
         # to prevent data leakage
         test_node_ids = set()
-        for graph in graphs[36:42]:
+        for graph in graphs[35:42]:
             test_node_ids.update(graph.nodes())
 
-        for i in range(36):
+        for i in range(35):
             overlapping = set(graphs[i].nodes()) & test_node_ids
             if overlapping:
                 graphs[i].remove_nodes_from(overlapping)
@@ -445,9 +445,9 @@ class EllipticDataset(Dataset):
                 time_step=time_step
             ))
 
-        # compute mean and std from graphs 0-35 only to avoid data leakage from test graphs (36-41)
-        x_train = torch.cat([d.x for d in data_list[:36]], dim=0)
-        topo_train = torch.cat([d.topological_features for d in data_list[:36]], dim=0)
+        # compute mean and std from graphs 0-34 only to avoid data leakage from test graphs (35-41)
+        x_train = torch.cat([d.x for d in data_list[:35]], dim=0)
+        topo_train = torch.cat([d.topological_features for d in data_list[:35]], dim=0)
 
         x_mean, x_std = x_train.mean(dim=0), x_train.std(dim=0)
         topo_mean, topo_std = topo_train.mean(dim=0), topo_train.std(dim=0)
@@ -466,9 +466,10 @@ class EllipticDataset(Dataset):
             labeled_mask = data.y != -1
             if i < 29:
                 # balance classes for training graphs; RandomNodeSplit also sets val/test masks to all-False
-                min_count = min((data.y == 0).sum().item(), (data.y == 1).sum().item())
-                data = RandomNodeSplit(split='random', num_train_per_class=min_count, num_val=0.0, num_test=0.0)(data)
-            elif i < 36:
+                #min_count = min((data.y == 0).sum().item(), (data.y == 1).sum().item())
+                #data = RandomNodeSplit(split='random', num_train_per_class=min_count, num_val=0.0, num_test=0.0)(data)
+                data.train_mask = labeled_mask
+            elif i < 35:
                 # validation graphs
                 data.val_mask = labeled_mask
             else:

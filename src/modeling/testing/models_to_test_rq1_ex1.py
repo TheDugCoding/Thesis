@@ -3,19 +3,16 @@ import os
 
 import torch
 import torch.nn as nn
-from torch_geometric.graphgym.register import layer_dict
-from torch_geometric.loader import NeighborLoader
-from torch_geometric.nn import GraphSAGE, GAT, GIN
-from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import BatchNorm, LayerNorm, GraphNorm
-from src.modeling.downstream_task.dgi_and_mlp import build_mlp
+from torch_geometric.nn import GraphSAGE, GIN
 
+from src.modeling.downstream_task.dgi_and_mlp import DGIWithMLP
+from src.modeling.downstream_task.dgi_and_mlp import build_mlp
+from src.modeling.downstream_task.graphsage_and_mlp import GraphsageWithMLP
 from src.modeling.final_framework.framework_complex import DGIPlusGNN
 from src.modeling.final_framework.framework_simple import DGIAndGNN
 from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import \
     DeepGraphInfomaxWithoutFlexFronts, EncoderWithoutFlexFrontsGraphsage, corruption_without_flex_fronts
-from src.modeling.downstream_task.graphsage_and_mlp import GraphsageWithMLP
-from src.modeling.downstream_task.dgi_and_mlp import DGIWithMLP
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -27,56 +24,130 @@ trained_model_path = get_src_sub_folder(relative_path_trained_model)
 trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
 
 
+def parse_finetuning_file(filepath):
+    """Parse a finetuning result file and return the best hyperparameters as a dict, or None if file is empty/missing."""
+    if not os.path.exists(filepath):
+        return None
+    with open(filepath, 'r') as f:
+        content = f.read().strip()
+    if not content:
+        return None
+    params = {}
+    in_params = False
+    for line in content.split('\n'):
+        line = line.strip()
+        if line == 'Best hyperparameters:':
+            in_params = True
+            continue
+        if in_params and ':' in line:
+            key, _, value = line.partition(':')
+            key = key.strip()
+            value = value.strip()
+            if value.startswith('[') and value.endswith(']'):
+                params[key] = [int(x.strip()) for x in value[1:-1].split(',')]
+            elif value == 'None':
+                params[key] = None
+            else:
+                try:
+                    params[key] = int(value)
+                except ValueError:
+                    try:
+                        params[key] = float(value)
+                    except ValueError:
+                        params[key] = value
+    return params if params else None
 
+
+def make_norm(norm_str, channels):
+    """Convert a norm string to a PyG norm module."""
+    if norm_str is None:
+        return None
+    if norm_str == 'batch':
+        return BatchNorm(channels)
+    elif norm_str == 'layer':
+        return LayerNorm(channels)
+    elif norm_str == 'graph':
+        return GraphNorm(channels)
+    return None
+
+
+_ACT_CLS = {
+    'relu': nn.ReLU,
+    'leaky_relu': nn.LeakyReLU,
+    'elu': nn.ELU,
+    'gelu': nn.GELU,
+    'selu': nn.SELU,
+    'tanh': nn.Tanh,
+    'sigmoid': nn.Sigmoid,
+}
+
+
+def act_str_to_cls(act_str):
+    """Convert an activation string to a PyTorch activation class."""
+    return _ACT_CLS.get(act_str, nn.ReLU)
 
 
     #define here the models to test against the framework
 
-def model_list_rq1_ex1(data):
+def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     """
     :param data: the dataset that is used
     :return: a dict containing all the gnns to test against the framework
     """
 
+    downstream_ft_path = get_src_sub_folder('modeling/downstream_task/finetuning_results')
+    framework_ft_path = get_src_sub_folder('modeling/final_framework/finetuning_results')
+
+    # DGI output dimensions fixed by pre-trained model architecture
+    DGI_OUTPUT_FULL = 128
+    DGI_OUTPUT_DEGREE = 32
+
     #list of models to test
     """----Graphsage and MLP----"""
+    p = parse_finetuning_file(os.path.join(downstream_ft_path, 'graphsage_and_mlp_finetuning.txt'))
     data_gnn_model_graphsage_and_mlp = data
-    num_neighbors_gnn_model_graphsage_and_mlp = [5, 5, 10]
-    batch_size_gnn_model_graphsage_and_mlp = 32
+    num_neighbors_gnn_model_graphsage_and_mlp = p['neighbours_size']
+    batch_size_gnn_model_graphsage_and_mlp = p['batch_size']
+
+    hidden_ch = p['hidden_channels']
+    out_ch = p['output_channels']
+    out_ch_mlp = p['output_channels_mlp']
 
     gnn_model_graphsage_and_mlp = GraphSAGE(
         in_channels=data[0].num_features,
-        hidden_channels=64,
-        num_layers=2,
-        out_channels=128,
-        norm=LayerNorm(64),
-        dropout=0.30438159745230026,
-        aggr='max',
-        act='gelu',
+        hidden_channels=hidden_ch,
+        num_layers=p['num_layers'],
+        out_channels=out_ch,
+        norm=make_norm(p['norm'], hidden_ch),
+        dropout=p['dropout'],
+        aggr=p['aggr'],
+        act=p['act'],
     )
 
     # Define MLP layers for classification
     mlp = nn.Sequential(
-        nn.Linear(128, 128),
+        nn.Linear(out_ch, out_ch_mlp),
         nn.ReLU(),
-        nn.Linear(128, 2),
+        nn.Linear(out_ch_mlp, 2),
     )
 
     gnn_model_graphsage_and_mlp = GraphsageWithMLP(gnn_model_graphsage_and_mlp, mlp)
     optimizer_gnn_model_graphsage_and_mlp = torch.optim.Adam(
         gnn_model_graphsage_and_mlp.parameters(),
-        lr=0.0008820290413909019, weight_decay=5.469491667151833e-06)
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_model_graphsage_and_mlp = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     # list of models  to test
     """----DGI and MLP----"""
+    p = parse_finetuning_file(os.path.join(downstream_ft_path, 'dgi_and_mlp_finetuning.txt'))
     data_gnn_model_dgi_and_mlp = data
     num_neighbors_gnn_model_dgi_and_mlp = [10, 20, 40]
     batch_size_gnn_model_dgi_and_mlp = 32
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_dgi_and_mlp = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=128, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1], hidden_channels=128, output_channels=128, layers=4, activation_fn=torch.nn.ELU),
+        hidden_channels=DGI_OUTPUT_FULL, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1], hidden_channels=DGI_OUTPUT_FULL, output_channels=DGI_OUTPUT_FULL, layers=4, activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
@@ -87,26 +158,29 @@ def model_list_rq1_ex1(data):
         for param in layer.parameters():
             param.requires_grad = False
 
-    # Define MLP layers for classification
-    layer_sizes = [128] + [128] * 3 + [2]
-    mlp_dgi_and_mlp = build_mlp(layer_sizes, nn.LeakyReLU, 0.2933583126562131)
+    hidden_ch = p['hidden_channels']
+    num_layers_mlp = p['num_layers']
+    layer_sizes = [DGI_OUTPUT_FULL] + [hidden_ch] * num_layers_mlp + [2]
+    mlp_dgi_and_mlp = build_mlp(layer_sizes, act_str_to_cls(p['act']), p['dropout'])
 
     gnn_model_model_dgi_and_mlp = DGIWithMLP(dgi_model_dgi_and_mlp, mlp_dgi_and_mlp)
     optimizer_gnn_model_dgi_and_mlp = torch.optim.Adam(
         gnn_model_model_dgi_and_mlp.parameters(),
-        lr=0.00022972467644955108, weight_decay=1.9482676332552186e-05)
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_model_dgi_and_mlp = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
-    """----SIMPLE FRAMEWORK DGI, GRAPHSAGE and MLP----"""
+    """----PAF, DGI, GRAPHSAGE and MLP----"""
+    p = parse_finetuning_file(os.path.join(framework_ft_path, 'framework_simple_finetuning_free_neighbor.txt'))
     data_gnn_model_simple_framework = data
-    num_neighbors_gnn_model_simple_framework = [30, 50]
-    batch_size_gnn_model_simple_framework = 256
+    num_neighbors_gnn_model_simple_framework = p['neighbours_size']
+    batch_size_gnn_model_simple_framework = p['batch_size']
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_simple_framework = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=128,
+        hidden_channels=DGI_OUTPUT_FULL,
         encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1],
-                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  hidden_channels=DGI_OUTPUT_FULL, output_channels=DGI_OUTPUT_FULL, layers=4,
                                                   activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
@@ -117,41 +191,42 @@ def model_list_rq1_ex1(data):
         for param in layer.parameters():
             param.requires_grad = False
 
-    # same model as in garphsage_elliptic
+    hidden_ch = p['hidden_channels']
+    out_ch = p['output_channels']
     gnn_model_downstream_simple_framework = GraphSAGE(
         in_channels=data[0].num_features,
-        hidden_channels=128,
-        num_layers=3,
-        out_channels=256,
-        dropout=0.4101899872847951,
-        act='relu',
-        aggr='mean',
-        norm=BatchNorm(128)
+        hidden_channels=hidden_ch,
+        num_layers=p['num_layers'],
+        out_channels=out_ch,
+        dropout=p['dropout'],
+        act=p['act'],
+        aggr=p['aggr'],
+        norm=make_norm(p['norm'], hidden_ch)
     )
 
-    layer_sizes = [128 + 256] + [128] * 2 + [2]
-    mlp_simple_framework = build_mlp(layer_sizes, nn.ELU, 0.47220891507456414)
+    hidden_ch_mlp = p['hidden_channels_mlp']
+    num_layers_mlp = p['num_layers_mlp']
+    layer_sizes = [DGI_OUTPUT_FULL + out_ch] + [hidden_ch_mlp] * num_layers_mlp + [2]
+    mlp_simple_framework = build_mlp(layer_sizes, act_str_to_cls(p['act_mlp']), p['dropout_mlp'])
 
     gnn_model_simple_framework = DGIAndGNN(dgi_model_simple_framework, gnn_model_downstream_simple_framework, mlp_simple_framework, False)
     optimizer_gnn_simple_framework = torch.optim.Adam(
         gnn_model_simple_framework.parameters(),
-        lr=0.003661856103606063, weight_decay=6.0767598595010515e-06)
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_simple_framework = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----SIMPLE FRAMEWORK DGI, GRAPHSAGE and MLP ONLY DEGREE----"""
-    data_gnn_model_simple_framework_only_degree = []
-    for d in data:
-        d_copy = copy.deepcopy(d)
-        d_copy.topological_features = d_copy.topological_features[:, 0].unsqueeze(-1)
-        data_gnn_model_simple_framework_only_degree.append(d_copy)
+    p = parse_finetuning_file(os.path.join(framework_ft_path, 'framework_simple_finetuning_only_degree_dgi.txt'))
+    data_gnn_model_simple_framework_only_degree = data_only_degree
     num_neighbors_gnn_model_simple_framework_only_degree = [10, 10, 25]
-    batch_size_gnn_model_simple_framework_only_degree = 256
+    batch_size_gnn_model_simple_framework_only_degree = p['batch_size']
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_simple_framework_only_degree = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=32,
+        hidden_channels=DGI_OUTPUT_DEGREE,
         encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_gnn_model_simple_framework_only_degree[0].topological_features.shape[1],
-                                                  hidden_channels=64, output_channels=32, layers=4,
+                                                  hidden_channels=64, output_channels=DGI_OUTPUT_DEGREE, layers=4,
                                                   activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
@@ -163,38 +238,43 @@ def model_list_rq1_ex1(data):
         for param in layer.parameters():
             param.requires_grad = False
 
-    # same model as in garphsage_elliptic
+    hidden_ch = p['hidden_channels']
+    out_ch = p['output_channels']
     gnn_model_downstream_simple_framework_only_degree = GraphSAGE(
         in_channels=data[0].num_features,
-        hidden_channels=256,
+        hidden_channels=hidden_ch,
         num_layers=3,
-        out_channels=256,
-        dropout=0.27054373214864214,
-        act='gelu',
-        aggr='mean',
-        norm=BatchNorm(256)
+        out_channels=out_ch,
+        dropout=p['dropout'],
+        act=p['act'],
+        aggr=p['aggr'],
+        norm=make_norm(p['norm'], hidden_ch)
     )
 
-    layer_sizes = [32 + 256] + [256] * 4 + [2]
-    mlp_only_degree = build_mlp(layer_sizes, nn.ReLU, 0.5315785985902932)
+    hidden_ch_mlp = p['hidden_channels_mlp']
+    num_layers_mlp = p['num_layers_mlp']
+    layer_sizes = [DGI_OUTPUT_DEGREE + out_ch] + [hidden_ch_mlp] * num_layers_mlp + [2]
+    mlp_only_degree = build_mlp(layer_sizes, act_str_to_cls(p['act_mlp']), p['dropout_mlp'])
 
     gnn_model_simple_framework_only_degree = DGIAndGNN(dgi_model_simple_framework_only_degree,
                                                               gnn_model_downstream_simple_framework_only_degree, mlp_only_degree, False)
     optimizer_gnn_simple_framework_only_degree = torch.optim.Adam(
         gnn_model_simple_framework_only_degree.parameters(),
-        lr=0.00033281329662653713, weight_decay=3.258855114145082e-05)
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_simple_framework_only_degree = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----SIMPLE FRAMEWORK DGI, GIN and MLP----"""
+    p = parse_finetuning_file(os.path.join(framework_ft_path, 'framework_simple_finetuning_gin.txt'))
     data_gnn_model_simple_framework_gin = data
     num_neighbors_gnn_model_simple_framework_gin = [10, 20, 40]
-    batch_size_gnn_model_simple_framework_gin = 64
+    batch_size_gnn_model_simple_framework_gin = p['batch_size']
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_simple_framework_gin = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=128,
+        hidden_channels=DGI_OUTPUT_FULL,
         encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1],
-                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  hidden_channels=DGI_OUTPUT_FULL, output_channels=DGI_OUTPUT_FULL, layers=4,
                                                   activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
@@ -206,37 +286,42 @@ def model_list_rq1_ex1(data):
         for param in layer.parameters():
             param.requires_grad = False
 
-
+    hidden_ch = p['hidden_channels']
+    out_ch = p['output_channels']
     gnn_model_downstream_simple_framework_gin = GIN(
         in_channels=data[0].num_features,
-        hidden_channels=128,
+        hidden_channels=hidden_ch,
         num_layers=3,
-        out_channels=128,
-        norm=LayerNorm(128),
-        dropout=0.46085345459997396,
-        act='relu'
+        out_channels=out_ch,
+        norm=make_norm(p['norm'], hidden_ch),
+        dropout=p['dropout'],
+        act=p['act']
     )
 
-    layer_sizes = [128 + 128] + [64] * 4 + [2]
-    mlp = build_mlp(layer_sizes, nn.GELU, 0.2035389379103658)
+    hidden_ch_mlp = p['hidden_channels_mlp']
+    num_layers_mlp = p['num_layers_mlp']
+    layer_sizes = [DGI_OUTPUT_FULL + out_ch] + [hidden_ch_mlp] * num_layers_mlp + [2]
+    mlp = build_mlp(layer_sizes, act_str_to_cls(p['act_mlp']), p['dropout_mlp'])
 
     gnn_model_simple_framework_gin = DGIAndGNN(dgi_model_simple_framework_gin,
                                                               gnn_model_downstream_simple_framework_gin, mlp, False)
     optimizer_gnn_simple_framework_gin = torch.optim.Adam(
         gnn_model_simple_framework_gin.parameters(),
-        lr=0.00047676396765200795, weight_decay=1.019513255636531e-06)
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_simple_framework_gin = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS----"""
+    p = parse_finetuning_file(os.path.join(framework_ft_path, 'framework_complex_finetuning_free_neighbor.txt'))
     data_gnn_model_complex_framework = data
-    num_neighbors_gnn_model_complex_framework = [5, 5, 10]
-    batch_size_gnn_model_complex_framework = 128
+    num_neighbors_gnn_model_complex_framework = p['neighbours_size']
+    batch_size_gnn_model_complex_framework = p['batch_size']
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_without_flipping_layer = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=128,
+        hidden_channels=DGI_OUTPUT_FULL,
         encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1],
-                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  hidden_channels=DGI_OUTPUT_FULL, output_channels=DGI_OUTPUT_FULL, layers=4,
                                                   activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
@@ -248,16 +333,16 @@ def model_list_rq1_ex1(data):
         for param in layer.parameters():
             param.requires_grad = False
 
-    # same model as in graphsage_elliptic, used in the framework
+    hidden_ch = p['hidden_channels']
     gnn_model_downstream_framework_without_flipping_layer = GraphSAGE(
-        in_channels=data[0].num_features + 128,
-        hidden_channels=128,
-        num_layers=3,
+        in_channels=data[0].num_features + DGI_OUTPUT_FULL,
+        hidden_channels=hidden_ch,
+        num_layers=p['num_layers'],
         out_channels=2,
-        dropout=0.43960265115841607,
-        act='relu',
-        aggr='mean',
-        norm=BatchNorm(128)
+        dropout=p['dropout'],
+        act=p['act'],
+        aggr=p['aggr'],
+        norm=make_norm(p['norm'], hidden_ch),
     )
 
     gnn_model_complex_framework = DGIPlusGNN(dgi_model_without_flipping_layer,
@@ -265,23 +350,21 @@ def model_list_rq1_ex1(data):
                                                                 False)
     optimizer_gnn_complex_framework = torch.optim.Adam(
         gnn_model_complex_framework.parameters(),
-        lr=0.0001781660288878494, weight_decay=0.00048693914641231314)
+        lr=p['lr'] if p else 0.0001781660288878494,
+        weight_decay=p['weight_decay'] if p else 0.00048693914641231314)
     criterion_gnn_complex_framework = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS ONLY DEGREE----"""
-    data_gnn_model_complex_framework_only_degree = []
-    for d in data:
-        d_copy = copy.deepcopy(d)
-        d_copy.topological_features = d_copy.topological_features[:, 0].unsqueeze(-1)
-        data_gnn_model_complex_framework_only_degree.append(d_copy)
+    p = parse_finetuning_file(os.path.join(framework_ft_path, 'framework_complex_finetuning_only_degree_dgi.txt'))
+    data_gnn_model_complex_framework_only_degree = data_only_degree
     num_neighbors_gnn_model_complex_framework_only_degree = [10, 10, 25]
-    batch_size_gnn_model_complex_framework_only_degree = 128
+    batch_size_gnn_model_complex_framework_only_degree = p['batch_size']
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_without_flipping_layer_only_degree = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=32,
+        hidden_channels=DGI_OUTPUT_DEGREE,
         encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_gnn_model_complex_framework_only_degree[0].topological_features.shape[1],
-                                                  hidden_channels=64, output_channels=32, layers=4,
+                                                  hidden_channels=64, output_channels=DGI_OUTPUT_DEGREE, layers=4,
                                                   activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
@@ -294,15 +377,17 @@ def model_list_rq1_ex1(data):
         for param in layer.parameters():
             param.requires_grad = False
 
+    hidden_ch = p['hidden_channels']
     # same model as in graphsage_elliptic, used in the framework
     gnn_model_downstream_framework_without_flipping_layer_only_degree = GraphSAGE(
-        in_channels=data[0].num_features + 32,
-        hidden_channels=128,
+        in_channels=data[0].num_features + DGI_OUTPUT_DEGREE,
+        hidden_channels=hidden_ch,
         num_layers=3,
         out_channels=2,
-        dropout=0.38374741544679797,
-        act='leaky_relu',
-        aggr='sum',
+        dropout=p['dropout'],
+        act=p['act'],
+        aggr=p['aggr'],
+        norm=make_norm(p['norm'], hidden_ch),
     )
 
     gnn_model_complex_framework_only_degree = DGIPlusGNN(dgi_model_without_flipping_layer_only_degree,
@@ -310,19 +395,21 @@ def model_list_rq1_ex1(data):
                                                                 False)
     optimizer_gnn_complex_framework_only_degree = torch.optim.Adam(
         gnn_model_complex_framework_only_degree.parameters(),
-        lr=0.0006350752174843652, weight_decay=3.2814488668540757e-06)
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_complex_framework_only_degree = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS GIN----"""
+    p = parse_finetuning_file(os.path.join(framework_ft_path, 'framework_complex_finetuning_gin.txt'))
     data_gnn_model_complex_framework_gin = data
     num_neighbors_gnn_model_complex_framework_gin = [10, 20, 40]
     batch_size_gnn_model_complex_framework_gin = 64
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_without_flipping_layer = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=128,
+        hidden_channels=DGI_OUTPUT_FULL,
         encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1],
-                                                  hidden_channels=128, output_channels=128, layers=4,
+                                                  hidden_channels=DGI_OUTPUT_FULL, output_channels=DGI_OUTPUT_FULL, layers=4,
                                                   activation_fn=torch.nn.ELU),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
@@ -335,15 +422,16 @@ def model_list_rq1_ex1(data):
         for param in layer.parameters():
             param.requires_grad = False
 
+    hidden_ch = p['hidden_channels']
     # same model as in graphsage_elliptic, used in the framework
-    gnn_model_downstream_framework_without_flipping_layer =  GIN(
-        in_channels=data[0].num_features+128,
-        hidden_channels=64,
+    gnn_model_downstream_framework_without_flipping_layer = GIN(
+        in_channels=data[0].num_features + DGI_OUTPUT_FULL,
+        hidden_channels=hidden_ch,
         num_layers=3,
         out_channels=2,
-        norm=GraphNorm(64),
-        dropout=0.28712777685883895,
-        act='relu'
+        norm=make_norm(p['norm'], hidden_ch),
+        dropout=p['dropout'],
+        act=p['act']
     )
 
     gnn_model_complex_framework_gin = DGIPlusGNN(dgi_model_without_flipping_layer,
@@ -351,91 +439,104 @@ def model_list_rq1_ex1(data):
                                                                 False)
     optimizer_gnn_complex_framework_gin = torch.optim.Adam(
         gnn_model_complex_framework_gin.parameters(),
-        lr=0.0020712222975631865, weight_decay=8.60445035335777e-06)
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_complex_framework_gin = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----GRAPHSAGE TOPOLOGICAL INPUT + DATA INPUT----"""
-    data_gnn_all_features_graphsage = []
-    for d in data:
-        d_copy = copy.deepcopy(d)
-        d_copy.x = torch.cat([d_copy.x, d_copy.topological_features], dim=1)
-        data_gnn_all_features_graphsage.append(d_copy)
-    num_neighbors_gnn_all_features_graphsage = [10, 10, 25]
+    p = parse_finetuning_file(os.path.join(downstream_ft_path, 'graphsage_all_features_finetuning.txt'))
+    data_gnn_all_features_graphsage = data_all_features
+    num_neighbors_gnn_all_features_graphsage = p['neighbours_size']
     batch_size_gnn_all_features_graphsage = 32
 
+    hidden_ch = p['hidden_channels']
     gnn_model_all_features_graphsage = GraphSAGE(
         in_channels=data_gnn_all_features_graphsage[0].num_features,
-        hidden_channels=64,
-        num_layers=3,
+        hidden_channels=hidden_ch,
+        num_layers=p['num_layers'],
         out_channels=2,
-        dropout=0.28543014475626854,
-        aggr='sum',
-        act='relu'
+        dropout=p['dropout'],
+        aggr=p['aggr'],
+        act=p['act'],
+        norm=make_norm(p['norm'], hidden_ch),
     )
-    optimizer_gnn_all_features_graphsage = torch.optim.Adam(gnn_model_all_features_graphsage.parameters(), lr=0.0007538050390367987, weight_decay=0.00011134434716490531)
+    optimizer_gnn_all_features_graphsage = torch.optim.Adam(
+        gnn_model_all_features_graphsage.parameters(),
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_all_features_graphsage = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 
 
     """----GRAPHSAGE----"""
+    p = parse_finetuning_file(os.path.join(downstream_ft_path, 'graphsage_finetuning.txt'))
     data_gnn_simple_graphsage = data
-    num_neighbors_gnn_simple_graphsage = [30, 50]
+    num_neighbors_gnn_simple_graphsage = p['neighbours_size']
     batch_size_gnn_simple_graphsage = 32
 
+    hidden_ch = p['hidden_channels']
     gnn_model_simple_graphsage = GraphSAGE(
         in_channels=data[0].num_features,
-        hidden_channels=256,
-        num_layers=4,
+        hidden_channels=hidden_ch,
+        num_layers=p['num_layers'],
         out_channels=2,
-        norm=LayerNorm(256),
-        dropout=0.25734662570892874,
-        aggr='mean',
-        act='gelu',
+        norm=make_norm(p['norm'], hidden_ch),
+        dropout=p['dropout'],
+        aggr=p['aggr'],
+        act=p['act'],
     )
-    optimizer_gnn_simple_graphsage = torch.optim.Adam(gnn_model_simple_graphsage.parameters(), lr=0.0005714494050755839, weight_decay=3.2461817790221313e-06)
+    optimizer_gnn_simple_graphsage = torch.optim.Adam(
+        gnn_model_simple_graphsage.parameters(),
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_simple_graphsage = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 
 
     """----GIN----"""
+    p = parse_finetuning_file(os.path.join(downstream_ft_path, 'gin_finetuning.txt'))
     data_gnn_simple_gin = data
-    num_neighbors_gnn_simple_gin = [5, 5, 10]
+    num_neighbors_gnn_simple_gin = p['neighbours_size']
     batch_size_gnn_simple_gin = 32
 
+    hidden_ch = p['hidden_channels']
     gnn_model_simple_gin = GIN(
         in_channels=data[0].num_features,
-        hidden_channels=128,
-        num_layers=2,
+        hidden_channels=hidden_ch,
+        num_layers=p['num_layers'],
         out_channels=2,
-        dropout=0.31452147882039877,
-        act='relu'
+        dropout=p['dropout'],
+        act=p['act'],
+        norm=make_norm(p['norm'], hidden_ch),
     )
 
-    optimizer_gnn_simple_gin = torch.optim.Adam(gnn_model_simple_gin.parameters(), lr=0.0007333023993989535
-                                                , weight_decay=4.0777574201816404e-05)
+    optimizer_gnn_simple_gin = torch.optim.Adam(
+        gnn_model_simple_gin.parameters(),
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_simple_gin = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----GIN TOPOLOGICAL INPUT + DATA INPUT----"""
-    data_gnn_all_features_gin = []
-    for d in data:
-        d_copy = copy.deepcopy(d)
-        d_copy.x = torch.cat([d_copy.x, d_copy.topological_features], dim=1)
-        data_gnn_all_features_gin.append(d_copy)
-    num_neighbors_gnn_all_features_gin = [5, 5, 10]
+    p = parse_finetuning_file(os.path.join(downstream_ft_path, 'gin_finetuning_all_features.txt'))
+    data_gnn_all_features_gin = data_all_features
+    num_neighbors_gnn_all_features_gin = p['neighbours_size']
     batch_size_gnn_all_features_gin = 32
 
+    hidden_ch = p['hidden_channels']
     gnn_model_all_features_gin = GIN(
         in_channels=data_gnn_all_features_gin[0].num_features,
-        hidden_channels=128,
-        num_layers=2,
+        hidden_channels=hidden_ch,
+        num_layers=p['num_layers'],
         out_channels=2,
-        norm=LayerNorm(128),
-        dropout=0.5727836990311036,
-        act='gelu'
+        norm=make_norm(p['norm'], hidden_ch),
+        dropout=p['dropout'],
+        act=p['act'],
     )
 
-    optimizer_gnn_all_features_gin = torch.optim.Adam(gnn_model_all_features_gin.parameters(), lr=0.0049756039260917964
-    , weight_decay=1.7765113710402859e-06)
+    optimizer_gnn_all_features_gin = torch.optim.Adam(
+        gnn_model_all_features_gin.parameters(),
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_all_features_gin = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
 

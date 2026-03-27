@@ -1,20 +1,24 @@
 import os
+import time
+import copy
 
+from torch_geometric.data import Batch
+from torch_geometric.loader import NeighborLoader
+from src.utils import get_data_sub_folder
+
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch_geometric
 from sklearn.metrics import ConfusionMatrixDisplay
-from torch_geometric.loader import NeighborLoader
-import numpy as np
-import matplotlib.pyplot as plt
 from tqdm import tqdm
-import time
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from src.modeling.testing.models_to_test_rq1_ex1 import model_list_rq1_ex1
 from src.modeling.testing.models_to_test_rq2_ex1 import model_list_rq2_ex1
 from src.modeling.testing.models_to_test_rq3_ex1 import model_list_rq3_ex1
 from src.modeling.utils.modeling_utils import train, validate, evaluate
-from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
+from src.utils import get_data_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
 relative_path_processed = 'processed'
@@ -25,7 +29,8 @@ relative_path_trained_dgi = 'modeling/pre_training/topological_pre_training/trai
 relative_path_rq1_ex1_results = 'modeling/testing/rq1_ex1_results'
 relative_path_rq2_ex1_results = 'modeling/testing/rq2_ex1_results'
 relative_path_rq3_ex1_results = 'modeling/testing/rq3_ex1_results'
-processed_data_path = "D:/University/thesis_dataset/processed"
+#processed_data_path = "D:/University/thesis_dataset/processed"
+processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_dgi_model_path = get_src_sub_folder(relative_path_trained_dgi)
 
 if torch.cuda.is_available():
@@ -37,6 +42,16 @@ else:
 
 # Load your dataset
 data = EllipticDataset(root=processed_data_path)
+data_all_features = []
+data_only_degree = []
+for d in data:
+    d_copy = copy.deepcopy(d)
+    d_copy.x = torch.cat([d_copy.x, d_copy.topological_features], dim=1)
+    data_all_features.append(d_copy)
+for d in data:
+    d_copy = copy.deepcopy(d)
+    d_copy.topological_features = d_copy.topological_features[:, 0].unsqueeze(-1)
+    data_only_degree.append(d_copy)
 
 # define the epochs for training
 epochs = 50
@@ -54,11 +69,12 @@ n_samples_rq_3 = 500
 #early stopping logic
 patience = 5
 # how much a model should improve for each epoch to consider it an improvement
-min_delta = 0.005
+min_delta = 0.001
+
 
 if rq_run == 'rq1_ex1':
     # models to test
-    models_to_compare = model_list_rq1_ex1(data)
+    models_to_compare = model_list_rq1_ex1(data, data_only_degree, data_all_features)
     trained_model_path = get_src_sub_folder(relative_path_trained_model_rq1_ex1)
     results_path = get_src_sub_folder(relative_path_rq1_ex1_results)
 elif rq_run == 'rq2_ex1':
@@ -107,7 +123,7 @@ for run in tqdm(range(n_runs), desc="Run progress"):
 
     #reset models
     if rq_run == 'rq1_ex1':
-        models_to_compare = model_list_rq1_ex1(data)
+        models_to_compare = model_list_rq1_ex1(data, data_only_degree, data_all_features)
     elif rq_run == 'rq2_ex1':
         models_to_compare = model_list_rq2_ex1(data)
     elif rq_run == 'rq3_ex1':
@@ -123,6 +139,49 @@ for run in tqdm(range(n_runs), desc="Run progress"):
     best_auc_pr = {name: 0 for name in models_to_compare}
     epochs_no_improve = {name: 0 for name in models_to_compare}
     early_stop_flags = {name: False for name in models_to_compare}
+
+    #creating train/val/test set for each model
+    for name, components in models_to_compare.items():
+
+        train_data = components['data'][0:29]
+        val_data = components['data'][29:35]
+        test_data = components['data'][35:41]
+
+        train_loader = []
+        val_loader = []
+        test_loader = []
+
+        for train_graph in train_data:
+            train_loader.append(NeighborLoader(
+                train_graph,
+                shuffle=True,
+                num_neighbors=components['num_neighbours'],
+                batch_size=components['batch_size'],
+                input_nodes=train_graph.train_mask
+            ))
+
+        for val_graph in val_data:
+            val_loader.append(NeighborLoader(
+                val_graph,
+                shuffle=False,
+                num_neighbors=components['num_neighbours'],
+                batch_size=components['batch_size'],
+                input_nodes=val_graph.val_mask
+            ))
+
+        for test_graph in test_data:
+            test_loader.append(NeighborLoader(
+                test_graph,
+                shuffle=False,
+                num_neighbors=components['num_neighbours'],
+                batch_size=components['batch_size'],
+                input_nodes=test_graph.test_mask
+            ))
+
+        components['train_loader'] = train_loader
+        components['val_loader'] = val_loader
+        components['test_loader'] = test_loader
+
 
     if not evaluate_only:
         # Run training
@@ -144,9 +203,9 @@ for run in tqdm(range(n_runs), desc="Run progress"):
                     start_time = time.time()
 
                     if 'framework' in name:
-                        loss_gnn = train(components['data'][0:29], components['num_neighbours'], components['batch_size'], components['model'], components['optimizer'], device, components['criterion'], True)
+                        loss_gnn = train(components['train_loader'], components['model'], components['optimizer'], device, components['criterion'], True)
                     else:
-                        loss_gnn = train(components['data'][0:29], components['num_neighbours'], components['batch_size'], components['model'], components['optimizer'], device,
+                        loss_gnn = train(components['train_loader'], components['model'], components['optimizer'], device,
                                          components['criterion'], False)
                     log = (f"Loss {name}: {loss_gnn:.6f}\n")
                     print(log)
@@ -170,9 +229,9 @@ for run in tqdm(range(n_runs), desc="Run progress"):
                         continue
 
                     if 'framework' in name:
-                        accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['data'][29:36], components['num_neighbours'], components['batch_size'], components['model'], device, True)
+                        accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_loader'], components['model'], device, True)
                     else:
-                        accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['data'][29:36], components['num_neighbours'], components['batch_size'], components['model'], device,
+                        accuracy_gnn, precision_gnn, recall_gnn, f1_gnn, auc_pr_gnn = validate(components['val_loader'], components['model'], device,
                                                                                 False)
                     # Logging
                     log = (
@@ -212,9 +271,9 @@ for run in tqdm(range(n_runs), desc="Run progress"):
         f.write("----EVALUATION----\n")
         for name, components in models_to_compare.items():
             if 'framework' in name:
-                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['data'][36:42], components['num_neighbours'], components['batch_size'], device, name, True)
+                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['test_loader'], device, name, True)
             else:
-                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['data'][36:42], components['num_neighbours'], components['batch_size'], device,
+                accuracy, precision, recall, f1, pr_auc, confusion_matrix_model, pr_auc_curve, fig_pr_curve = evaluate(components['model'], components['test_loader'], device,
                                                                                 name, False)
 
             # print the results
