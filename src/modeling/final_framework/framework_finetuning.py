@@ -96,58 +96,63 @@ def reduce_train_val_masks(dataset, n_train, n_val, train_range=(0, 29), val_ran
     return dataset_copy
 
 
-def train_once(model, data, neighbours_size, batch_size, optimizer, criterion):
+def train_once(model, train_data, neighbours_size, batch_size, optimizer, criterion):
     model.train()
     total_loss = 0
     total_examples = 0
 
-    batched_data = Batch.from_data_list(data)
+    train_loaders = []
 
-    train_loader = NeighborLoader(
-        batched_data,
-        shuffle=True,
-        num_neighbors=neighbours_size,
-        batch_size=batch_size,
-        input_nodes=batched_data.train_mask
+    for train_graph in train_data:
+        train_loaders.append(NeighborLoader(
+            train_graph,
+            shuffle=True,
+            num_neighbors=neighbours_size,
+            batch_size=batch_size,
+            input_nodes=train_graph.train_mask,
+            drop_last=True
+        ))
 
-    )
-
-    for batch in train_loader:
-        batch = batch.to(device)
-        optimizer.zero_grad()
-        out = model(batch)
-        loss = criterion(out[:batch.batch_size], batch.y[:batch.batch_size])
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item() * batch.batch_size
-        total_examples += batch.batch_size
+    for train_loader in train_loaders:
+        for batch in train_loader:
+            batch = batch.to(device)
+            optimizer.zero_grad()
+            out = model(batch)
+            loss = criterion(out[:batch.batch_size], batch.y[:batch.batch_size])
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item() * batch.batch_size
+            total_examples += batch.batch_size
     return total_loss / total_examples
 
 
-def test_once(model, data, neighbours_size, batch_size):
+def test_once(model, test_data, neighbours_size, batch_size):
     model.eval()
     preds = []
     true = []
     probs = []
 
-    batched_data = Batch.from_data_list(data)
+    test_loaders = []
 
-    test_loader = NeighborLoader(
-        batched_data,
-        shuffle=True,
-        num_neighbors=neighbours_size,
-        batch_size=batch_size,
-        input_nodes=batched_data.test_mask
-    )
+    for test_graph in test_data:
+        test_loaders.append(NeighborLoader(
+            test_graph,
+            shuffle=False,
+            num_neighbors=neighbours_size,
+            batch_size=batch_size,
+            input_nodes=test_graph.test_mask,
+            drop_last=True
+        ))
 
-    with torch.no_grad():
-        for batch in test_loader:
-            batch = batch.to(device)
-            out = model(batch)
-            prob = torch.softmax(out[:batch.batch_size], dim=1)
-            preds.append(prob.argmax(dim=1).cpu())
-            probs.append(prob.cpu())
-            true.append(batch.y[:batch.batch_size].cpu())
+    for test_loader in test_loaders:
+        with torch.no_grad():
+            for batch in test_loader:
+                batch = batch.to(device)
+                out = model(batch)
+                prob = torch.softmax(out[:batch.batch_size], dim=1)
+                preds.append(prob.argmax(dim=1).cpu())
+                probs.append(prob.cpu())
+                true.append(batch.y[:batch.batch_size].cpu())
 
     true_labels = torch.cat(true)
     # PR-AUC

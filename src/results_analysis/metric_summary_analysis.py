@@ -26,62 +26,62 @@ def parse_metrics_txt(filepath):
     return metrics_results
 
 # Path configuration
-input_file = "C:/Users/lucad/OneDrive/Desktop/paper_thesis/new_results/ex2/metrics_summary.txt"
-results_path = "C:/Users/lucad/OneDrive/Desktop/paper_thesis/new_results/analysis_results/ex2/"
+input_file = "C:/Users/lucad/OneDrive/Desktop/paper_thesis/results/results_april_4_all_nodes_for_training/metrics_summary.txt"
+results_path = "C:/Users/lucad/OneDrive/Desktop/paper_thesis/results/results_april_4_all_nodes_for_training/"
 n_runs = 20
 
 # Parse the file
 metrics_results = parse_metrics_txt(input_file)
 
 #Models you want to plot
-#models_to_plot = [
-#    "GraphSAGE + MLP",
-#    "framework_dgi_and_mlp",
-#    "simple_framework_without_flex_fronts",
-#    "simple_framework_without_flex_fronts_only_degree",
-#    "simple_framework_gin_without_flex_fronts",
-#    "complex_framework_without_flex_fronts",
-#    "complex_framework_without_flex_fronts_only_degree",
-#    "complex_framework_gin_without_flex_fronts",
-#    "graphsage_all_features",
-#    "graphsage",
-#    "gin",
-#    "gin_all_features"
-#]
+models_to_plot = [
+   "GraphSAGE + MLP",
+   "framework_dgi_and_mlp",
+   "simple_framework_without_flex_fronts",
+   "simple_framework_without_flex_fronts_only_degree",
+   "simple_framework_gin_without_flex_fronts",
+   "complex_framework_without_flex_fronts",
+   "complex_framework_without_flex_fronts_only_degree",
+   "complex_framework_gin_without_flex_fronts",
+   "graphsage_all_features",
+   "graphsage",
+   "gin",
+   "gin_all_features"
+]
 
 #Optional: Map internal names to cleaner display names
-#model_name_map = {
-#    "GraphSAGE + MLP": "GraphSAGE + MLP",
-#    "framework_dgi_and_mlp": "DGI + MLP",
-#    "simple_framework_without_flex_fronts": "PAF",
-#    "simple_framework_gin_without_flex_fronts": "PAF-GIN",
-#    "complex_framework_without_flex_fronts": "SEF",
-#    "complex_framework_gin_without_flex_fronts": "SEF-GIN",
-#    "graphsage_all_features": "GraphSAGE TD",
-#    "graphsage": "GraphSAGE",
-#    "gin": "GIN",
-#    "gin_all_features": "GIN TD",
-#    "complex_framework_without_flex_fronts_only_degree": "SEF OD",
-#    "simple_framework_without_flex_fronts_only_degree": "PAF OD",
-#}
-
-
-models_to_plot = [
-     "complex_framework_without_flex_fronts",
-     "complex_framework_without_flex_fronts_first_layer_not_frozen",
-     "complex_framework_without_flex_fronts_last_layer_not_frozen",
-     "complex_framework_without_flex_fronts_GIN_encoder",
-     "complex_framework_without_flex_fronts_INFONCE",
-     "complex_framework_without_flex_fronts_free_neighbours"
-]
 model_name_map = {
-    "complex_framework_without_flex_fronts": "SEF-GraphSAGE",
-     "complex_framework_without_flex_fronts_first_layer_not_frozen": "SEF-FLNF",
-     "complex_framework_without_flex_fronts_last_layer_not_frozen": "SEF-LLNF",
-     "complex_framework_without_flex_fronts_GIN_encoder": "SEF-GINen",
-     "complex_framework_without_flex_fronts_INFONCE": "SEF-INFONCE",
-     "complex_framework_without_flex_fronts_free_neighbours": "SEF-FN",
+   "GraphSAGE + MLP": "GraphSAGE + MLP",
+   "framework_dgi_and_mlp": "DGI + MLP",
+   "simple_framework_without_flex_fronts": "PAF",
+   "simple_framework_gin_without_flex_fronts": "PAF-GIN",
+   "complex_framework_without_flex_fronts": "SEF",
+   "complex_framework_gin_without_flex_fronts": "SEF-GIN",
+   "graphsage_all_features": "GraphSAGE TD",
+   "graphsage": "GraphSAGE",
+   "gin": "GIN",
+   "gin_all_features": "GIN TD",
+   "complex_framework_without_flex_fronts_only_degree": "SEF OD",
+   "simple_framework_without_flex_fronts_only_degree": "PAF OD",
 }
+
+
+# models_to_plot = [
+#      "complex_framework_without_flex_fronts",
+#      "complex_framework_without_flex_fronts_first_layer_not_frozen",
+#      "complex_framework_without_flex_fronts_last_layer_not_frozen",
+#      "complex_framework_without_flex_fronts_GIN_encoder",
+#      "complex_framework_without_flex_fronts_INFONCE",
+#      "complex_framework_without_flex_fronts_free_neighbours"
+# ]
+# model_name_map = {
+#     "complex_framework_without_flex_fronts": "SEF-GraphSAGE",
+#      "complex_framework_without_flex_fronts_first_layer_not_frozen": "SEF-FLNF",
+#      "complex_framework_without_flex_fronts_last_layer_not_frozen": "SEF-LLNF",
+#      "complex_framework_without_flex_fronts_GIN_encoder": "SEF-GINen",
+#      "complex_framework_without_flex_fronts_INFONCE": "SEF-INFONCE",
+#      "complex_framework_without_flex_fronts_free_neighbours": "SEF-FN",
+# }
 
 
 # Metrics to plot

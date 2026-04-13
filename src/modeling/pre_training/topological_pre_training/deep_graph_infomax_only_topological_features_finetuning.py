@@ -4,6 +4,7 @@ import optuna
 import torch
 from torch_geometric.loader import NeighborLoader
 from torch import nn
+import os
 
 from src.data_preprocessing.preprocess import RealDataTraining
 from src.utils import get_data_folder, get_data_sub_folder
@@ -13,9 +14,11 @@ script_dir = get_data_folder()
 relative_path_processed = 'processed'
 relative_path_trained_model = 'modeling/pre_training/topological_pre_training/trained_models'
 processed_data_path = get_data_sub_folder(relative_path_processed)
+finetuning_results = 'finetuning_results'
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+dataset = RealDataTraining(root=processed_data_path)
 
 def objective(trial):
     # Suggest hyperparameters
@@ -23,16 +26,20 @@ def objective(trial):
     act_name = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical('hidden_channels', [32, 64, 128, 256, 512])
     output_channels = trial.suggest_categorical('output_channels', [32, 64, 128, 256, 512])
+    batch_size = trial.suggest_categorical('batch_size', [32, 64, 128, 256, 512])
     lr = trial.suggest_float('lr', 1e-5, 1e-2, log=True)
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-    ])
+    if num_layers == 2:
+        neighbours_size = trial.suggest_categorical("neighbours_size", [
+            "[10, 10]", "[20, 20]", "[15, 30]", "[30, 50]"
+        ])
+    elif num_layers == 3:
+        neighbours_size = trial.suggest_categorical("neighbours_size", [
+            "[5, 5, 10]", "[10, 10, 25]", "[10, 20, 40]"
+        ])
+    elif num_layers == 4:
+        neighbours_size = trial.suggest_categorical("neighbours_size", [
+            "[5, 5, 5, 10]", "[10, 10, 10, 25]", "[10, 15, 20, 40]"
+        ])
 
     activation_map = {
         "relu": torch.nn.ReLU,
@@ -44,8 +51,9 @@ def objective(trial):
     activation_fn = activation_map[act_name]
 
     # Load data
-    dataset = RealDataTraining(root=processed_data_path)
-    data_rabo, data_ethereum, data_stable_20 = dataset[0], dataset[1], dataset[2]
+    data_rabo = dataset[0].clone()
+    data_ethereum = dataset[1].clone()
+    data_stable_20 = dataset[2].clone()
 
     # x contains a dummy feature, replace it with only topological features
     data_rabo.x = data_rabo.topological_features
@@ -53,17 +61,17 @@ def objective(trial):
     data_stable_20.x = data_stable_20.topological_features
 
     # Set up loaders
-    train_loader_rabo = NeighborLoader(data_rabo, batch_size=64, shuffle=True, num_neighbors=ast.literal_eval(neighbours_size))
-    train_loader_ethereum = NeighborLoader(data_ethereum, batch_size=64, shuffle=True,
+    train_loader_rabo = NeighborLoader(data_rabo, batch_size=batch_size, shuffle=True, num_neighbors=ast.literal_eval(neighbours_size))
+    train_loader_ethereum = NeighborLoader(data_ethereum, batch_size=batch_size, shuffle=True,
                                            num_neighbors=ast.literal_eval(neighbours_size))
-    train_loader_stable_20 = NeighborLoader(data_stable_20, batch_size=64, shuffle=True,
+    train_loader_stable_20 = NeighborLoader(data_stable_20, batch_size=batch_size, shuffle=True,
                                             num_neighbors=ast.literal_eval(neighbours_size))
 
-    train_loaders = [train_loader_rabo]
+    train_loaders = [train_loader_rabo, train_loader_ethereum, train_loader_stable_20]
 
     # Define model and optimizer
     model = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=hidden_channels,
+        hidden_channels=output_channels,
         encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features,
                                                   hidden_channels=hidden_channels,
                                                   output_channels=output_channels,
@@ -76,7 +84,10 @@ def objective(trial):
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     for epoch in range(5):
-        loss = train(epoch, train_loaders, model, optimizer)
+        loss = train(epoch, train_loaders, model, optimizer, 'BCEdgi')
+        trial.report(loss, epoch)
+        if trial.should_prune():
+            raise optuna.TrialPruned()
 
     return loss
 
@@ -272,20 +283,23 @@ def objective_only_degree(trial):
 
 if __name__ == '__main__':
 
-    # with open("deep_graph_infomax_with_topological_features_only_rabo_finetuning.txt", "w") as file:
-    #     # run Optuna study
-    #     study = optuna.create_study(direction='minimize')
-    #     study.optimize(objective, n_trials=30)
-    #
-    #     # print and save the best trial
-    #     file.write("Best trial:\n")
-    #     trial = study.best_trial
-    #     print("Best trial:")
-    #     print(f"  Loss: {trial.value}")
-    #     file.write(f"  Loss: {trial.value}\n")
-    #     file.write("  Best hyperparameters:\n")
-    #     for key, value in trial.params.items():
-    #         file.write(f"    {key}: {value}\n")
+    with open(os.path.join(finetuning_results, "deep_graph_infomax_with_topological_features_rabo_ecr_20_ethereum_finetuning.txt"), "w") as file:
+        # run Optuna study
+        study = optuna.create_study(
+            direction='minimize',
+            pruner=optuna.pruners.MedianPruner()
+        )
+        study.optimize(objective, n_trials=60)
+
+        # print and save the best trial
+        file.write("Best trial:\n")
+        trial = study.best_trial
+        print("Best trial:")
+        print(f"  Loss: {trial.value}")
+        file.write(f"  Loss: {trial.value}\n")
+        file.write("  Best hyperparameters:\n")
+        for key, value in trial.params.items():
+            file.write(f"    {key}: {value}\n")
 
     # with open("deep_graph_infomax_with_topological_features_rabo_ethereum_ecr20_infonce.txt", "w") as file:
     #     # run Optuna study
@@ -317,17 +331,17 @@ if __name__ == '__main__':
     #     for key, value in trial.params.items():
     #         file.write(f"    {key}: {value}\n")
 
-    with open("deep_graph_infomax_ecr_20_rabo_ethereum_only_degree.txt", "w") as file:
-        # run Optuna study
-        study = optuna.create_study(direction='minimize')
-        study.optimize(objective_only_degree, n_trials=30)
-
-        # print and save the best trial
-        file.write("Best trial:\n")
-        trial = study.best_trial
-        print("Best trial:")
-        print(f"  Loss: {trial.value}")
-        file.write(f"  Loss: {trial.value}\n")
-        file.write("  Best hyperparameters:\n")
-        for key, value in trial.params.items():
-            file.write(f"    {key}: {value}\n")
+    # with open("deep_graph_infomax_ecr_20_rabo_ethereum_only_degree.txt", "w") as file:
+    #     # run Optuna study
+    #     study = optuna.create_study(direction='minimize')
+    #     study.optimize(objective_only_degree, n_trials=30)
+    #
+    #     # print and save the best trial
+    #     file.write("Best trial:\n")
+    #     trial = study.best_trial
+    #     print("Best trial:")
+    #     print(f"  Loss: {trial.value}")
+    #     file.write(f"  Loss: {trial.value}\n")
+    #     file.write("  Best hyperparameters:\n")
+    #     for key, value in trial.params.items():
+    #         file.write(f"    {key}: {value}\n")

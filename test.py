@@ -43,7 +43,7 @@ for i in range(1, num_runs + 1):
                     value = float(match.group(1))
                     results[current_model][metric].append(value)
 
-# Print the results
+# Print the training_results
 print("\n=== Aggregated Metrics per Model (Mean ± Std) ===")
 for model, model_metrics in results.items():
     print(f"\nModel: {model}")

@@ -22,9 +22,10 @@ EPS = 1e-15
 script_dir = get_data_folder()
 relative_path_processed = 'processed'
 relative_path_trained_model = 'modeling/pre_training/topological_pre_training/trained_models'
-processed_data_path = 'D:/University/THESIS DATASET/processed'
-#processed_data_path = get_data_sub_folder(relative_path_processed)
+#processed_data_path = 'D:/University/THESIS DATASET/processed'
+processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_model_path = get_src_sub_folder(relative_path_trained_model)
+training_results = 'training_results'
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -231,11 +232,13 @@ class EncoderWithoutFlexFrontsGraphsage(nn.Module):
 
         # Final layer
         self.layers.append(SAGEConv(hidden_channels, output_channels))
-        self.activations.append(activation_fn())  # Optional: apply activation to output layer
 
     def forward(self, x, edge_index, batch_size, framework):
         for conv, act in zip(self.layers, self.activations):
             x = act(conv(x, edge_index))
+
+        # final layer without activation
+        x = self.layers[-1](x, edge_index)
 
         if framework:
             return x
@@ -391,7 +394,7 @@ def train(epoch, train_loaders, model, optimizer, loss_fun_name):
 
         # we put here the batch of the biggest dataset
         batches.append(batch.to(device))
-        # and here we add all the other batches
+        # and here we add all the other batches, we ensure that at regular intervals there is a sample from other datasets
         for ratio_idx, ratio in enumerate(ratios):
             if batch_idx % ratio == 0:
                 try:
@@ -429,9 +432,9 @@ if __name__ == '__main__':
     data_stable_20 = dataset[2]
 
     # x contains a dummy feature, replace it with only topological features (only degree for this run)
-    data_rabo.x = data_rabo.topological_features[:, 0].unsqueeze(-1)
-    data_ethereum.x = data_ethereum.topological_features[:, 0].unsqueeze(-1)
-    data_stable_20.x = data_stable_20.topological_features[:, 0].unsqueeze(-1)
+    data_rabo.x = data_rabo.topological_features
+    data_ethereum.x = data_ethereum.topological_features
+    data_stable_20.x = data_stable_20.topological_features
     train_loader_rabo = NeighborLoader(
         data_rabo,
         batch_size=64,
@@ -464,7 +467,8 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(model.parameters(), lr= 0.0011865761848863178)
 
-    with open("training_log_elliptic_no_flex_front_Graphsage_only_degree.txt", "w") as file:
+    with open(os.path.join(training_results, "modeling_dgi_GraphSage_no_flex_front_only_topo_dataset_rabo_ecr_20_ethereum.txt"),
+              "w") as file:
         for epoch in range(1, 5):
             loss = train(epoch, train_loaders, model, optimizer, 'BCEdgi')
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
@@ -472,7 +476,7 @@ if __name__ == '__main__':
             file.write(log)
 
     torch.save(model.state_dict(),
-               os.path.join(trained_model_path, 'modeling_dgi_GraphSage_no_flex_front_only_topo_rabo_ecr_20_only_degree.pth'))
+               os.path.join(trained_model_path, 'modeling_dgi_GraphSage_no_flex_front_only_topo_dataset_rabo_ecr_20_ethereum.pth'))
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')
