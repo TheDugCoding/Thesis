@@ -1,5 +1,5 @@
 import copy
-import os as os
+import os
 from typing import Callable, Tuple
 
 import torch
@@ -22,23 +22,103 @@ EPS = 1e-15
 script_dir = get_data_folder()
 relative_path_processed = 'processed'
 relative_path_trained_model = 'modeling/pre_training/topological_pre_training/trained_models'
+relative_path_training_results = 'modeling/pre_training/topological_pre_training/training_results'
 #processed_data_path = 'D:/University/THESIS DATASET/processed'
 processed_data_path = get_data_sub_folder(relative_path_processed)
 trained_model_path = get_src_sub_folder(relative_path_trained_model)
-training_results = 'training_results'
+training_results_path = get_src_sub_folder(relative_path_training_results)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+#Early stopping
+PATIENCE = 5
+EPOCHS = 50
 
 # code taken from this site
 # https://github.com/pyg-team/pytorch_geometric/blob/master/examples/infomax_inductive.py
 
-'''Original loader I will change it because I have multiple graphs 
-train_loader = NeighborLoader(data, num_neighbors=[10, 10, 25], batch_size=256,
-                              shuffle=True, num_workers=12)
-test_loader = NeighborLoader(data, num_neighbors=[10, 10, 25], batch_size=256,
-                             num_workers=12)
+dataset = RealDataTraining(root = processed_data_path)
 
-'''
+data_rabo = dataset[0].clone()
+data_ethereum = dataset[1].clone()
+data_stable_20 = dataset[2].clone()
+
+data_rabo.x = data_rabo.topological_features
+data_ethereum.x = data_ethereum.topological_features
+data_stable_20.x = data_stable_20.topological_features
+
+data_rabo_only_degree = dataset[0].clone()
+data_ethereum_only_degree = dataset[1].clone()
+data_stable_20_only_degree = dataset[2].clone()
+
+data_rabo_only_degree.x = data_rabo_only_degree.topological_features[:, 0].unsqueeze(-1)
+data_ethereum_only_degree.x = data_ethereum_only_degree.topological_features[:, 0].unsqueeze(-1)
+data_stable_20_only_degree.x = data_stable_20_only_degree.topological_features[:, 0].unsqueeze(-1)
+
+#finetuning values for different DGI models
+dgi_original_graphsage = {
+    "num_layers": 3,
+    "act": torch.nn.ELU,
+    "hidden_channels": 64,
+    "output_channels": 32,
+    "batch_size": 32,
+    "lr": 0.0009703626426192607,
+    "neighbours_size": [5, 5, 10],
+    "loss_function": "BCEdgi",
+    "data_rabo": data_rabo,
+    "data_ethereum": data_ethereum,
+    "data_stable_20": data_stable_20,
+    "pth_name": "modeling_dgi_GraphSage_no_flex_front_only_topo_dataset_rabo_ecr_20_ethereum.pth",
+    "txt_name": "modeling_dgi_GraphSage_no_flex_front_only_topo_dataset_rabo_ecr_20_ethereum.txt"
+}
+
+dgi_original_graphsage_only_degree = {
+    "num_layers": 4,
+    "act": torch.nn.LeakyReLU,
+    "hidden_channels": 512,
+    "output_channels": 64,
+    "batch_size": 128,
+    "lr": 0.00018440746822285042,
+    "neighbours_size": [10, 10, 10, 25],
+    "loss_function": "BCEdgi",
+    "data_rabo": data_rabo_only_degree,
+    "data_ethereum": data_ethereum_only_degree,
+    "data_stable_20": data_stable_20_only_degree,
+    "pth_name": "deep_graph_infomax_with_topological_features_rabo_ecr_20_ethereum_finetuning_only_degree.pth",
+    "txt_name": "deep_graph_infomax_with_topological_features_rabo_ecr_20_ethereum_finetuning_only_degree.txt"
+}
+
+infonce_graphsage = {
+    "num_layers": 0,
+    "act": torch.nn.ELU,
+    "hidden_channels": 0,
+    "output_channels": 0,
+    "batch_size": 0,
+    "lr": 0,
+    "neighbours_size": [0, 0, 0],
+    "loss_function": "InfoNCE",
+    "data_rabo": data_rabo,
+    "data_ethereum": data_ethereum,
+    "data_stable_20": data_stable_20,
+    "pth_name": "modeling_infonce_GraphSage_no_flex_front_only_topo_dataset_rabo_ecr_20_ethereum.pth",
+    "txt_name": "modeling_infonce_GraphSage_no_flex_front_only_topo_dataset_rabo_ecr_20_ethereum.txt"
+}
+
+dgi_original_gin = {
+    "num_layers": 0,
+    "act": torch.nn.ELU,
+    "hidden_channels": 0,
+    "output_channels": 0,
+    "batch_size": 0,
+    "lr": 0,
+    "neighbours_size": [0, 0, 0],
+    "loss_function": "BCEdgi",
+    "data_rabo": data_rabo,
+    "data_ethereum": data_ethereum,
+    "data_stable_20": data_stable_20,
+    "pth_name": "modeling_dgi_GIN_no_flex_front_only_topo_dataset_rabo_ecr_20_ethereum.pth",
+    "txt_name": "modeling_dgi_GIN_no_flex_front_only_topo_dataset_rabo_ecr_20_ethereum.txt"
+}
 
 
 class DeepGraphInfomaxWithoutFlexFronts(torch.nn.Module):
@@ -296,42 +376,6 @@ class EncoderWithoutFlexFrontsGIN(nn.Module):
         else:
             return x[:batch_size]
 
-class EncoderWithoutFlexFrontsGAT(nn.Module):
-    def __init__(self, input_channels, hidden_channels, output_channels, n_layers, activation_fn=nn.ReLU):
-        """
-        :param input_channels: (int) Number of input features per node.
-        :param hidden_channels: (int) Number of hidden units in each GAT layer (except the final layer).
-        :param output_channels: (int) Number of output features per node from the final GAT layer.
-        :param n_layers: (int) Total number of GAT layers in the encoder. Must be >= 2.
-        :param activation_fn: (Callable) Activation function class to apply after each GAT layer (e.g., nn.ReLU, nn.LeakyReLU).
-        """
-        super().__init__()
-
-        self.layers = nn.ModuleList()
-        self.activations = nn.ModuleList()
-
-        # First layer
-        self.layers.append(GATConv(input_channels, hidden_channels))
-        self.activations.append(activation_fn())
-
-        # Hidden layers
-        for _ in range(n_layers - 2):
-            self.layers.append(GATConv(hidden_channels, hidden_channels))
-            self.activations.append(activation_fn())
-
-        # Final layer
-        self.layers.append(GATConv(hidden_channels, output_channels))
-        self.activations.append(activation_fn())
-
-    def forward(self, x, edge_index, batch_size, framework):
-        for conv, act in zip(self.layers, self.activations):
-            x = act(conv(x, edge_index))
-
-        if framework:
-            return x
-        else:
-            return x[:batch_size]
-
 def corruption_without_flex_fronts(x, edge_index, batch_size):
     return x[torch.randperm(x.size(0))], edge_index, batch_size
 
@@ -425,58 +469,70 @@ def train(epoch, train_loaders, model, optimizer, loss_fun_name):
 
 if __name__ == '__main__':
 
-    dataset = RealDataTraining(root = processed_data_path)
+    # select the model to train
+    finetuning_dgi = dgi_original_graphsage_only_degree
 
-    data_rabo = dataset[0]
-    data_ethereum = dataset[1]
-    data_stable_20 = dataset[2]
-
-    # x contains a dummy feature, replace it with only topological features (only degree for this run)
-    data_rabo.x = data_rabo.topological_features
-    data_ethereum.x = data_ethereum.topological_features
-    data_stable_20.x = data_stable_20.topological_features
     train_loader_rabo = NeighborLoader(
-        data_rabo,
-        batch_size=64,
+        finetuning_dgi["data_rabo"],
+        batch_size=finetuning_dgi["batch_size"],
         shuffle=True,
-        num_neighbors=[10, 10, 25]
+        num_neighbors=finetuning_dgi["neighbours_size"]
     )
 
     train_loader_ethereum = NeighborLoader(
-        data_ethereum,
-        batch_size=64,
+        finetuning_dgi["data_ethereum"],
+        batch_size=finetuning_dgi["batch_size"],
         shuffle=True,
-        num_neighbors=[10, 10, 25]
+        num_neighbors=finetuning_dgi["neighbours_size"]
     )
 
     train_loader_stable_20 = NeighborLoader(
-        data_stable_20,
-        batch_size=64,
+        finetuning_dgi["data_stable_20"],
+        batch_size=finetuning_dgi["batch_size"],
         shuffle=True,
-        num_neighbors=[10, 10, 25]
+        num_neighbors=finetuning_dgi["neighbours_size"]
     )
 
-    # set the train loaders
     train_loaders = [train_loader_rabo, train_loader_ethereum, train_loader_stable_20]
 
-    # define the model, no flexfront
     model = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=32, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_rabo.num_features, hidden_channels=64, output_channels=32, layers=4, activation_fn=torch.nn.ELU),
+        hidden_channels=finetuning_dgi["output_channels"],
+        encoder=EncoderWithoutFlexFrontsGraphsage(
+            input_channels=finetuning_dgi["data_rabo"].num_features,
+            hidden_channels=finetuning_dgi["hidden_channels"],
+            output_channels=finetuning_dgi["output_channels"],
+            layers=finetuning_dgi["num_layers"],
+            activation_fn=finetuning_dgi["act"]
+        ),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts).to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr= 0.0011865761848863178)
+    optimizer = torch.optim.Adam(model.parameters(), lr=finetuning_dgi["lr"])
 
-    with open(os.path.join(training_results, "modeling_dgi_GraphSage_no_flex_front_only_topo_dataset_rabo_ecr_20_ethereum.txt"),
+    best_loss = float('inf')
+    counter = 0
+
+    with open(os.path.join(training_results_path,
+                           finetuning_dgi["txt_name"]),
               "w") as file:
-        for epoch in range(1, 5):
-            loss = train(epoch, train_loaders, model, optimizer, 'BCEdgi')
+        for epoch in range(1, EPOCHS + 1):
+            loss = train(epoch, train_loaders, model, optimizer, finetuning_dgi["loss_function"])
             log = f"Epoch {epoch:02d}, Loss: {loss:.6f}\n"
             print(log)
             file.write(log)
 
-    torch.save(model.state_dict(),
-               os.path.join(trained_model_path, 'modeling_dgi_GraphSage_no_flex_front_only_topo_dataset_rabo_ecr_20_ethereum.pth'))
+            if loss < best_loss:
+                best_loss = loss
+                counter = 0
+                torch.save(model.state_dict(),
+                           os.path.join(trained_model_path,
+                                        finetuning_dgi["pth_name"]))
+            else:
+                counter += 1
+                if counter >= PATIENCE:
+                    print(f"Early stopping at epoch {epoch}")
+                    file.write(f"Early stopping at epoch {epoch}\n")
+                    break
 
 # test_acc = test()
 # print(f'Test Accuracy: {test_acc:.4f}')

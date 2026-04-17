@@ -10,7 +10,6 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay,f1_score, r
 
 from src.data_preprocessing.preprocess import EllipticDataset
 from torch_geometric.nn import GraphSAGE
-from src.modeling.pre_training.topological_pre_training.deep_graph_infomax import DeepGraphInfomaxFlexFronts, EncoderFlexFronts, corruptionflexfronts
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 from src.modeling.utils.modeling_utils import train, validate
 

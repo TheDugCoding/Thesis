@@ -17,6 +17,8 @@ from src.modeling.downstream_task.dgi_and_mlp import DGIWithMLP, build_mlp
 from src.modeling.downstream_task.graphsage_and_mlp import GraphsageWithMLP
 from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import \
     DeepGraphInfomaxWithoutFlexFronts, EncoderWithoutFlexFrontsGraphsage, corruption_without_flex_fronts
+from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import \
+    dgi_original_graphsage
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -92,6 +94,8 @@ def reduce_train_val_masks(dataset, n_train, n_val, train_range=(0, 29), val_ran
 
 def train_once(model, train_data, neighbours_size, batch_size, optimizer, criterion, framework=False):
     model.train()
+    if hasattr(model, 'dgi'):
+        model.dgi.eval()
     total_loss = 0
     total_examples = 0
 
@@ -124,7 +128,7 @@ def train_once(model, train_data, neighbours_size, batch_size, optimizer, criter
     return total_loss / total_examples
 
 
-def test_once(model, test_data, neighbours_size, batch_size, framework=False):
+def test_once(model, test_data, neighbours_size, batch_size, framework=False, mask_attr='test_mask'):
     model.eval()
     preds = []
     true = []
@@ -138,8 +142,8 @@ def test_once(model, test_data, neighbours_size, batch_size, framework=False):
             shuffle=False,
             num_neighbors=neighbours_size,
             batch_size=batch_size,
-            input_nodes=test_graph.test_mask,
-            drop_last=True
+            input_nodes=getattr(test_graph, mask_attr),
+            drop_last=False
         ))
 
     with torch.no_grad():
@@ -185,15 +189,18 @@ def objective_dgi_and_mlp(trial):
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_dgi_and_mlp = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=128,
-        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1],
-                                                  hidden_channels=128, output_channels=128, layers=4,
-                                                  activation_fn=torch.nn.ELU),
+        hidden_channels=dgi_original_graphsage["output_channels"],
+        encoder=EncoderWithoutFlexFrontsGraphsage(
+            input_channels=dgi_original_graphsage["data_rabo"].num_features,
+            hidden_channels=dgi_original_graphsage["hidden_channels"],
+            output_channels=dgi_original_graphsage["output_channels"],
+            layers=dgi_original_graphsage["num_layers"],
+            activation_fn=dgi_original_graphsage["act"]),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
     dgi_model_dgi_and_mlp.load_state_dict(torch.load(
-        os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
+        os.path.join(trained_dgi_model_path, dgi_original_graphsage["pth_name"])))
 
     for layer in dgi_model_dgi_and_mlp.encoder.layers:
         for param in layer.parameters():
@@ -209,7 +216,7 @@ def objective_dgi_and_mlp(trial):
     activation_fn = activation_map[act]
 
     # Define MLP layers for classification
-    layer_sizes = [128] + [hidden_channels] * num_mlp_layers + [2]
+    layer_sizes = [dgi_original_graphsage["output_channels"]] + [hidden_channels] * num_mlp_layers + [2]
     mlp = build_mlp(layer_sizes, activation_fn, dropout)
 
     model = DGIWithMLP(dgi_model_dgi_and_mlp, mlp).to(device)
@@ -218,9 +225,9 @@ def objective_dgi_and_mlp(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data[0:29], [10, 20, 40], 32, optimizer, criterion, framework=True)
+        train_once(model, data[0:29], dgi_original_graphsage["neighbours_size"], dgi_original_graphsage["batch_size"], optimizer, criterion, framework=True)
 
-    pr_auc = test_once(model, data[36:42], [10, 20, 40], 32, framework=True)
+    pr_auc = test_once(model, data[29:35], dgi_original_graphsage["neighbours_size"], dgi_original_graphsage["batch_size"], framework=True, mask_attr='val_mask')
     return pr_auc
 
 
@@ -266,10 +273,13 @@ def objective_graphsage_and_mlp(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     neighbours = ast.literal_eval(neighbours_size)
+    if len(neighbours) != num_layers:
+        raise optuna.TrialPruned()
+
     for _ in range(int(epochs)):
         train_once(model, data[0:29], neighbours, batch_size, optimizer, criterion, framework=False)
 
-    pr_auc = test_once(model, data[36:42], neighbours, batch_size, framework=False)
+    pr_auc = test_once(model, data[29:35], neighbours, batch_size, framework=False, mask_attr='val_mask')
     return pr_auc
 
 
@@ -305,10 +315,13 @@ def objective_graphsage(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     neighbours = ast.literal_eval(neighbours_size)
+    if len(neighbours) != num_layers:
+        raise optuna.TrialPruned()
+
     for _ in range(int(epochs)):
         train_once(model, data[0:29], neighbours, batch_size, optimizer, criterion, framework=False)
 
-    pr_auc = test_once(model, data[36:42], neighbours, batch_size, framework=False)
+    pr_auc = test_once(model, data[29:35], neighbours, batch_size, framework=False, mask_attr='val_mask')
     return pr_auc
 
 
@@ -350,10 +363,13 @@ def objective_graphsage_all_features(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     neighbours = ast.literal_eval(neighbours_size)
+    if len(neighbours) != num_layers:
+        raise optuna.TrialPruned()
+
     for _ in range(int(epochs)):
         train_once(model, data_all_features[0:29], neighbours, batch_size, optimizer, criterion, framework=False)
 
-    pr_auc = test_once(model, data_all_features[36:42], neighbours, batch_size, framework=False)
+    pr_auc = test_once(model, data_all_features[29:35], neighbours, batch_size, framework=False, mask_attr='val_mask')
     return pr_auc
 
 
@@ -390,10 +406,13 @@ def objective_gat(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     neighbours = ast.literal_eval(neighbours_size)
+    if len(neighbours) != num_layers:
+        raise optuna.TrialPruned()
+
     for _ in range(int(epochs)):
         train_once(model, data[0:29], neighbours, batch_size, optimizer, criterion, framework=False)
 
-    pr_auc = test_once(model, data[36:42], neighbours, batch_size, framework=False)
+    pr_auc = test_once(model, data[29:35], neighbours, batch_size, framework=False, mask_attr='val_mask')
     return pr_auc
 
 
@@ -428,10 +447,13 @@ def objective_gin(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     neighbours = ast.literal_eval(neighbours_size)
+    if len(neighbours) != num_layers:
+        raise optuna.TrialPruned()
+
     for _ in range(int(epochs)):
         train_once(model, data[0:29], neighbours, batch_size, optimizer, criterion, framework=False)
 
-    pr_auc = test_once(model, data[36:42], neighbours, batch_size, framework=False)
+    pr_auc = test_once(model, data[29:35], neighbours, batch_size, framework=False, mask_attr='val_mask')
     return pr_auc
 
 
@@ -472,16 +494,22 @@ def objective_gin_all_features(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     neighbours = ast.literal_eval(neighbours_size)
+    if len(neighbours) != num_layers:
+        raise optuna.TrialPruned()
+
     for _ in range(int(epochs)):
         train_once(model, data_all_features[0:29], neighbours, batch_size, optimizer, criterion, framework=False)
 
-    pr_auc = test_once(model, data_all_features[36:42], neighbours, batch_size, framework=False)
+    pr_auc = test_once(model, data_all_features[29:35], neighbours, batch_size, framework=False, mask_attr='val_mask')
     return pr_auc
 
 
 with open(os.path.join(finetuning_results, "graphsage_and_mlp_finetuning.txt"), "w") as file:
     # run Optuna study
-    study = optuna.create_study(direction="maximize")
+    study = optuna.create_study(
+        direction="maximize",
+        pruner=optuna.pruners.MedianPruner()
+    )
     study.optimize(objective_graphsage_and_mlp, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
 
     # print and save the best trial
@@ -495,7 +523,10 @@ with open(os.path.join(finetuning_results, "graphsage_and_mlp_finetuning.txt"), 
 
 with open(os.path.join(finetuning_results, "dgi_and_mlp_finetuning.txt"), "w") as file:
     # run Optuna study
-    study = optuna.create_study(direction="maximize")
+    study = optuna.create_study(
+        direction="maximize",
+        pruner=optuna.pruners.MedianPruner()
+    )
     study.optimize(objective_dgi_and_mlp, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
 
     # print and save the best trial
@@ -509,7 +540,10 @@ with open(os.path.join(finetuning_results, "dgi_and_mlp_finetuning.txt"), "w") a
 
 with open(os.path.join(finetuning_results, "graphsage_finetuning.txt"), "w") as file:
     # run Optuna study
-    study = optuna.create_study(direction="maximize")
+    study = optuna.create_study(
+        direction="maximize",
+        pruner=optuna.pruners.MedianPruner()
+    )
     study.optimize(objective_graphsage, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
 
     # print and save the best trial
@@ -523,7 +557,10 @@ with open(os.path.join(finetuning_results, "graphsage_finetuning.txt"), "w") as 
 
 with open(os.path.join(finetuning_results, "graphsage_all_features_finetuning.txt"), "w") as file:
     # run Optuna study
-    study = optuna.create_study(direction="maximize")
+    study = optuna.create_study(
+        direction="maximize",
+        pruner=optuna.pruners.MedianPruner()
+    )
     study.optimize(objective_graphsage_all_features, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
 
     # print and save the best trial
@@ -535,23 +572,29 @@ with open(os.path.join(finetuning_results, "graphsage_all_features_finetuning.tx
     for key, value in trial.params.items():
         file.write(f"    {key}: {value}\n")
 
-with open(os.path.join(finetuning_results, "gat_finetuning.txt"), "w") as file:
-    # run Optuna study
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective_gat, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
-
-    # print and save the best trial
-    file.write("Best trial:\n")
-    trial = study.best_trial
-    file.write(f"  PR-AUC Score: {trial.value}\n")
-    file.write("  Best hyperparameters:\n")
-
-    for key, value in trial.params.items():
-        file.write(f"    {key}: {value}\n")
+# with open(os.path.join(finetuning_results, "gat_finetuning.txt"), "w") as file:
+#     # run Optuna study
+#     study = optuna.create_study(
+#         direction="maximize",
+#         pruner=optuna.pruners.MedianPruner()
+#     )
+#     study.optimize(objective_gat, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
+#
+#     # print and save the best trial
+#     file.write("Best trial:\n")
+#     trial = study.best_trial
+#     file.write(f"  PR-AUC Score: {trial.value}\n")
+#     file.write("  Best hyperparameters:\n")
+#
+#     for key, value in trial.params.items():
+#         file.write(f"    {key}: {value}\n")
 
 with open(os.path.join(finetuning_results, "gin_finetuning.txt"), "w") as file:
     # run Optuna study
-    study = optuna.create_study(direction="maximize")
+    study = optuna.create_study(
+        direction="maximize",
+        pruner=optuna.pruners.MedianPruner()
+    )
     study.optimize(objective_gin, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
 
     # print and save the best trial
@@ -565,7 +608,10 @@ with open(os.path.join(finetuning_results, "gin_finetuning.txt"), "w") as file:
 
 with open(os.path.join(finetuning_results, "gin_finetuning_all_features.txt"), "w") as file:
     # run Optuna study
-    study = optuna.create_study(direction="maximize")
+    study = optuna.create_study(
+        direction="maximize",
+        pruner=optuna.pruners.MedianPruner()
+    )
     study.optimize(objective_gin_all_features, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
 
     # print and save the best trial
@@ -576,57 +622,6 @@ with open(os.path.join(finetuning_results, "gin_finetuning_all_features.txt"), "
     for key, value in trial.params.items():
         file.write(f"    {key}: {value}\n")
 
-# '''-----finetuning for research question 3 ----'''
-#
-# train_set_sizes = [20, 100, 500, 1000, 2000, 5000]
-#
-# for train_set_size in train_set_sizes:
-#
-#     data = reduce_train_val_masks(original_data, train_set_size, 300)
-#
-#     print('--------------------')
-#     total_train = sum(data[i].train_mask.sum().item() for i in range(29))
-#     print(f"Train set size: {total_train}")
-#     print('--------------------')
-#
-#     with open(os.path.join(finetuning_results, f"gin_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
-#
-#         # run Optuna study
-#         study = optuna.create_study(direction="maximize")
-#         study.optimize(objective_gin, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
-#
-#         # print and save the best trial
-#         file.write("Best trial:\n")
-#         trial = study.best_trial
-#         file.write(f"  PR-AUC Score: {trial.value}\n")
-#         file.write("  Best hyperparameters:\n")
-#         for key, value in trial.params.items():
-#             file.write(f"    {key}: {value}\n")
-#
-#     with open(os.path.join(finetuning_results, f"graphsage_finetuning_train_set_size_{train_set_size}.txt"), "w") as file:
-#         study = optuna.create_study(direction="maximize")
-#         study.optimize(objective_graphsage, n_trials=NUMBER_OF_TRIALS, show_progress_bar=True)
-#
-#         file.write("Best trial:\n")
-#         trial = study.best_trial
-#         file.write(f"  PR-AUC Score: {trial.value}\n")
-#         file.write("  Best hyperparameters:\n")
-#         for key, value in trial.params.items():
-#             file.write(f"    {key}: {value}\n")
-#
-#     with open(os.path.join(finetuning_results, f"graphsage_finetuning_all_features_train_set_size_{train_set_size}.txt"),
-#               "w") as file:
-#         # run Optuna study
-#         study = optuna.create_study(direction="maximize")
-#         study.optimize(objective_graphsage_all_features, n_trials=120, show_progress_bar=True)
-#
-#         # print and save the best trial
-#         file.write("Best trial:\n")
-#         trial = study.best_trial
-#         file.write(f"  PR-AUC Score: {trial.value}\n")
-#         file.write("  Best hyperparameters:\n")
-#         for key, value in trial.params.items():
-#             file.write(f"    {key}: {value}\n")
 
 
 #change3

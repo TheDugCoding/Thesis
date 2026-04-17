@@ -13,6 +13,8 @@ from src.modeling.final_framework.framework_complex import DGIPlusGNN
 from src.modeling.final_framework.framework_simple import DGIAndGNN
 from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import \
     DeepGraphInfomaxWithoutFlexFronts, EncoderWithoutFlexFrontsGraphsage, corruption_without_flex_fronts
+from src.modeling.pre_training.topological_pre_training.deep_graph_infomax_only_topological_features import \
+    dgi_original_graphsage, dgi_original_graphsage_only_degree
 from src.utils import get_data_folder, get_data_sub_folder, get_src_sub_folder
 
 script_dir = get_data_folder()
@@ -99,8 +101,19 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     framework_ft_path = get_src_sub_folder('modeling/final_framework/finetuning_results')
 
     # DGI output dimensions fixed by pre-trained model architecture
-    DGI_OUTPUT_FULL = 128
-    DGI_OUTPUT_DEGREE = 32
+    DGI_OUTPUT_FULL = dgi_original_graphsage["output_channels"]
+    DGI_HIDDEN_CHANNEL_FULL = dgi_original_graphsage["hidden_channels"]
+    DGI_N_LAYERS_FULL = dgi_original_graphsage["num_layers"]
+    DGI_NEIGHBOUR_SIZE_FULL = dgi_original_graphsage["neighbours_size"]
+    DGI_BATCH_SIZE_FULL = dgi_original_graphsage["batch_size"]
+    DGI_ACT_FULL = dgi_original_graphsage["act"]
+    DGI_PTH_FULL = dgi_original_graphsage["pth_name"]
+    DGI_OUTPUT_ONLY_DEGREE = dgi_original_graphsage_only_degree["output_channels"]
+    DGI_HIDDEN_CHANNEL_ONLY_DEGREE = dgi_original_graphsage_only_degree["hidden_channels"]
+    DGI_N_LAYERS_ONLY_DEGREE = dgi_original_graphsage_only_degree["num_layers"]
+    DGI_NEIGHBOUR_SIZE_ONLY_DEGREE = dgi_original_graphsage_only_degree["neighbours_size"]
+    DGI_ACT_ONLY_DEGREE = dgi_original_graphsage_only_degree["act"]
+    DGI_PTH_ONLY_DEGREE = dgi_original_graphsage_only_degree["pth_name"]
 
     #list of models to test
     """----Graphsage and MLP----"""
@@ -142,17 +155,23 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     """----DGI and MLP----"""
     p = parse_finetuning_file(os.path.join(downstream_ft_path, 'dgi_and_mlp_finetuning.txt'))
     data_gnn_model_dgi_and_mlp = data
-    num_neighbors_gnn_model_dgi_and_mlp = [10, 20, 40]
-    batch_size_gnn_model_dgi_and_mlp = 32
+    num_neighbors_gnn_model_dgi_and_mlp = DGI_NEIGHBOUR_SIZE_FULL
+    batch_size_gnn_model_dgi_and_mlp = DGI_BATCH_SIZE_FULL
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_dgi_and_mlp = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=DGI_OUTPUT_FULL, encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1], hidden_channels=DGI_OUTPUT_FULL, output_channels=DGI_OUTPUT_FULL, layers=4, activation_fn=torch.nn.ELU),
+        hidden_channels=DGI_OUTPUT_FULL,
+        encoder=EncoderWithoutFlexFrontsGraphsage(
+            input_channels=dgi_original_graphsage["data_rabo"].num_features,
+            hidden_channels=DGI_HIDDEN_CHANNEL_FULL,
+            output_channels=DGI_OUTPUT_FULL,
+            layers=DGI_N_LAYERS_FULL,
+            activation_fn=DGI_ACT_FULL),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
     dgi_model_dgi_and_mlp.load_state_dict(torch.load(
-        os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
+        os.path.join(trained_dgi_model_path, DGI_PTH_FULL)))
 
     for layer in dgi_model_dgi_and_mlp.encoder.layers:
         for param in layer.parameters():
@@ -179,13 +198,16 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_simple_framework = DeepGraphInfomaxWithoutFlexFronts(
         hidden_channels=DGI_OUTPUT_FULL,
-        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1],
-                                                  hidden_channels=DGI_OUTPUT_FULL, output_channels=DGI_OUTPUT_FULL, layers=4,
-                                                  activation_fn=torch.nn.ELU),
+        encoder=EncoderWithoutFlexFrontsGraphsage(
+            input_channels=dgi_original_graphsage["data_rabo"].num_features,
+            hidden_channels=DGI_HIDDEN_CHANNEL_FULL,
+            output_channels=DGI_OUTPUT_FULL,
+            layers=DGI_N_LAYERS_FULL,
+            activation_fn=DGI_ACT_FULL),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
-    dgi_model_simple_framework.load_state_dict(torch.load(os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
+    dgi_model_simple_framework.load_state_dict(torch.load(os.path.join(trained_dgi_model_path, DGI_PTH_FULL)))
 
     for layer in dgi_model_simple_framework.encoder.layers:
         for param in layer.parameters():
@@ -219,20 +241,23 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     """----SIMPLE FRAMEWORK DGI, GRAPHSAGE and MLP ONLY DEGREE----"""
     p = parse_finetuning_file(os.path.join(framework_ft_path, 'framework_simple_finetuning_only_degree_dgi.txt'))
     data_gnn_model_simple_framework_only_degree = data_only_degree
-    num_neighbors_gnn_model_simple_framework_only_degree = [10, 10, 25]
+    num_neighbors_gnn_model_simple_framework_only_degree = p['neighbours_size']
     batch_size_gnn_model_simple_framework_only_degree = p['batch_size']
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_simple_framework_only_degree = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=DGI_OUTPUT_DEGREE,
-        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_gnn_model_simple_framework_only_degree[0].topological_features.shape[1],
-                                                  hidden_channels=64, output_channels=DGI_OUTPUT_DEGREE, layers=4,
-                                                  activation_fn=torch.nn.ELU),
+        hidden_channels=DGI_OUTPUT_ONLY_DEGREE,
+        encoder=EncoderWithoutFlexFrontsGraphsage(
+            input_channels=dgi_original_graphsage_only_degree["data_rabo"].num_features,
+            hidden_channels=DGI_HIDDEN_CHANNEL_ONLY_DEGREE,
+            output_channels=DGI_OUTPUT_ONLY_DEGREE,
+            layers=DGI_N_LAYERS_ONLY_DEGREE,
+            activation_fn=DGI_ACT_ONLY_DEGREE),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
     dgi_model_simple_framework_only_degree.load_state_dict(torch.load(
-        os.path.join(trained_dgi_model_path, 'modeling_dgi_GraphSage_no_flex_front_only_topo_rabo_ecr_20_only_degree.pth')))
+        os.path.join(trained_dgi_model_path, DGI_PTH_ONLY_DEGREE)))
 
     for layer in dgi_model_simple_framework_only_degree.encoder.layers:
         for param in layer.parameters():
@@ -243,7 +268,7 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     gnn_model_downstream_simple_framework_only_degree = GraphSAGE(
         in_channels=data[0].num_features,
         hidden_channels=hidden_ch,
-        num_layers=3,
+        num_layers=p['num_layers'],
         out_channels=out_ch,
         dropout=p['dropout'],
         act=p['act'],
@@ -253,7 +278,7 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
 
     hidden_ch_mlp = p['hidden_channels_mlp']
     num_layers_mlp = p['num_layers_mlp']
-    layer_sizes = [DGI_OUTPUT_DEGREE + out_ch] + [hidden_ch_mlp] * num_layers_mlp + [2]
+    layer_sizes = [DGI_OUTPUT_ONLY_DEGREE + out_ch] + [hidden_ch_mlp] * num_layers_mlp + [2]
     mlp_only_degree = build_mlp(layer_sizes, act_str_to_cls(p['act_mlp']), p['dropout_mlp'])
 
     gnn_model_simple_framework_only_degree = DGIAndGNN(dgi_model_simple_framework_only_degree,
@@ -267,20 +292,23 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     """----SIMPLE FRAMEWORK DGI, GIN and MLP----"""
     p = parse_finetuning_file(os.path.join(framework_ft_path, 'framework_simple_finetuning_gin.txt'))
     data_gnn_model_simple_framework_gin = data
-    num_neighbors_gnn_model_simple_framework_gin = [10, 20, 40]
+    num_neighbors_gnn_model_simple_framework_gin = p['neighbours_size']
     batch_size_gnn_model_simple_framework_gin = p['batch_size']
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_simple_framework_gin = DeepGraphInfomaxWithoutFlexFronts(
         hidden_channels=DGI_OUTPUT_FULL,
-        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1],
-                                                  hidden_channels=DGI_OUTPUT_FULL, output_channels=DGI_OUTPUT_FULL, layers=4,
-                                                  activation_fn=torch.nn.ELU),
+        encoder=EncoderWithoutFlexFrontsGraphsage(
+            input_channels=dgi_original_graphsage["data_rabo"].num_features,
+            hidden_channels=DGI_HIDDEN_CHANNEL_FULL,
+            output_channels=DGI_OUTPUT_FULL,
+            layers=DGI_N_LAYERS_FULL,
+            activation_fn=DGI_ACT_FULL),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
     dgi_model_simple_framework_gin.load_state_dict(torch.load(
-        os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
+        os.path.join(trained_dgi_model_path, DGI_PTH_FULL)))
 
     for layer in dgi_model_simple_framework_gin.encoder.layers:
         for param in layer.parameters():
@@ -291,7 +319,7 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     gnn_model_downstream_simple_framework_gin = GIN(
         in_channels=data[0].num_features,
         hidden_channels=hidden_ch,
-        num_layers=3,
+        num_layers=p['num_layers'],
         out_channels=out_ch,
         norm=make_norm(p['norm'], hidden_ch),
         dropout=p['dropout'],
@@ -320,14 +348,17 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_without_flipping_layer = DeepGraphInfomaxWithoutFlexFronts(
         hidden_channels=DGI_OUTPUT_FULL,
-        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1],
-                                                  hidden_channels=DGI_OUTPUT_FULL, output_channels=DGI_OUTPUT_FULL, layers=4,
-                                                  activation_fn=torch.nn.ELU),
+        encoder=EncoderWithoutFlexFrontsGraphsage(
+            input_channels=dgi_original_graphsage["data_rabo"].num_features,
+            hidden_channels=DGI_HIDDEN_CHANNEL_FULL,
+            output_channels=DGI_OUTPUT_FULL,
+            layers=DGI_N_LAYERS_FULL,
+            activation_fn=DGI_ACT_FULL),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
     dgi_model_without_flipping_layer.load_state_dict(
-        torch.load(os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
+        torch.load(os.path.join(trained_dgi_model_path, DGI_PTH_FULL)))
 
     for layer in dgi_model_without_flipping_layer.encoder.layers:
         for param in layer.parameters():
@@ -350,28 +381,31 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
                                                                 False)
     optimizer_gnn_complex_framework = torch.optim.Adam(
         gnn_model_complex_framework.parameters(),
-        lr=p['lr'] if p else 0.0001781660288878494,
-        weight_decay=p['weight_decay'] if p else 0.00048693914641231314)
+        lr=p['lr'],
+        weight_decay=p['weight_decay'])
     criterion_gnn_complex_framework = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS ONLY DEGREE----"""
     p = parse_finetuning_file(os.path.join(framework_ft_path, 'framework_complex_finetuning_only_degree_dgi.txt'))
     data_gnn_model_complex_framework_only_degree = data_only_degree
-    num_neighbors_gnn_model_complex_framework_only_degree = [10, 10, 25]
+    num_neighbors_gnn_model_complex_framework_only_degree = p['neighbours_size']
     batch_size_gnn_model_complex_framework_only_degree = p['batch_size']
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_without_flipping_layer_only_degree = DeepGraphInfomaxWithoutFlexFronts(
-        hidden_channels=DGI_OUTPUT_DEGREE,
-        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data_gnn_model_complex_framework_only_degree[0].topological_features.shape[1],
-                                                  hidden_channels=64, output_channels=DGI_OUTPUT_DEGREE, layers=4,
-                                                  activation_fn=torch.nn.ELU),
+        hidden_channels=DGI_OUTPUT_ONLY_DEGREE,
+        encoder=EncoderWithoutFlexFrontsGraphsage(
+            input_channels=dgi_original_graphsage_only_degree["data_rabo"].num_features,
+            hidden_channels=DGI_HIDDEN_CHANNEL_ONLY_DEGREE,
+            output_channels=DGI_OUTPUT_ONLY_DEGREE,
+            layers=DGI_N_LAYERS_ONLY_DEGREE,
+            activation_fn=DGI_ACT_ONLY_DEGREE),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
     dgi_model_without_flipping_layer_only_degree.load_state_dict(
         torch.load(
-            os.path.join(trained_dgi_model_path, 'modeling_dgi_GraphSage_no_flex_front_only_topo_rabo_ecr_20_only_degree.pth')))
+            os.path.join(trained_dgi_model_path, DGI_PTH_ONLY_DEGREE)))
 
     for layer in dgi_model_without_flipping_layer_only_degree.encoder.layers:
         for param in layer.parameters():
@@ -380,9 +414,9 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     hidden_ch = p['hidden_channels']
     # same model as in graphsage_elliptic, used in the framework
     gnn_model_downstream_framework_without_flipping_layer_only_degree = GraphSAGE(
-        in_channels=data[0].num_features + DGI_OUTPUT_DEGREE,
+        in_channels=data[0].num_features + DGI_OUTPUT_ONLY_DEGREE,
         hidden_channels=hidden_ch,
-        num_layers=3,
+        num_layers=p['num_layers'],
         out_channels=2,
         dropout=p['dropout'],
         act=p['act'],
@@ -402,21 +436,24 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     """----COMPLEX FRAMEWORK WITHOUT FLEX FRONTS GIN----"""
     p = parse_finetuning_file(os.path.join(framework_ft_path, 'framework_complex_finetuning_gin.txt'))
     data_gnn_model_complex_framework_gin = data
-    num_neighbors_gnn_model_complex_framework_gin = [10, 20, 40]
-    batch_size_gnn_model_complex_framework_gin = 64
+    num_neighbors_gnn_model_complex_framework_gin = p['neighbours_size']
+    batch_size_gnn_model_complex_framework_gin = p['batch_size']
 
     # define the framework, first DGI and then the GNN used in the downstream task
     dgi_model_without_flipping_layer = DeepGraphInfomaxWithoutFlexFronts(
         hidden_channels=DGI_OUTPUT_FULL,
-        encoder=EncoderWithoutFlexFrontsGraphsage(input_channels=data[0].topological_features.shape[1],
-                                                  hidden_channels=DGI_OUTPUT_FULL, output_channels=DGI_OUTPUT_FULL, layers=4,
-                                                  activation_fn=torch.nn.ELU),
+        encoder=EncoderWithoutFlexFrontsGraphsage(
+            input_channels=dgi_original_graphsage["data_rabo"].num_features,
+            hidden_channels=DGI_HIDDEN_CHANNEL_FULL,
+            output_channels=DGI_OUTPUT_FULL,
+            layers=DGI_N_LAYERS_FULL,
+            activation_fn=DGI_ACT_FULL),
         summary=lambda z, *args, **kwargs: torch.sigmoid(z.mean(dim=0)),
         corruption=corruption_without_flex_fronts)
     # load the pretrained parameters
     dgi_model_without_flipping_layer.load_state_dict(
         torch.load(
-            os.path.join(trained_dgi_model_path, 'modeling_dgi_no_flex_front_only_topo_rabo_ethereum_erc_20.pth')))
+            os.path.join(trained_dgi_model_path, DGI_PTH_FULL)))
 
     for layer in dgi_model_without_flipping_layer.encoder.layers:
         for param in layer.parameters():
@@ -427,7 +464,7 @@ def model_list_rq1_ex1(data, data_only_degree, data_all_features):
     gnn_model_downstream_framework_without_flipping_layer = GIN(
         in_channels=data[0].num_features + DGI_OUTPUT_FULL,
         hidden_channels=hidden_ch,
-        num_layers=3,
+        num_layers=p['num_layers'],
         out_channels=2,
         norm=make_norm(p['norm'], hidden_ch),
         dropout=p['dropout'],

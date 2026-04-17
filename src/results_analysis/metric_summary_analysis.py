@@ -26,8 +26,8 @@ def parse_metrics_txt(filepath):
     return metrics_results
 
 # Path configuration
-input_file = "C:/Users/lucad/OneDrive/Desktop/paper_thesis/results/results_april_4_all_nodes_for_training/metrics_summary.txt"
-results_path = "C:/Users/lucad/OneDrive/Desktop/paper_thesis/results/results_april_4_all_nodes_for_training/"
+input_file = "C:/Users/lucad/OneDrive/Desktop/test/metrics_summary.txt"
+results_path = "C:/Users/lucad/OneDrive/Desktop/test/"
 n_runs = 20
 
 # Parse the file
