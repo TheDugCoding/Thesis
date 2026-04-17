@@ -180,25 +180,14 @@ def objective_framework_complex(trial):
     aggr = trial.suggest_categorical("aggr", ["mean", "sum", "max"])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
+    
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+    
 
-    parsed = ast.literal_eval(neighbours_size)
-    if len(parsed) != num_layers:
-        raise optuna.TrialPruned()
+    
 
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
@@ -229,7 +218,7 @@ def objective_framework_complex(trial):
     graphsage = GraphSAGE(
         in_channels=data[0].num_features + dgi_original_graphsage["output_channels"],
         hidden_channels=hidden_channels,
-        num_layers=num_layers,
+        num_layers=dgi_original_graphsage["num_layers"],
         out_channels=2,
         dropout=dropout,
         act=act,
@@ -242,9 +231,9 @@ def objective_framework_complex(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data[0:29], parsed, batch_size, optimizer, criterion)
+        train_once(model, data[0:29], dgi_original_graphsage["neighbours_size"], batch_size, optimizer, criterion)
 
-    pr_auc = test_once(model, data[29:35], parsed, batch_size, mask_attr='val_mask')
+    pr_auc = test_once(model, data[29:35], dgi_original_graphsage["neighbours_size"], batch_size, mask_attr='val_mask')
     return pr_auc
 
 
@@ -261,25 +250,14 @@ def objective_framework_complex_only_degree_dgi(trial):
     aggr = trial.suggest_categorical("aggr", ["mean", "sum", "max"])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
+    
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+    
 
-    parsed = ast.literal_eval(neighbours_size)
-    if len(parsed) != num_layers:
-        raise optuna.TrialPruned()
+    
 
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
@@ -311,7 +289,7 @@ def objective_framework_complex_only_degree_dgi(trial):
     graphsage = GraphSAGE(
         in_channels=data_only_degree[0].num_features + dgi_original_graphsage_only_degree["output_channels"],
         hidden_channels=hidden_channels,
-        num_layers=num_layers,
+        num_layers=dgi_original_graphsage_only_degree["num_layers"],
         out_channels=2,
         dropout=dropout,
         act=act,
@@ -324,9 +302,9 @@ def objective_framework_complex_only_degree_dgi(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data_only_degree[0:29], parsed, batch_size, optimizer, criterion)
+        train_once(model, data_only_degree[0:29], dgi_original_graphsage_only_degree["neighbours_size"], batch_size, optimizer, criterion)
 
-    pr_auc = test_once(model, data_only_degree[29:35], parsed, batch_size, mask_attr='val_mask')
+    pr_auc = test_once(model, data_only_degree[29:35], dgi_original_graphsage_only_degree["neighbours_size"], batch_size, mask_attr='val_mask')
     return pr_auc
 
 
@@ -336,25 +314,14 @@ def objective_framework_complex_gin_encoder(trial):
     aggr = trial.suggest_categorical("aggr", ["mean", "sum", "max"])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256, 512])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
+    
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+    
 
-    parsed = ast.literal_eval(neighbours_size)
-    if len(parsed) != num_layers:
-        raise optuna.TrialPruned()
+    
 
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
@@ -384,7 +351,7 @@ def objective_framework_complex_gin_encoder(trial):
     graphsage = GraphSAGE(
         in_channels=data[0].num_features + dgi_original_gin["output_channels"],
         hidden_channels=hidden_channels,
-        num_layers=num_layers,
+        num_layers=dgi_original_gin["num_layers"],
         out_channels=2,
         dropout=dropout,
         act=act,
@@ -397,9 +364,9 @@ def objective_framework_complex_gin_encoder(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data[0:29], parsed, batch_size, optimizer, criterion)
+        train_once(model, data[0:29], dgi_original_gin["neighbours_size"], batch_size, optimizer, criterion)
 
-    pr_auc = test_once(model, data[29:35], parsed, batch_size, mask_attr='val_mask')
+    pr_auc = test_once(model, data[29:35], dgi_original_gin["neighbours_size"], batch_size, mask_attr='val_mask')
     return pr_auc
 
 
@@ -409,26 +376,15 @@ def objective_framework_complex_infonce(trial):
     aggr = trial.suggest_categorical("aggr", ["mean", "sum", "max"])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
+    
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
 
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+    
 
-    parsed = ast.literal_eval(neighbours_size)
-    if len(parsed) != num_layers:
-        raise optuna.TrialPruned()
+    
 
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
@@ -459,7 +415,7 @@ def objective_framework_complex_infonce(trial):
     graphsage = GraphSAGE(
         in_channels=data[0].num_features + infonce_graphsage["output_channels"],
         hidden_channels=hidden_channels,
-        num_layers=num_layers,
+        num_layers=infonce_graphsage["num_layers"],
         out_channels=2,
         dropout=dropout,
         act=act,
@@ -472,9 +428,9 @@ def objective_framework_complex_infonce(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data[0:29], parsed, batch_size, optimizer, criterion)
+        train_once(model, data[0:29], infonce_graphsage["neighbours_size"], batch_size, optimizer, criterion)
 
-    pr_auc = test_once(model, data[29:35], parsed, batch_size, mask_attr='val_mask')
+    pr_auc = test_once(model, data[29:35], infonce_graphsage["neighbours_size"], batch_size, mask_attr='val_mask')
     return pr_auc
 
 
@@ -483,25 +439,14 @@ def objective_framework_complex_gin(trial):
     norm_choice = trial.suggest_categorical("norm", ["batch", "layer", "graph", None])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
+    
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+    
 
-    parsed = ast.literal_eval(neighbours_size)
-    if len(parsed) != num_layers:
-        raise optuna.TrialPruned()
+    
 
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
@@ -532,7 +477,7 @@ def objective_framework_complex_gin(trial):
     gin = GIN(
         in_channels=data[0].num_features + dgi_original_graphsage["output_channels"],
         hidden_channels=hidden_channels,
-        num_layers=num_layers,
+        num_layers=dgi_original_graphsage["num_layers"],
         out_channels=2,
         dropout=dropout,
         act=act,
@@ -544,9 +489,9 @@ def objective_framework_complex_gin(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data[0:29], parsed, batch_size, optimizer, criterion)
+        train_once(model, data[0:29], dgi_original_graphsage["neighbours_size"], batch_size, optimizer, criterion)
 
-    pr_auc = test_once(model, data[29:35], parsed, batch_size, mask_attr='val_mask')
+    pr_auc = test_once(model, data[29:35], dgi_original_graphsage["neighbours_size"], batch_size, mask_attr='val_mask')
     return pr_auc
 
 
@@ -556,25 +501,13 @@ def objective_framework_complex_first_layer_unfreeze(trial):
     aggr = trial.suggest_categorical("aggr", ["mean", "sum", "max"])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+    
 
-    parsed = ast.literal_eval(neighbours_size)
-    if len(parsed) != num_layers:
-        raise optuna.TrialPruned()
+    
 
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
@@ -608,7 +541,7 @@ def objective_framework_complex_first_layer_unfreeze(trial):
     graphsage = GraphSAGE(
         in_channels=data[0].num_features + dgi_original_graphsage["output_channels"],
         hidden_channels=hidden_channels,
-        num_layers=num_layers,
+        num_layers=dgi_original_graphsage["num_layers"],
         out_channels=2,
         dropout=dropout,
         act=act,
@@ -621,9 +554,9 @@ def objective_framework_complex_first_layer_unfreeze(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data[0:29], parsed, batch_size, optimizer, criterion)
+        train_once(model, data[0:29], dgi_original_graphsage["neighbours_size"], batch_size, optimizer, criterion)
 
-    pr_auc = test_once(model, data[29:35], parsed, batch_size, mask_attr='val_mask')
+    pr_auc = test_once(model, data[29:35], dgi_original_graphsage["neighbours_size"], batch_size, mask_attr='val_mask')
     return pr_auc
 
 
@@ -633,25 +566,14 @@ def objective_framework_complex_last_layer_unfreeze(trial):
     aggr = trial.suggest_categorical("aggr", ["mean", "sum", "max"])
     act = trial.suggest_categorical("act", ["relu", "leaky_relu", "elu", "gelu"])
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
+    
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+    
 
-    parsed = ast.literal_eval(neighbours_size)
-    if len(parsed) != num_layers:
-        raise optuna.TrialPruned()
+    
 
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
@@ -683,7 +605,7 @@ def objective_framework_complex_last_layer_unfreeze(trial):
     graphsage = GraphSAGE(
         in_channels=data[0].num_features + dgi_original_graphsage["output_channels"],
         hidden_channels=hidden_channels,
-        num_layers=num_layers,
+        num_layers=dgi_original_graphsage["num_layers"],
         out_channels=2,
         dropout=dropout,
         act=act,
@@ -696,9 +618,9 @@ def objective_framework_complex_last_layer_unfreeze(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data[0:29], parsed, batch_size, optimizer, criterion)
+        train_once(model, data[0:29], dgi_original_graphsage["neighbours_size"], batch_size, optimizer, criterion)
 
-    pr_auc = test_once(model, data[29:35], parsed, batch_size, mask_attr='val_mask')
+    pr_auc = test_once(model, data[29:35], dgi_original_graphsage["neighbours_size"], batch_size, mask_attr='val_mask')
     return pr_auc
 
 
@@ -711,27 +633,16 @@ def objective_framework_simple(trial):
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
     output_channels = trial.suggest_categorical("output_channels", [128, 256, 512])
     hidden_channels_mlp = trial.suggest_categorical("hidden_channels_mlp", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
+    
     num_mlp_layers = trial.suggest_int("num_layers_mlp", 2, 4)
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     dropout_mlp = trial.suggest_float("dropout_mlp", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+    
 
-    parsed = ast.literal_eval(neighbours_size)
-    if len(parsed) != num_layers:
-        raise optuna.TrialPruned()
+    
 
 
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
@@ -770,7 +681,7 @@ def objective_framework_simple(trial):
     graphsage = GraphSAGE(
         in_channels=data[0].num_features,
         hidden_channels=hidden_channels,
-        num_layers=num_layers,
+        num_layers=dgi_original_graphsage["num_layers"],
         out_channels=output_channels,
         dropout=dropout,
         act=act,
@@ -789,9 +700,9 @@ def objective_framework_simple(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data[0:29], parsed, batch_size, optimizer, criterion)
+        train_once(model, data[0:29], dgi_original_graphsage["neighbours_size"], batch_size, optimizer, criterion)
 
-    pr_auc = test_once(model, data[29:35], parsed, batch_size, mask_attr='val_mask')
+    pr_auc = test_once(model, data[29:35], dgi_original_graphsage["neighbours_size"], batch_size, mask_attr='val_mask')
     return pr_auc
 
 
@@ -810,27 +721,16 @@ def objective_framework_simple_only_degree_dgi(trial):
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
     output_channels = trial.suggest_categorical("output_channels", [128, 256, 512])
     hidden_channels_mlp = trial.suggest_categorical("hidden_channels_mlp", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
+    
     num_mlp_layers = trial.suggest_int("num_layers_mlp", 2, 4)
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     dropout_mlp = trial.suggest_float("dropout_mlp", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+    
 
-    parsed = ast.literal_eval(neighbours_size)
-    if len(parsed) != num_layers:
-        raise optuna.TrialPruned()
+    
 
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
@@ -869,7 +769,7 @@ def objective_framework_simple_only_degree_dgi(trial):
     graphsage = GraphSAGE(
         in_channels=data_only_degree[0].num_features,
         hidden_channels=hidden_channels,
-        num_layers=num_layers,
+        num_layers=dgi_original_graphsage_only_degree["num_layers"],
         out_channels=output_channels,
         dropout=dropout,
         act=act,
@@ -888,9 +788,9 @@ def objective_framework_simple_only_degree_dgi(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data_only_degree[0:29], parsed, batch_size, optimizer, criterion)
+        train_once(model, data_only_degree[0:29], dgi_original_graphsage_only_degree["neighbours_size"], batch_size, optimizer, criterion)
 
-    pr_auc = test_once(model, data_only_degree[29:35], parsed, batch_size, mask_attr='val_mask')
+    pr_auc = test_once(model, data_only_degree[29:35], dgi_original_graphsage_only_degree["neighbours_size"], batch_size, mask_attr='val_mask')
     return pr_auc
 
 
@@ -902,27 +802,16 @@ def objective_framework_simple_gin(trial):
     hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256])
     output_channels = trial.suggest_categorical("output_channels", [128, 256, 512])
     hidden_channels_mlp = trial.suggest_categorical("hidden_channels_mlp", [64, 128, 256])
-    num_layers = trial.suggest_int("num_layers", 2, 4)
+    
     num_mlp_layers = trial.suggest_int("num_layers_mlp", 2, 4)
     dropout = trial.suggest_float("dropout", 0.2, 0.6)
     dropout_mlp = trial.suggest_float("dropout_mlp", 0.2, 0.6)
     lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     epochs = trial.suggest_categorical("epochs", [5, 10, 15, 20, 50])
-    neighbours_size = trial.suggest_categorical("neighbours_size", [
-        "[10, 10]",
-        "[20, 20]",
-        "[15, 30]",
-        "[30, 50]",
-        "[5, 5, 10]",
-        "[10, 10, 25]",
-        "[10, 20, 40]",
-        "[10, 20, 30, 40]"
-    ])
+    
 
-    parsed = ast.literal_eval(neighbours_size)
-    if len(parsed) != num_layers:
-        raise optuna.TrialPruned()
+    
 
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
 
@@ -960,7 +849,7 @@ def objective_framework_simple_gin(trial):
     gin = GIN(
         in_channels=data[0].num_features,
         hidden_channels=hidden_channels,
-        num_layers=num_layers,
+        num_layers=dgi_original_graphsage["num_layers"],
         out_channels=output_channels,
         dropout=dropout,
         act=act,
@@ -978,9 +867,9 @@ def objective_framework_simple_gin(trial):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
 
     for _ in range(int(epochs)):
-        train_once(model, data[0:29], parsed, batch_size, optimizer, criterion)
+        train_once(model, data[0:29], dgi_original_graphsage["neighbours_size"], batch_size, optimizer, criterion)
 
-    pr_auc = test_once(model, data[29:35], parsed, batch_size, mask_attr='val_mask')
+    pr_auc = test_once(model, data[29:35], dgi_original_graphsage["neighbours_size"], batch_size, mask_attr='val_mask')
     return pr_auc
 
 
